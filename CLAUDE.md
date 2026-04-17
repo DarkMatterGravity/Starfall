@@ -25,12 +25,17 @@ Journey is a web-based reimplementation of concepts from **Bedrock**, a Unity/iP
 | **Additional Clinical Data** | PK data, biomarkers (PD-L1), adverse events, anti-drug antibodies |
 | **Cohort Comparison** | Compare across cohorts with bootstrapping, historical controls |
 
-### Potential PD-L1 Integration
-PD-L1 expression level could be added as a tumor property:
+### PD-L1 Biomarker System (Implemented)
+PD-L1 expression is now a tumor property affecting ICI medication response:
 - **Categories**: Negative (<1%), Low (1-49%), High (≥50%)
-- **Impact**: Higher PD-L1 → better response to checkpoint inhibitors (Keytruda, Opdivo)
-- **Visualization**: Color intensity or icon on tumor, filter/sort in charts
-- **OCR extraction**: Parse "PD-L1 TPS: 80%" from reports
+- **Impact**: PD-L1 modifier for ICI medications (Keytruda, Opdivo):
+  - High: 1.5x boost to ICI effectiveness
+  - Low: 1.0x baseline (no change)
+  - Negative: 0.4x reduction (60% less effective)
+- **Manual input**: Dropdown in tumor creation panel
+- **OCR extraction**: Parses "PD-L1 TPS: 80%", "PD-L1 positive/negative", etc.
+- **Persistence**: Stored per tumor in localStorage and exam history
+- **Display**: Shown in tumor info dialog with color coding (green/yellow/red)
 
 ## Git Repository
 
@@ -380,6 +385,14 @@ Real cancer drugs dynamically shown based on patient's tumor types:
 - ~40% chance: Halted (no growth)
 - ~20% chance: Resistant (continues growing)
 
+**PD-L1 Biomarker Impact on ICIs:**
+ICI medications (Pembrolizumab, Nivolumab) effectiveness is modified by tumor PD-L1 status:
+| PD-L1 Status | Modifier | Clinical Response Rate |
+|--------------|----------|------------------------|
+| High (≥50%) | 1.5x | ~45-50% |
+| Low (1-49%) | 1.0x | ~25-30% (baseline) |
+| Negative (<1%) | 0.4x | ~10-15% |
+
 **Effectiveness Ramp-up:**
 Exponential curve for gradual effect onset:
 ```javascript
@@ -631,7 +644,7 @@ let subjects = [];
 ## Future To-Do
 
 ### From Bedrock (Priority Features)
-- [ ] PD-L1 expression per tumor (biomarker affecting ICI response)
+- [x] PD-L1 expression per tumor (biomarker affecting ICI response) - IMPLEMENTED
 - [ ] Multi-patient dashboard (grid view of all patients)
 - [ ] Manual Target/Non-Target lesion designation
 - [ ] QSP parameters (growth rate, immune cell densities)
@@ -705,6 +718,12 @@ let subjects = [];
 - [x] SLD (Sum of Longest Diameters) total burden plot
 - [x] Best Overall Response bar chart
 - [x] Response Categories donut chart (CR/PR/SD/PD)
+- [x] PD-L1 biomarker per tumor (high/low/negative categories)
+- [x] PD-L1 modifies ICI medication response (1.5x high, 1.0x low, 0.4x negative)
+- [x] PD-L1 selector dropdown in tumor creation panel
+- [x] PD-L1 display in tumor info dialog with color coding
+- [x] PD-L1 OCR extraction from radiology reports
+- [x] PD-L1 data persistence in localStorage and exam history
 - [x] Duration of Response (DOR) plot for responders
 - [x] Tumor Heatmap visualization (% change grid)
 - [x] Growth Rate plot (mm/month velocity)

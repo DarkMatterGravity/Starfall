@@ -1172,6 +1172,12 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     newTumor.userData.initialSizeMM = sizeMM;
     newTumor.userData.localPosition = finalPosition.clone();
 
+    // Get PD-L1 status from selector
+    const pdl1Select = document.getElementById('tumor-pdl1-select');
+    if (pdl1Select && pdl1Select.value) {
+      newTumor.userData.pdl1 = pdl1Select.value;
+    }
+
     // Scale based on size
     const targetScale = (sizeMM * MM_TO_SCALE) / CONFIG.tumor.size;
     newTumor.scale.setScalar(0.01); // Start tiny for animation
@@ -1268,6 +1274,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
   const infoDialog = document.getElementById('tumor-info-dialog');
   const infoRegion = document.getElementById('tumor-info-region');
   const infoMM = document.getElementById('tumor-info-mm');
+  const infoPDL1 = document.getElementById('tumor-info-pdl1-value');
   const infoCloseBtn = document.getElementById('tumor-info-close');
   const infoDeleteBtn = document.getElementById('tumor-info-delete');
   let selectedTumor = null;
@@ -1384,6 +1391,23 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       infoRegion.style.color = '';
     }
     infoMM.textContent = tumor.userData.sizeMM || '?';
+
+    // Display PD-L1 status
+    if (infoPDL1) {
+      const pdl1 = tumor.userData.pdl1;
+      if (pdl1) {
+        let displayText = pdl1.charAt(0).toUpperCase() + pdl1.slice(1);
+        if (tumor.userData.pdl1Score != null) {
+          displayText += ` (${tumor.userData.pdl1Score}%)`;
+        }
+        infoPDL1.textContent = displayText;
+        infoPDL1.className = `pdl1-${pdl1}`;
+      } else {
+        infoPDL1.textContent = 'Unknown';
+        infoPDL1.className = '';
+      }
+    }
+
     infoDialog.style.display = 'block';
     infoDialog.style.left = x + 'px';
     infoDialog.style.top = y + 'px';
@@ -2431,6 +2455,17 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
   // Time constant for drug effectiveness ramp-up (months)
   const MED_RAMP_TIME = 1.5; // Full effect reached around 1.5-2 months
 
+  // Get PD-L1 modifier for ICI medications
+  // High (≥50%): 1.5x boost, Low (1-49%): 1.0x baseline, Negative (<1%): 0.4x reduction
+  function getPDL1Modifier(pdl1Status) {
+    switch (pdl1Status) {
+      case 'high':     return 1.5;   // 50% boost to ICI effectiveness
+      case 'low':      return 1.0;   // No change (baseline)
+      case 'negative': return 0.4;   // 60% reduction in ICI effectiveness
+      default:         return 1.0;   // Unknown defaults to baseline
+    }
+  }
+
   function determineTumorResponse(tumor) {
     const activeCount = Object.values(activeMedications).filter(v => v).length;
     if (activeCount === 0) {
@@ -2442,15 +2477,47 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     let combinedShrinkChance = 0;
     let combinedHaltChance = 0;
     let combinedShrinkRate = 0;
+    let iciShrinkChance = 0;
+    let iciHaltChance = 0;
+    let iciShrinkRate = 0;
+    let nonICIShrinkChance = 0;
+    let nonICIHaltChance = 0;
+    let nonICIShrinkRate = 0;
 
+    // Separate ICI and non-ICI medication contributions
     for (const [medId, isActive] of Object.entries(activeMedications)) {
       if (!isActive) continue;
       const med = MEDICATION_EFFECTS[medId];
       const synergyBonus = 1 + (activeCount - 1) * 0.10;
-      combinedShrinkChance += med.shrinkChance * synergyBonus;
-      combinedHaltChance += med.haltChance * synergyBonus;
-      combinedShrinkRate += med.shrinkRate;
+
+      if (med.type === 'ICI') {
+        // ICI medications - will be modified by PD-L1
+        iciShrinkChance += med.shrinkChance * synergyBonus;
+        iciHaltChance += med.haltChance * synergyBonus;
+        iciShrinkRate += med.shrinkRate;
+      } else {
+        // Non-ICI medications - unaffected by PD-L1
+        nonICIShrinkChance += med.shrinkChance * synergyBonus;
+        nonICIHaltChance += med.haltChance * synergyBonus;
+        nonICIShrinkRate += med.shrinkRate;
+      }
     }
+
+    // Apply PD-L1 modifier to ICI contribution
+    const pdl1Modifier = getPDL1Modifier(tumor.userData.pdl1);
+    iciShrinkChance *= pdl1Modifier;
+    iciHaltChance *= pdl1Modifier;
+
+    // Log PD-L1 impact if ICIs are active
+    if (iciShrinkChance > 0 || iciHaltChance > 0) {
+      const pdl1Status = tumor.userData.pdl1 || 'unknown';
+      console.log(`PD-L1 ${pdl1Status} (${pdl1Modifier}x) applied to ICI response`);
+    }
+
+    // Combine ICI and non-ICI contributions
+    combinedShrinkChance = iciShrinkChance + nonICIShrinkChance;
+    combinedHaltChance = iciHaltChance + nonICIHaltChance;
+    combinedShrinkRate = iciShrinkRate + nonICIShrinkRate;
 
     combinedShrinkChance = Math.min(0.60, combinedShrinkChance);
     combinedHaltChance = Math.min(0.80, combinedHaltChance);
@@ -5591,6 +5658,55 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     return tumors;
   }
 
+  // Parse PD-L1 biomarker info from OCR text
+  function parsePDL1Info(text) {
+    const lowerText = text.toLowerCase();
+
+    // Pattern 1: "PD-L1 TPS: XX%" or "PD-L1: XX%" or "PD-L1 score: XX%"
+    const tpsMatch = text.match(/pd-?l1\s*(?:tps|score|expression)?\s*[:\s]*(\d+)\s*%/i);
+    if (tpsMatch) {
+      const score = parseInt(tpsMatch[1]);
+      const pdl1 = score >= 50 ? 'high' : score >= 1 ? 'low' : 'negative';
+      console.log('PD-L1 parsed from TPS score:', score, '%', '->', pdl1);
+      return { pdl1, pdl1Score: score };
+    }
+
+    // Pattern 2: "PD-L1 positive" or "PD-L1 negative" with qualifiers
+    if (/pd-?l1\s*(?:is\s+)?(?:strongly\s+)?positive/i.test(text)) {
+      console.log('PD-L1 parsed: strongly positive -> high');
+      return { pdl1: 'high', pdl1Score: null };
+    }
+    if (/pd-?l1\s*(?:is\s+)?(?:weakly\s+)?positive/i.test(text)) {
+      console.log('PD-L1 parsed: weakly positive -> low');
+      return { pdl1: 'low', pdl1Score: null };
+    }
+    if (/pd-?l1\s*(?:is\s+)?negative/i.test(text)) {
+      console.log('PD-L1 parsed: negative');
+      return { pdl1: 'negative', pdl1Score: null };
+    }
+
+    // Pattern 3: "high PD-L1 expression" or "low PD-L1"
+    if (/high\s+pd-?l1/i.test(text)) {
+      console.log('PD-L1 parsed: high expression');
+      return { pdl1: 'high', pdl1Score: null };
+    }
+    if (/low\s+pd-?l1/i.test(text)) {
+      console.log('PD-L1 parsed: low expression');
+      return { pdl1: 'low', pdl1Score: null };
+    }
+
+    // Pattern 4: Check for specific percentage ranges mentioned
+    const rangeMatch = text.match(/pd-?l1\s*[^.]*?(\d+)\s*-\s*(\d+)\s*%/i);
+    if (rangeMatch) {
+      const midpoint = (parseInt(rangeMatch[1]) + parseInt(rangeMatch[2])) / 2;
+      const pdl1 = midpoint >= 50 ? 'high' : midpoint >= 1 ? 'low' : 'negative';
+      console.log('PD-L1 parsed from range:', rangeMatch[1], '-', rangeMatch[2], '%', '->', pdl1);
+      return { pdl1, pdl1Score: Math.round(midpoint) };
+    }
+
+    return { pdl1: null, pdl1Score: null };
+  }
+
   // Parse patient info from OCR text
   function parsePatientInfo(text) {
     const info = {
@@ -6184,6 +6300,10 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         const tumors = parseTumorInfo(text);
         console.log('Parsed tumors:', tumors);
 
+        // Parse PD-L1 biomarker info (applies to all tumors from this report)
+        const pdl1Info = parsePDL1Info(text);
+        console.log('Parsed PD-L1 info:', pdl1Info);
+
         // Check if we should add to existing patient or create new
         // Add to existing if: checkbox is checked OR patient name matches current
         const addToExisting = window.addReportToExistingPatient ||
@@ -6193,7 +6313,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
         if (addToExisting && currentSubjectId) {
           // Add report to existing patient
-          const subject = addReportToCurrentPatient(patientInfo, tumors);
+          const subject = addReportToCurrentPatient(patientInfo, tumors, pdl1Info);
           updatePatientInfoPanel(patientInfo);
 
           // Clear existing tumors - follow-up report represents current state
@@ -6219,6 +6339,11 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
                     tumor.userData.priorSize = matchingTumor.size;
                   }
                 }
+              }
+              // Apply PD-L1 biomarker from report
+              if (pdl1Info.pdl1) {
+                tumor.userData.pdl1 = pdl1Info.pdl1;
+                tumor.userData.pdl1Score = pdl1Info.pdl1Score;
               }
             }
           });
@@ -6257,18 +6382,25 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
             newSubjectName = num === 1 ? baseName : `${baseName} ${num}`;
           }
 
-          const subject = createNewSubjectFromReport(newSubjectName, patientInfo, tumors);
+          const subject = createNewSubjectFromReport(newSubjectName, patientInfo, tumors, pdl1Info);
           updatePatientInfoPanel(patientInfo);
 
           if (tumors.length === 0) {
             statusMsg = `Created "${newSubjectName}" - no tumors found in report.`;
           } else {
-            // Create tumors with history data
+            // Create tumors with history data and PD-L1 biomarker
             tumors.forEach(t => {
               const tumor = createTumorAtPosition(t.size, t.region);
-              if (tumor && t.priorSize) {
-                tumor.userData.priorSize = t.priorSize;
-                tumor.userData.historyMonths = subject?.examHistory?.[0]?.historyMonths || 0;
+              if (tumor) {
+                if (t.priorSize) {
+                  tumor.userData.priorSize = t.priorSize;
+                  tumor.userData.historyMonths = subject?.examHistory?.[0]?.historyMonths || 0;
+                }
+                // Apply PD-L1 biomarker from report
+                if (pdl1Info.pdl1) {
+                  tumor.userData.pdl1 = pdl1Info.pdl1;
+                  tumor.userData.pdl1Score = pdl1Info.pdl1Score;
+                }
               }
             });
 
@@ -6368,7 +6500,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
   }
 
   // Create new subject from radiology report
-  function createNewSubjectFromReport(name, patientInfo, tumorData = []) {
+  function createNewSubjectFromReport(name, patientInfo, tumorData = [], pdl1Info = null) {
     const id = generateId();
 
     // Calculate months of history if we have prior exam date
@@ -6385,7 +6517,13 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       patientInfo: patientInfo || {},
       examHistory: [{
         date: patientInfo.examDate || new Date().toLocaleDateString(),
-        tumors: tumorData.map(t => ({ size: t.size, region: t.region, priorSize: t.priorSize })),
+        tumors: tumorData.map(t => ({
+          size: t.size,
+          region: t.region,
+          priorSize: t.priorSize,
+          pdl1: pdl1Info?.pdl1 || null,
+          pdl1Score: pdl1Info?.pdl1Score || null
+        })),
         historyMonths: historyMonths  // Months since prior exam
       }],
       createdAt: Date.now()
@@ -6429,7 +6567,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
   }
 
   // Add report to existing patient
-  function addReportToCurrentPatient(patientInfo, tumorData = []) {
+  function addReportToCurrentPatient(patientInfo, tumorData = [], pdl1Info = null) {
     if (!currentSubjectId) return;
 
     const subject = subjects.find(s => s.id === currentSubjectId);
@@ -6446,7 +6584,13 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     if (!subject.examHistory) subject.examHistory = [];
     subject.examHistory.push({
       date: patientInfo.examDate || new Date().toLocaleDateString(),
-      tumors: tumorData.map(t => ({ size: t.size, region: t.region, priorSize: t.priorSize })),
+      tumors: tumorData.map(t => ({
+        size: t.size,
+        region: t.region,
+        priorSize: t.priorSize,
+        pdl1: pdl1Info?.pdl1 || null,
+        pdl1Score: pdl1Info?.pdl1Score || null
+      })),
       historyMonths: historyMonths
     });
 
@@ -6483,7 +6627,10 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           scale: tumorInitialSizes.get(tumor) || tumor.scale.x,
           // Save history data for follow-up visits
           priorSize: tumor.userData.priorSize || null,
-          historyMonths: tumor.userData.historyMonths || 0
+          historyMonths: tumor.userData.historyMonths || 0,
+          // Save PD-L1 biomarker data
+          pdl1: tumor.userData.pdl1 || null,
+          pdl1Score: tumor.userData.pdl1Score || null
         };
       });
 
@@ -6579,6 +6726,13 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           if (historyMonths > 0) {
             tumor.userData.historyMonths = historyMonths;
           }
+          // Restore PD-L1 biomarker data
+          if (tumorData.pdl1) {
+            tumor.userData.pdl1 = tumorData.pdl1;
+          }
+          if (tumorData.pdl1Score != null) {
+            tumor.userData.pdl1Score = tumorData.pdl1Score;
+          }
         }
       });
 
@@ -6640,6 +6794,14 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     }
     if (tumorData.historyMonths) {
       tumor.userData.historyMonths = tumorData.historyMonths;
+    }
+
+    // Restore PD-L1 biomarker data
+    if (tumorData.pdl1) {
+      tumor.userData.pdl1 = tumorData.pdl1;
+    }
+    if (tumorData.pdl1Score != null) {
+      tumor.userData.pdl1Score = tumorData.pdl1Score;
     }
 
     // Add to body and tracking

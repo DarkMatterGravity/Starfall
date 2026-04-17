@@ -109,12 +109,29 @@
     .tumor-info-size {
       font-size: 24px;
       font-weight: 300;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       color: #9DB3B2;
     }
     #tumor-info-mm {
       color: #fff;
       font-weight: 500;
+    }
+    .tumor-info-pdl1 {
+      font-size: 14px;
+      color: #aaa;
+      margin-bottom: 12px;
+    }
+    #tumor-info-pdl1-value {
+      font-weight: bold;
+    }
+    #tumor-info-pdl1-value.pdl1-high {
+      color: #6BCB77;
+    }
+    #tumor-info-pdl1-value.pdl1-low {
+      color: #FFD93D;
+    }
+    #tumor-info-pdl1-value.pdl1-negative {
+      color: #FF6B6B;
     }
     #tumor-info-delete {
       width: 100%;
@@ -1159,6 +1176,34 @@
       color: rgba(255, 255, 255, 0.4);
       margin-top: 8px;
     }
+    .tumor-pdl1-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .tumor-pdl1-selector label {
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+    #tumor-pdl1-select {
+      padding: 6px 10px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid #5F7B7A;
+      border-radius: 4px;
+      color: #8AA5A4;
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    #tumor-pdl1-select:focus {
+      outline: none;
+      border-color: #8AA5A4;
+    }
+    #tumor-pdl1-select option {
+      background: rgba(20, 26, 34, 0.98);
+      color: #E0F0EF;
+    }
     /* Hide old tumor panel */
     #tumor-panel {
       display: none !important;
@@ -1182,6 +1227,15 @@
       <span class="tumor-size-label">Size:</span>
       <input type="number" id="tumor-size-input" min="1" max="70" value="25" />
       <span class="tumor-size-label">mm</span>
+    </div>
+    <div class="tumor-pdl1-selector">
+      <label>PD-L1:</label>
+      <select id="tumor-pdl1-select">
+        <option value="">Unknown</option>
+        <option value="high">High (&ge;50%)</option>
+        <option value="low">Low (1-49%)</option>
+        <option value="negative">Negative (&lt;1%)</option>
+      </select>
     </div>
     <div class="tumor-drag-hint">Drag to body to place</div>
   </div>
@@ -1498,6 +1552,7 @@
       <button id="tumor-info-close">&times;</button>
     </div>
     <div class="tumor-info-size"><span id="tumor-info-mm">25</span> mm</div>
+    <div class="tumor-info-pdl1">PD-L1: <span id="tumor-info-pdl1-value">--</span></div>
     <button id="tumor-info-delete">Surgically Remove</button>
   </div>
 
