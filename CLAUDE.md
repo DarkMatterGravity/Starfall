@@ -2,6 +2,41 @@
 
 Interactive Three.js scene with a human body model and draggable tumor placement system.
 
+## Background: Bedrock (Predecessor App)
+
+Journey is a web-based reimplementation of concepts from **Bedrock**, a Unity/iPhone immuno-oncology visualization app. The original Bedrock app was designed to visualize individual tumor dynamics over time for multiple audiences:
+
+### Bedrock's Target Users
+1. **Patients** - Patient-friendly radiology reports with visual tumor representation
+2. **Oncologists** - Dashboard view of all patients, identify oligoprogression (mixed response)
+3. **Clinical Researchers** - Track trials with spaghetti/waterfall/PFS plots at lesion level
+4. **QSP Modelers** - Simulate virtual tumors/patients/trials with realistic pathophysiology
+5. **Students** - Interactive textbook for oncology education ("Virtual Professor")
+
+### Bedrock Features NOT YET in Journey
+| Feature | Description |
+|---------|-------------|
+| **Multi-Patient Dashboard** | Grid of patient silhouettes, click to drill down |
+| **QSP Simulation Parameters** | User-defined growth rate, CTL density, T-helper cells, T-regulatory cells |
+| **Virtual Clinical Trials** | Compare cohorts (drug A vs B vs placebo), Phase I/II/III simulation |
+| **Manual Target/Non-Target** | User marks lesions as Target or Non-Target for RECIST (Journey auto-selects top 5) |
+| **Educational Module** | Lessons on tumor biology, challenge questions, self-directed learning |
+| **Structured Data Import** | Spreadsheet import for clinical data (Journey has OCR only) |
+| **Additional Clinical Data** | PK data, biomarkers (PD-L1), adverse events, anti-drug antibodies |
+| **Cohort Comparison** | Compare across cohorts with bootstrapping, historical controls |
+
+### Potential PD-L1 Integration
+PD-L1 expression level could be added as a tumor property:
+- **Categories**: Negative (<1%), Low (1-49%), High (≥50%)
+- **Impact**: Higher PD-L1 → better response to checkpoint inhibitors (Keytruda, Opdivo)
+- **Visualization**: Color intensity or icon on tumor, filter/sort in charts
+- **OCR extraction**: Parse "PD-L1 TPS: 80%" from reports
+
+## Git Repository
+
+- **Remote**: https://github.com/DarkMatterGravity/Journey (private)
+- **LFS**: Tracks `*.fbx` and `*.glb` files (large mesh assets)
+
 ## Project Structure
 
 ```
@@ -595,17 +630,28 @@ let subjects = [];
 
 ## Future To-Do
 
+### From Bedrock (Priority Features)
+- [ ] PD-L1 expression per tumor (biomarker affecting ICI response)
+- [ ] Multi-patient dashboard (grid view of all patients)
+- [ ] Manual Target/Non-Target lesion designation
+- [ ] QSP parameters (growth rate, immune cell densities)
+- [ ] Virtual clinical trial comparison (cohort A vs B)
+- [ ] Structured data import (CSV/spreadsheet)
+
+### Platform & Export
 - [ ] Electron wrapper for desktop app
   - [ ] Use native Tesseract binaries for faster OCR
   - [ ] Direct file system access (drag-drop reports)
   - [ ] Run OCR in main process for smoother UI
   - [ ] Bundle local ONNX model for medical text extraction
-- [ ] Show organ shapes on hover/toggle
 - [ ] Export tumor placements as JSON
+- [ ] Export simulation data as CSV/report
+
+### UI Enhancements
+- [ ] Show organ shapes on hover/toggle
 - [ ] Undo/redo for tumor placement
 - [ ] Multiple medication combinations with synergy effects
 - [ ] Treatment timeline scheduling (start/stop dates)
-- [ ] Export simulation data as CSV/report
 
 ## Completed Features (Recent)
 
