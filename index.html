@@ -646,7 +646,8 @@
     .x-axis {
       display: flex;
       justify-content: space-between;
-      width: 800px;
+      width: 100%;
+      max-width: 800px;
       margin-left: 5px;
       margin-top: 8px;
       font-family: system-ui, sans-serif;
@@ -654,7 +655,8 @@
       color: rgba(255, 255, 255, 0.5);
     }
     .x-label {
-      width: 800px;
+      width: 100%;
+      max-width: 800px;
       text-align: center;
       margin-left: 5px;
       margin-top: 8px;
@@ -1207,6 +1209,148 @@
     /* Hide old tumor panel */
     #tumor-panel {
       display: none !important;
+    }
+
+    /* ============================================
+       RESPONSIVE DESIGN - Media Queries
+       Keeps original layout on large screens,
+       scales down for smaller screens
+       ============================================ */
+
+    /* Large screens (1600px+): Original layout, no changes */
+
+    /* Medium-large screens (1400-1600px): Slightly smaller charts */
+    @media (max-width: 1600px) {
+      #spider-plot {
+        transform: scale(0.9);
+        transform-origin: top right;
+      }
+      #patient-info-panel {
+        transform: scale(0.95);
+        transform-origin: top left;
+      }
+    }
+
+    /* Medium screens (1200-1400px): Smaller charts, adjusted positions */
+    @media (max-width: 1400px) {
+      #spider-plot {
+        transform: scale(0.75);
+        transform-origin: top right;
+        right: 15px;
+      }
+      #patient-info-panel {
+        transform: scale(0.85);
+        transform-origin: top left;
+        left: 15px;
+        min-width: 320px;
+      }
+      #tumor-creator {
+        transform: scale(0.85);
+        transform-origin: top center;
+        left: 28%;
+      }
+      #timeline-panel {
+        transform: scale(0.9);
+        transform-origin: bottom center;
+      }
+    }
+
+    /* Small-medium screens (1000-1200px): Stack panels, smaller everything */
+    @media (max-width: 1200px) {
+      #spider-plot {
+        transform: scale(0.6);
+        transform-origin: top right;
+        right: 10px;
+        top: 18%;
+      }
+      #patient-info-panel {
+        transform: scale(0.75);
+        transform-origin: top left;
+        left: 10px;
+        top: 15%;
+        min-width: 280px;
+      }
+      #tumor-creator {
+        transform: scale(0.75);
+        transform-origin: top left;
+        left: auto;
+        right: 10px;
+        top: auto;
+        bottom: 120px;
+      }
+      #timeline-panel {
+        transform: scale(0.8);
+        transform-origin: bottom center;
+        bottom: 15px;
+      }
+      #medication-panel {
+        transform: scale(0.85);
+        transform-origin: top center;
+      }
+      #upload-panel {
+        bottom: 15px;
+        right: 15px;
+        transform: scale(0.9);
+        transform-origin: bottom right;
+      }
+    }
+
+    /* Small screens (800-1000px): Minimal layout */
+    @media (max-width: 1000px) {
+      #spider-plot {
+        transform: scale(0.5);
+        right: 5px;
+        top: 12%;
+      }
+      #patient-info-panel {
+        transform: scale(0.65);
+        left: 5px;
+        top: 10%;
+      }
+      #tumor-creator {
+        transform: scale(0.65);
+        right: 5px;
+        bottom: 100px;
+      }
+      #timeline-panel {
+        transform: scale(0.65);
+        bottom: 10px;
+      }
+      #medication-panel {
+        transform: scale(0.75);
+      }
+    }
+
+    /* Very small screens (<800px): Hide non-essential panels */
+    @media (max-width: 800px) {
+      #spider-plot {
+        display: none !important;
+      }
+      #patient-info-panel {
+        transform: scale(0.6);
+        top: 5%;
+        left: 5px;
+        max-height: 40vh;
+        overflow-y: auto;
+      }
+      #tumor-creator {
+        transform: scale(0.6);
+        top: 5%;
+        right: 5px;
+        bottom: auto;
+      }
+      #timeline-panel {
+        transform: scale(0.55);
+        bottom: 5px;
+      }
+      #medication-panel {
+        transform: scale(0.65);
+        top: 10px;
+      }
+      #upload-panel {
+        transform: scale(0.8);
+        bottom: 80px;
+      }
     }
   </style>
 </head>
