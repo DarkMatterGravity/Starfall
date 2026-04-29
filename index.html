@@ -1212,6 +1212,61 @@
     }
 
     /* ============================================
+       DRAGGABLE PANELS
+       ============================================ */
+    .draggable-panel {
+      cursor: default;
+    }
+    .draggable-panel .drag-handle {
+      cursor: grab;
+      user-select: none;
+      padding: 8px 0;
+      margin: -8px -8px 8px -8px;
+      padding: 8px;
+      border-radius: 10px 10px 0 0;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid rgba(95, 123, 122, 0.2);
+    }
+    .draggable-panel .drag-handle:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .draggable-panel .drag-handle:active {
+      cursor: grabbing;
+    }
+    .draggable-panel.dragging {
+      opacity: 0.9;
+      z-index: 1000 !important;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    }
+    .drag-indicator {
+      display: inline-block;
+      margin-right: 8px;
+      color: rgba(255, 255, 255, 0.3);
+      font-size: 12px;
+      vertical-align: middle;
+    }
+    #reset-panels-btn {
+      position: fixed;
+      bottom: 100px;
+      left: 30px;
+      padding: 8px 14px;
+      background: rgba(20, 26, 34, 0.8);
+      border: 1px solid #5F7B7A;
+      border-radius: 6px;
+      color: #8AA5A4;
+      font-family: system-ui, sans-serif;
+      font-size: 12px;
+      cursor: pointer;
+      z-index: 100;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+    #reset-panels-btn:hover {
+      opacity: 1;
+      background: rgba(40, 50, 60, 0.9);
+    }
+
+    /* ============================================
        RESPONSIVE DESIGN - Media Queries
        Keeps original layout on large screens,
        scales down for smaller screens
@@ -1357,14 +1412,15 @@
 <body>
   <canvas id="three-canvas"></canvas>
 
-  <div id="medication-panel">
+  <div id="medication-panel" class="draggable-panel">
+    <div class="drag-handle" style="text-align:center; padding:2px 4px; margin-bottom:4px;"><span class="drag-indicator" style="font-size:10px;">⋮⋮</span></div>
     <div id="med-toggles">
       <!-- Medications populated dynamically based on tumor types -->
     </div>
   </div>
 
-  <div id="tumor-creator">
-    <div class="tumor-creator-header">CREATE TUMOR</div>
+  <div id="tumor-creator" class="draggable-panel">
+    <div class="tumor-creator-header drag-handle"><span class="drag-indicator">⋮⋮</span>CREATE TUMOR</div>
     <div id="tumor-2d"></div>
     <div class="tumor-size-display"><span id="tumor-size-value">25</span> mm</div>
     <div class="tumor-size-input-row">
@@ -1403,7 +1459,8 @@
   </div>
 
   <!-- Patient Info Panel with Subject Selector -->
-  <div id="patient-info-panel">
+  <div id="patient-info-panel" class="draggable-panel">
+    <div class="drag-handle" style="margin-bottom:10px; padding:4px; text-align:center;"><span class="drag-indicator">⋮⋮</span><span style="font-size:11px; color:rgba(255,255,255,0.3);">drag to move</span></div>
     <div class="patient-header-row">
       <span id="subject-name" contenteditable="true" spellcheck="false">Subject 1</span>
       <span id="subject-arrow">▼</span>
@@ -1442,7 +1499,8 @@
     <button id="delete-patient-btn">Delete Patient</button>
   </div>
 
-  <div id="spider-plot">
+  <div id="spider-plot" class="draggable-panel">
+    <div class="drag-handle" style="text-align:center; padding:4px;"><span class="drag-indicator">⋮⋮</span><span style="font-size:11px; color:rgba(255,255,255,0.3);">drag to move</span></div>
     <div class="plot-header">
       <div class="plot-controls">
         <select id="plot-type-select" title="Select graph type">
@@ -1723,5 +1781,152 @@
       </div>
     </div>
   </div>
+
+  <!-- Reset Panel Positions Button -->
+  <button id="reset-panels-btn" title="Reset all panels to default positions">Reset Panels</button>
+
+  <!-- Draggable Panels Script -->
+  <script>
+    (function() {
+      const STORAGE_KEY = 'journey_panel_positions';
+
+      // Default positions for each panel
+      const defaultPositions = {
+        'patient-info-panel': { top: '22%', left: '30px', right: 'auto', bottom: 'auto' },
+        'spider-plot': { top: '22%', right: '30px', left: 'auto', bottom: 'auto' },
+        'tumor-creator': { top: '22%', left: '32%', right: 'auto', bottom: 'auto' },
+        'medication-panel': { top: '30px', left: '50%', right: 'auto', bottom: 'auto' },
+        'timeline-panel': { bottom: '30px', left: '50%', top: 'auto', right: 'auto' }
+      };
+
+      // Load saved positions
+      function loadPositions() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          return saved ? JSON.parse(saved) : {};
+        } catch (e) {
+          return {};
+        }
+      }
+
+      // Save positions
+      function savePositions(positions) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(positions));
+        } catch (e) {}
+      }
+
+      // Apply position to panel
+      function applyPosition(panel, pos) {
+        if (pos.top !== 'auto') panel.style.top = pos.top;
+        if (pos.left !== 'auto') panel.style.left = pos.left;
+        if (pos.right !== 'auto') panel.style.right = pos.right;
+        if (pos.bottom !== 'auto') panel.style.bottom = pos.bottom;
+
+        // Clear transform when manually positioned
+        if (pos.manuallyMoved) {
+          panel.style.transform = 'none';
+        }
+      }
+
+      // Initialize draggable panels
+      function initDraggable() {
+        const panels = document.querySelectorAll('.draggable-panel');
+        const savedPositions = loadPositions();
+
+        panels.forEach(panel => {
+          const handle = panel.querySelector('.drag-handle');
+          if (!handle) return;
+
+          // Apply saved position if exists
+          if (savedPositions[panel.id]) {
+            applyPosition(panel, savedPositions[panel.id]);
+          }
+
+          let isDragging = false;
+          let startX, startY, startLeft, startTop;
+
+          handle.addEventListener('mousedown', (e) => {
+            // Don't drag if clicking on interactive elements
+            if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') {
+              return;
+            }
+
+            isDragging = true;
+            panel.classList.add('dragging');
+
+            // Get current position
+            const rect = panel.getBoundingClientRect();
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = rect.left;
+            startTop = rect.top;
+
+            // Switch to pixel positioning
+            panel.style.left = rect.left + 'px';
+            panel.style.top = rect.top + 'px';
+            panel.style.right = 'auto';
+            panel.style.bottom = 'auto';
+            panel.style.transform = 'none';
+
+            e.preventDefault();
+          });
+
+          document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+
+            panel.style.left = (startLeft + dx) + 'px';
+            panel.style.top = (startTop + dy) + 'px';
+          });
+
+          document.addEventListener('mouseup', () => {
+            if (!isDragging) return;
+
+            isDragging = false;
+            panel.classList.remove('dragging');
+
+            // Save position
+            const positions = loadPositions();
+            positions[panel.id] = {
+              top: panel.style.top,
+              left: panel.style.left,
+              right: 'auto',
+              bottom: 'auto',
+              manuallyMoved: true
+            };
+            savePositions(positions);
+          });
+        });
+
+        // Reset button
+        const resetBtn = document.getElementById('reset-panels-btn');
+        if (resetBtn) {
+          resetBtn.addEventListener('click', () => {
+            localStorage.removeItem(STORAGE_KEY);
+            panels.forEach(panel => {
+              if (defaultPositions[panel.id]) {
+                const pos = defaultPositions[panel.id];
+                panel.style.top = pos.top;
+                panel.style.left = pos.left;
+                panel.style.right = pos.right;
+                panel.style.bottom = pos.bottom;
+                panel.style.transform = '';  // Restore CSS transform
+              }
+            });
+          });
+        }
+      }
+
+      // Init when DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initDraggable);
+      } else {
+        initDraggable();
+      }
+    })();
+  </script>
 </body>
 </html>
