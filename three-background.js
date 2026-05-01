@@ -55,10 +55,10 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     // Human body with outline glow
     humanBody: {
       enabled: true,
-      modelPath: './Mesh/Anatomy.fbx',
-      position: { x: 0, y: -1.5, z: 0 },
+      modelPath: './Mesh/HumanBody.fbx',
+      position: { x: 0, y: -1.35, z: 0 },   // Moved down more
       rotation: { x: 0, y: 0, z: 0 },   // Facing camera
-      scale: 2.0,  // Much bigger
+      scale: 0.030,  // Slightly smaller
       // Outline settings
       outlineColor: 0xffffff,      // White outline
       innerColor: 0x9DB3B2,        // Teal-gray fill
@@ -75,7 +75,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       enabled: true,
       position: { x: -2.5, y: 0.6, z: 0 },  // Left side, lower
       size: 0.35,                            // Smaller starting size
-      droppedSize: 0.021,                    // 40% smaller
+      droppedSize: 1.4,                       // Scaled for HumanBody.fbx (was 0.021)
       lumpiness: 0.12,                       // How bumpy
       segments: 32,
       depthIntoBody: 0.1                     // How far inside the body (x-ray effect)
@@ -392,9 +392,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           }
         });
 
-        // Position inside head (calibrated to body mesh)
-        brainGroup.position.set(0, 1.63, 0.025);
-        brainGroup.scale.setScalar(0.0018); // Scaled to fit inside head
+        // Position inside head (calibrated to HumanBody.fbx mesh)
+        brainGroup.position.set(0, 109, 0);
+        brainGroup.scale.setScalar(0.12); // Scaled to fit inside head
         brainGroup.rotation.set(0, 0, 0); // Forward facing
 
         // Store reference for collision detection
@@ -462,9 +462,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           }
         });
 
-        // Position in chest cavity
-        lungsGroup.position.set(0.74, 0.18, -0.01);
-        lungsGroup.scale.setScalar(0.008); // Adjust scale to fit chest
+        // Position in chest cavity (calibrated to HumanBody.fbx mesh)
+        lungsGroup.position.set(60, -7, 2);
+        lungsGroup.scale.setScalar(0.65); // Adjust scale to fit chest
         lungsGroup.rotation.set(0, 0, 0);
 
         // Store reference for collision detection
@@ -562,9 +562,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           }
         });
 
-        // Position in abdomen (right side)
-        liverGroup.position.set(0.005, 1.15, 0.02);
-        liverGroup.scale.setScalar(0.032);
+        // Position in abdomen (right side) (calibrated to HumanBody.fbx mesh)
+        liverGroup.position.set(0, 76, 1.3);
+        liverGroup.scale.setScalar(2.1);
         liverGroup.rotation.set(Math.PI, Math.PI, 0);
 
         // Store reference for collision detection
@@ -632,9 +632,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           }
         });
 
-        // Position in abdomen (center-left)
-        stomachGroup.position.set(0, 1.10, 0.02);
-        stomachGroup.scale.set(0.01, 0.02, 0.02); // Half width
+        // Position in abdomen (center-left) (calibrated to HumanBody.fbx mesh)
+        stomachGroup.position.set(0, 73, 1.3);
+        stomachGroup.scale.set(0.67, 1.3, 1.3); // Half width
         stomachGroup.rotation.set(0, 0, 0);
 
         // Store reference for collision detection
@@ -1466,58 +1466,59 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
   // Marble = 15mm, Max = 70mm
   // Scale: 0.021 base dropped size = ~25mm
-  const MM_TO_SCALE = 0.021 / 25; // Scale units per mm
+  const MM_TO_SCALE = 1.4 / 25; // Scale units per mm (scaled for HumanBody.fbx)
 
   // ============================================
   // ANATOMICAL REGIONS (in body local space)
-  // Body is scaled 2.0, positioned at y: -1.5
+  // Body is scaled 0.030, positioned at y: -1.35 (HumanBody.fbx)
   // These are approximate Y ranges and X bounds
+  // Scale factor from old mesh: 66.67x (2.0 / 0.030)
   // ============================================
   // Calibrated from actual mesh coordinates:
-  // Head: y ≈ 1.6-1.75, Chest: y ≈ 1.25-1.4, Stomach: y ≈ 1.0-1.2
+  // Head: y ≈ 103-123, Chest: y ≈ 83-100, Stomach: y ≈ 67-80
   // X: center ≈ 0, left side (viewer's right) = positive, right = negative
   const BODY_REGIONS = [
     {
       name: 'Brain',
       color: 0x9966CC,  // Purple
-      yMin: 1.55, yMax: 1.85,
-      xMin: -0.10, xMax: 0.10
+      yMin: 103, yMax: 123,
+      xMin: -7, xMax: 7
     },
     {
       name: 'Lungs (Left)',
       color: 0x6699CC,  // Blue
-      yMin: 1.30, yMax: 1.50,
-      xMin: 0.03, xMax: 0.12
+      yMin: 87, yMax: 100,
+      xMin: 2, xMax: 8
     },
     {
       name: 'Lungs (Right)',
       color: 0x6699CC,  // Blue
-      yMin: 1.30, yMax: 1.50,
-      xMin: -0.12, xMax: -0.03
+      yMin: 87, yMax: 100,
+      xMin: -8, xMax: -2
     },
     {
       name: 'Breast (Left)',
       color: 0xCC9999,  // Pink
-      yMin: 1.25, yMax: 1.38,
-      xMin: 0.02, xMax: 0.10
+      yMin: 83, yMax: 92,
+      xMin: 1.5, xMax: 7
     },
     {
       name: 'Breast (Right)',
       color: 0xCC9999,  // Pink
-      yMin: 1.25, yMax: 1.38,
-      xMin: -0.10, xMax: -0.02
+      yMin: 83, yMax: 92,
+      xMin: -7, xMax: -1.5
     },
     {
       name: 'Liver',
       color: 0x8B4513,  // Brown
-      yMin: 1.05, yMax: 1.25,
-      xMin: -0.10, xMax: 0.02
+      yMin: 70, yMax: 83,
+      xMin: -7, xMax: 1.5
     },
     {
       name: 'Stomach',
       color: 0xDAA520,  // Goldenrod
-      yMin: 1.00, yMax: 1.20,
-      xMin: -0.02, xMax: 0.10
+      yMin: 67, yMax: 80,
+      xMin: -1.5, xMax: 7
     }
   ];
 
@@ -1542,9 +1543,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         return { name: 'Brain', color: 0xcc9999 };
       }
     } else if (organMeshes.brain) {
-      // Fallback to sphere check
+      // Fallback to sphere check (scaled for HumanBody.fbx)
       const brainPos = organMeshes.brain.position;
-      const brainRadius = 0.08;
+      const brainRadius = 5.3;  // Was 0.08, scaled by 66.67x
       const dx = localPos.x - brainPos.x;
       const dy = localPos.y - brainPos.y;
       const dz = localPos.z - brainPos.z;
@@ -1570,11 +1571,11 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         return { name: 'Lungs (Right)', color: 0x445566 };
       }
     } else if (organMeshes.lungs) {
-      // Fallback to ellipsoid check
+      // Fallback to ellipsoid check (scaled for HumanBody.fbx)
       const lungsPos = organMeshes.lungs.position;
-      const dx = (localPos.x - lungsPos.x) / 0.12;
-      const dy = (localPos.y - lungsPos.y) / 0.10;
-      const dz = (localPos.z - lungsPos.z) / 0.06;
+      const dx = (localPos.x - lungsPos.x) / 8;   // Was 0.12, scaled by 66.67x
+      const dy = (localPos.y - lungsPos.y) / 6.7; // Was 0.10, scaled by 66.67x
+      const dz = (localPos.z - lungsPos.z) / 4;   // Was 0.06, scaled by 66.67x
       if (Math.sqrt(dx * dx + dy * dy + dz * dz) < 1.0) {
         const lungSide = localPos.x > lungsPos.x ? 'Lungs (Left)' : 'Lungs (Right)';
         console.log(`  Matched: ${lungSide} (fallback)`);
@@ -1589,12 +1590,12 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         return { name: 'Liver', color: 0xaa6655 };
       }
     } else if (organMeshes.liver) {
-      // Fallback to sphere check
+      // Fallback to sphere check (scaled for HumanBody.fbx)
       const liverPos = organMeshes.liver.position;
       const dx = localPos.x - liverPos.x;
       const dy = localPos.y - liverPos.y;
       const dz = localPos.z - liverPos.z;
-      if (Math.sqrt(dx * dx + dy * dy + dz * dz) < 0.08) {
+      if (Math.sqrt(dx * dx + dy * dy + dz * dz) < 5.3) {  // Was 0.08, scaled by 66.67x
         console.log(`  Matched: Liver (fallback)`);
         return { name: 'Liver', color: 0xaa6655 };
       }
@@ -1607,12 +1608,12 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         return { name: 'Stomach', color: 0xccaa77 };
       }
     } else if (organMeshes.stomach) {
-      // Fallback to sphere check
+      // Fallback to sphere check (scaled for HumanBody.fbx)
       const stomachPos = organMeshes.stomach.position;
       const dx = localPos.x - stomachPos.x;
       const dy = localPos.y - stomachPos.y;
       const dz = localPos.z - stomachPos.z;
-      if (Math.sqrt(dx * dx + dy * dy + dz * dz) < 0.06) {
+      if (Math.sqrt(dx * dx + dy * dy + dz * dz) < 4) {  // Was 0.06, scaled by 66.67x
         console.log(`  Matched: Stomach (fallback)`);
         return { name: 'Stomach', color: 0xccaa77 };
       }
