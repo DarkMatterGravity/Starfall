@@ -55,7 +55,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     // Human body with outline glow
     humanBody: {
       enabled: true,
-      modelPath: './Mesh/HumanBody.fbx',
+      modelPath: './Mesh/MedicalHuman_02.fbx',
       position: { x: 0, y: -1.35, z: 0 },   // Moved down more
       rotation: { x: 0, y: 0, z: 0 },   // Facing camera
       scale: 0.030,  // Slightly smaller
@@ -463,7 +463,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         });
 
         // Position in chest cavity (calibrated to HumanBody.fbx mesh)
-        lungsGroup.position.set(60, -7, 2);
+        lungsGroup.position.set(60, -7, -1);
         lungsGroup.scale.setScalar(0.65); // Adjust scale to fit chest
         lungsGroup.rotation.set(0, 0, 0);
 
@@ -683,15 +683,15 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
     const organ = organMap[organName];
     if (!organ || !organ.userData.bounds) {
-      // Fallback to organ center position
+      // Fallback to organ center position (scaled for HumanBody.fbx)
       const fallbackPos = {
-        'Brain': { x: 0, y: 1.63, z: 0.025 },
-        'Liver': { x: 0.005, y: 1.15, z: 0.02 },
-        'Stomach': { x: 0, y: 1.10, z: 0.02 },
-        'Lungs (Left)': { x: 0.04, y: 1.38, z: 0.02 },
-        'Lungs (Right)': { x: -0.04, y: 1.38, z: 0.02 }
+        'Brain': { x: 0, y: 109, z: 0 },
+        'Liver': { x: 0, y: 76, z: 1.3 },
+        'Stomach': { x: 0, y: 73, z: 1.3 },
+        'Lungs (Left)': { x: 4, y: 93, z: -1 },
+        'Lungs (Right)': { x: -4, y: 93, z: -1 }
       };
-      const pos = fallbackPos[organName] || { x: 0, y: 1.3, z: 0.02 };
+      const pos = fallbackPos[organName] || { x: 0, y: 85, z: 0 };
       return new THREE.Vector3(pos.x, pos.y, pos.z);
     }
 
@@ -705,20 +705,31 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       bounds = organ.userData.bounds;
     }
 
-    // Clamp drop point to be inside bounds with margin (10% inset)
-    const marginX = (bounds.xMax - bounds.xMin) * 0.1;
-    const marginY = (bounds.yMax - bounds.yMin) * 0.1;
-    const marginZ = (bounds.zMax - bounds.zMin) * 0.1;
+    // Clamp drop point to be inside bounds with margin
+    // Lungs need larger margins because they taper toward the front
+    const isLung = organName.includes('Lungs');
+    const marginFactor = isLung ? 0.25 : 0.1;  // 25% margin for lungs, 10% for others
+
+    const marginX = (bounds.xMax - bounds.xMin) * marginFactor;
+    const marginY = (bounds.yMax - bounds.yMin) * marginFactor;
+    const marginZ = (bounds.zMax - bounds.zMin) * (isLung ? 0.35 : 0.1);  // Extra Z margin for lungs (taper)
 
     // Start with drop point, clamp to bounds
     let x = Math.max(bounds.xMin + marginX, Math.min(bounds.xMax - marginX, dropPoint.x));
     let y = Math.max(bounds.yMin + marginY, Math.min(bounds.yMax - marginY, dropPoint.y));
     let z = Math.max(bounds.zMin + marginZ, Math.min(bounds.zMax - marginZ, dropPoint.z));
 
-    // Add random spread to avoid clustering (15% of organ size)
-    const spreadX = (bounds.xMax - bounds.xMin) * 0.15;
-    const spreadY = (bounds.yMax - bounds.yMin) * 0.15;
-    const spreadZ = (bounds.zMax - bounds.zMin) * 0.15;
+    // For lungs, bias toward the back (negative Z) where they're wider
+    if (isLung) {
+      const centerZ = (bounds.zMin + bounds.zMax) / 2;
+      z = z * 0.7 + (bounds.zMin + marginZ) * 0.3;  // Blend toward back
+    }
+
+    // Add random spread to avoid clustering (smaller for lungs)
+    const spreadFactor = isLung ? 0.08 : 0.15;
+    const spreadX = (bounds.xMax - bounds.xMin) * spreadFactor;
+    const spreadY = (bounds.yMax - bounds.yMin) * spreadFactor;
+    const spreadZ = (bounds.zMax - bounds.zMin) * spreadFactor;
 
     x += (Math.random() - 0.5) * spreadX;
     y += (Math.random() - 0.5) * spreadY;
@@ -1132,15 +1143,17 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     const localPoint = humanBodyMesh.worldToLocal(insidePoint.clone());
 
     // Detect anatomical region
-    const region = getRegionAtPosition(localPoint);
+    let region = getRegionAtPosition(localPoint);
 
-    // Reposition tumor inside organ mesh if applicable
+    // If dropped outside any organ, snap to nearest organ
     const organRegions = ['Brain', 'Lungs (Left)', 'Lungs (Right)', 'Liver', 'Stomach'];
-    let finalPosition = localPoint.clone();
-
-    if (organRegions.includes(region.name)) {
-      finalPosition = getPositionInsideOrgan(localPoint, region.name);
+    if (!organRegions.includes(region.name)) {
+      console.log('  Tumor outside organs, snapping to nearest...');
+      region = getNearestOrgan(localPoint);
     }
+
+    // Reposition tumor inside organ mesh
+    let finalPosition = getPositionInsideOrgan(localPoint, region.name);
 
     // Create 3D tumor geometry
     const tumorGeo = createLumpySphere(
@@ -1486,13 +1499,13 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     },
     {
       name: 'Lungs (Left)',
-      color: 0x6699CC,  // Blue
+      color: 0x334466,  // Dark blue (darker for visibility)
       yMin: 87, yMax: 100,
       xMin: 2, xMax: 8
     },
     {
       name: 'Lungs (Right)',
-      color: 0x6699CC,  // Blue
+      color: 0x334466,  // Dark blue (darker for visibility)
       yMin: 87, yMax: 100,
       xMin: -8, xMax: -2
     },
@@ -1628,6 +1641,31 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       }
     }
     return { name: 'Other', color: 0x2E5470 }; // Default
+  }
+
+  // Find the nearest organ to a given point (for snapping tumors)
+  function getNearestOrgan(localPos) {
+    const organCenters = [
+      { name: 'Brain', color: 0x9966CC, center: organMeshes.brain ? organMeshes.brain.position.clone() : new THREE.Vector3(0, 109, 0) },
+      { name: 'Lungs (Left)', color: 0x334466, center: new THREE.Vector3(4, 93, 0) },
+      { name: 'Lungs (Right)', color: 0x334466, center: new THREE.Vector3(-4, 93, 0) },
+      { name: 'Liver', color: 0x8B4513, center: organMeshes.liver ? organMeshes.liver.position.clone() : new THREE.Vector3(0, 76, 1.3) },
+      { name: 'Stomach', color: 0xDAA520, center: organMeshes.stomach ? organMeshes.stomach.position.clone() : new THREE.Vector3(0, 73, 1.3) }
+    ];
+
+    let nearest = organCenters[0];
+    let minDist = Infinity;
+
+    for (const organ of organCenters) {
+      const dist = localPos.distanceTo(organ.center);
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = organ;
+      }
+    }
+
+    console.log(`  Nearest organ: ${nearest.name} (dist: ${minDist.toFixed(2)})`);
+    return nearest;
   }
 
   // ============================================
