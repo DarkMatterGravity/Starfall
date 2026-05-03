@@ -133,6 +133,24 @@
     #tumor-info-pdl1-value.pdl1-negative {
       color: #FF6B6B;
     }
+    .tumor-info-temp {
+      font-size: 14px;
+      color: #aaa;
+      margin-bottom: 12px;
+    }
+    #tumor-info-temp-value {
+      font-weight: bold;
+    }
+    #tumor-info-temp-value.temp-hot {
+      color: #FF6B4A;
+      text-shadow: 0 0 8px rgba(255, 107, 74, 0.6);
+    }
+    #tumor-info-temp-value.temp-warm {
+      color: #FFAA33;
+    }
+    #tumor-info-temp-value.temp-cold {
+      color: #4A9FFF;
+    }
     #tumor-info-delete {
       width: 100%;
       padding: 8px;
@@ -232,10 +250,23 @@
       background: rgba(20, 26, 34, 0.92);
       border: 1px solid #5F7B7A;
       border-radius: 10px;
-      padding: 24px 34px;
+      padding: 0 34px 24px 34px;
       z-index: 100;
       min-width: 380px;
       font-family: system-ui, sans-serif;
+    }
+    #patient-info-panel > .drag-handle {
+      width: calc(100% + 68px);
+      margin: 0 -34px 15px -34px;
+      padding: 18px 34px;
+      border-radius: 9px 9px 0 0;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid rgba(95, 123, 122, 0.3);
+      box-sizing: border-box;
+      text-align: center;
+    }
+    #patient-info-panel > .drag-handle:hover {
+      background: rgba(255, 255, 255, 0.06);
     }
     /* Custom scrollbar for patient panel */
     #patient-info-panel ::-webkit-scrollbar {
@@ -1087,40 +1118,65 @@
       background: rgba(20, 26, 34, 0.92);
       border: 1px solid #5F7B7A;
       border-radius: 10px;
-      padding: 20px 35px 25px;
+      padding: 0 25px 25px 25px;
       z-index: 100;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 18px;
+      gap: 12px;
+      min-width: 265px;
     }
     .tumor-creator-header {
       font-family: system-ui, sans-serif;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 600;
       color: #8AA5A4;
       text-align: center;
       letter-spacing: 2px;
+      /* Full width drag handle - edge to edge, flush with top */
+      width: calc(100% + 50px);
+      margin: 0 -25px 0 -25px;
+      min-height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 9px 9px 0 0;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid rgba(95, 123, 122, 0.3);
+      cursor: grab;
+      box-sizing: border-box;
+    }
+    .tumor-creator-header:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .tumor-creator-header:active {
+      cursor: grabbing;
     }
     #tumor-2d {
       width: 130px;
       height: 130px;
       border-radius: 50%;
-      background: radial-gradient(ellipse at 30% 30%, #5a8a9a 0%, #2E5470 50%, #1a3040 100%);
-      box-shadow:
-        0 0 25px rgba(46, 84, 112, 0.6),
-        0 0 50px rgba(46, 84, 112, 0.3),
-        inset 0 0 20px rgba(0, 0, 0, 0.4);
+      background: var(--tumor-gradient, radial-gradient(ellipse at 30% 30%, #ffcc66 0%, #FFAA33 50%, #996611 100%));
+      box-shadow: var(--tumor-glow, 0 0 25px rgba(255, 170, 51, 0.5), 0 0 50px rgba(255, 170, 51, 0.25), inset 0 0 20px rgba(0, 0, 0, 0.4));
       cursor: grab;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      transition: transform 0.15s ease, box-shadow 0.3s ease, background 0.3s ease;
       position: relative;
     }
     #tumor-2d:hover {
       transform: scale(1.05);
-      box-shadow:
-        0 0 30px rgba(46, 84, 112, 0.8),
-        0 0 60px rgba(46, 84, 112, 0.4),
-        inset 0 0 20px rgba(0, 0, 0, 0.4);
+    }
+    /* Temperature color presets */
+    #tumor-2d.temp-hot {
+      --tumor-gradient: radial-gradient(ellipse at 30% 30%, #ff9966 0%, #FF5533 50%, #aa2211 100%);
+      --tumor-glow: 0 0 30px rgba(255, 85, 51, 0.7), 0 0 60px rgba(255, 85, 51, 0.4), inset 0 0 20px rgba(0, 0, 0, 0.4);
+    }
+    #tumor-2d.temp-warm {
+      --tumor-gradient: radial-gradient(ellipse at 30% 30%, #ffcc66 0%, #FFAA33 50%, #996611 100%);
+      --tumor-glow: 0 0 25px rgba(255, 170, 51, 0.5), 0 0 50px rgba(255, 170, 51, 0.25), inset 0 0 20px rgba(0, 0, 0, 0.4);
+    }
+    #tumor-2d.temp-cold {
+      --tumor-gradient: radial-gradient(ellipse at 30% 30%, #66aaff 0%, #3388EE 50%, #1155aa 100%);
+      --tumor-glow: 0 0 20px rgba(51, 136, 238, 0.4), 0 0 40px rgba(51, 136, 238, 0.2), inset 0 0 20px rgba(0, 0, 0, 0.4);
     }
     #tumor-2d.dragging {
       cursor: grabbing;
@@ -1132,14 +1188,25 @@
       pointer-events: none;
       z-index: 1000;
       border-radius: 50%;
-      background: radial-gradient(ellipse at 30% 30%, #5a8a9a 0%, #2E5470 50%, #1a3040 100%);
-      box-shadow:
-        0 0 25px rgba(46, 84, 112, 0.6),
-        0 0 50px rgba(46, 84, 112, 0.3);
+      background: var(--tumor-gradient, radial-gradient(ellipse at 30% 30%, #ffcc66 0%, #FFAA33 50%, #996611 100%));
+      box-shadow: var(--tumor-glow, 0 0 25px rgba(255, 170, 51, 0.5), 0 0 50px rgba(255, 170, 51, 0.25));
       display: none;
     }
     #tumor-2d-clone.visible {
       display: block;
+    }
+    /* Temperature colors for clone - use direct properties, not CSS variables */
+    #tumor-2d-clone.temp-hot {
+      background: radial-gradient(ellipse at 30% 30%, #ff9966 0%, #FF5533 50%, #aa2211 100%) !important;
+      box-shadow: 0 0 30px rgba(255, 85, 51, 0.7), 0 0 60px rgba(255, 85, 51, 0.4) !important;
+    }
+    #tumor-2d-clone.temp-warm {
+      background: radial-gradient(ellipse at 30% 30%, #ffcc66 0%, #FFAA33 50%, #996611 100%) !important;
+      box-shadow: 0 0 25px rgba(255, 170, 51, 0.5), 0 0 50px rgba(255, 170, 51, 0.25) !important;
+    }
+    #tumor-2d-clone.temp-cold {
+      background: radial-gradient(ellipse at 30% 30%, #66aaff 0%, #3388EE 50%, #1155aa 100%) !important;
+      box-shadow: 0 0 20px rgba(51, 136, 238, 0.4), 0 0 40px rgba(51, 136, 238, 0.2) !important;
     }
     .tumor-size-display {
       font-family: 'Courier New', monospace;
@@ -1150,23 +1217,40 @@
     .tumor-size-input-row {
       display: flex;
       align-items: center;
-      gap: 10px;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0 5px;
+      margin-top: 5px;
     }
     .tumor-size-label {
       font-family: system-ui, sans-serif;
-      font-size: 16px;
+      font-size: 14px;
       color: rgba(255, 255, 255, 0.5);
     }
+    .tumor-input-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+    .tumor-input-wrapper .input-suffix {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 14px;
+      pointer-events: none;
+    }
     #tumor-size-input {
-      width: 70px;
-      padding: 6px 10px;
+      width: 140px;
+      padding: 6px 30px 6px 10px;
       background: rgba(0, 0, 0, 0.3);
       border: 1px solid #5F7B7A;
       border-radius: 4px;
       color: #8AA5A4;
-      font-family: 'Courier New', monospace;
-      font-size: 18px;
-      text-align: center;
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      text-align: right;
+      box-sizing: border-box;
     }
     #tumor-size-input:focus {
       outline: none;
@@ -1174,14 +1258,16 @@
     }
     .tumor-drag-hint {
       font-family: system-ui, sans-serif;
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.4);
-      margin-top: 8px;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.35);
+      margin-bottom: 5px;
     }
     .tumor-pdl1-selector {
       display: flex;
       align-items: center;
-      gap: 10px;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0 5px;
     }
     .tumor-pdl1-selector label {
       font-family: system-ui, sans-serif;
@@ -1197,6 +1283,7 @@
       font-family: system-ui, sans-serif;
       font-size: 14px;
       cursor: pointer;
+      width: 140px;
     }
     #tumor-pdl1-select:focus {
       outline: none;
@@ -1206,6 +1293,43 @@
       background: rgba(20, 26, 34, 0.98);
       color: #E0F0EF;
     }
+    /* Temperature selector (hot/warm/cold) */
+    .tumor-temp-selector {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0 5px;
+      margin-bottom: 5px;
+    }
+    .tumor-temp-selector label {
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.5);
+      white-space: nowrap;
+    }
+    #tumor-temp-select {
+      padding: 6px 10px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid #5F7B7A;
+      border-radius: 4px;
+      color: #8AA5A4;
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+      width: 140px;
+    }
+    #tumor-temp-select:focus {
+      outline: none;
+      border-color: #8AA5A4;
+    }
+    #tumor-temp-select option {
+      background: rgba(20, 26, 34, 0.98);
+      color: #E0F0EF;
+    }
+    #tumor-temp-select option[value="hot"] { color: #FF6B4A; }
+    #tumor-temp-select option[value="warm"] { color: #FFAA33; }
+    #tumor-temp-select option[value="cold"] { color: #4A9FFF; }
     /* Hide old tumor panel */
     #tumor-panel {
       display: none !important;
@@ -1247,7 +1371,7 @@
     }
     #reset-panels-btn {
       position: fixed;
-      bottom: 100px;
+      bottom: 30px;
       left: 30px;
       padding: 8px 14px;
       background: rgba(20, 26, 34, 0.8);
@@ -1423,10 +1547,13 @@
     <div class="tumor-creator-header drag-handle"><span class="drag-indicator">⋮⋮</span>CREATE TUMOR</div>
     <div id="tumor-2d"></div>
     <div class="tumor-size-display"><span id="tumor-size-value">25</span> mm</div>
+    <div class="tumor-drag-hint">Drag to body to place</div>
     <div class="tumor-size-input-row">
       <span class="tumor-size-label">Size:</span>
-      <input type="number" id="tumor-size-input" min="1" max="70" value="25" />
-      <span class="tumor-size-label">mm</span>
+      <div class="tumor-input-wrapper">
+        <input type="number" id="tumor-size-input" min="1" max="70" value="25" />
+        <span class="input-suffix">mm</span>
+      </div>
     </div>
     <div class="tumor-pdl1-selector">
       <label>PD-L1:</label>
@@ -1437,7 +1564,15 @@
         <option value="negative">Negative (&lt;1%)</option>
       </select>
     </div>
-    <div class="tumor-drag-hint">Drag to body to place</div>
+    <div class="tumor-temp-selector">
+      <label>Immune:</label>
+      <select id="tumor-temp-select">
+        <option value="">Auto (from PD-L1)</option>
+        <option value="hot">Hot (inflamed)</option>
+        <option value="warm">Warm (moderate)</option>
+        <option value="cold">Cold (desert)</option>
+      </select>
+    </div>
   </div>
 
   <!-- Clone element for dragging -->
@@ -1460,7 +1595,7 @@
 
   <!-- Patient Info Panel with Subject Selector -->
   <div id="patient-info-panel" class="draggable-panel">
-    <div class="drag-handle" style="margin-bottom:10px; padding:4px; text-align:center;"><span class="drag-indicator">⋮⋮</span><span style="font-size:11px; color:rgba(255,255,255,0.3);">drag to move</span></div>
+    <div class="drag-handle"><span class="drag-indicator">⋮⋮</span></div>
     <div class="patient-header-row">
       <span id="subject-name" contenteditable="true" spellcheck="false">Subject 1</span>
       <span id="subject-arrow">▼</span>
@@ -1500,7 +1635,7 @@
   </div>
 
   <div id="spider-plot" class="draggable-panel">
-    <div class="drag-handle" style="text-align:center; padding:4px;"><span class="drag-indicator">⋮⋮</span><span style="font-size:11px; color:rgba(255,255,255,0.3);">drag to move</span></div>
+    <div class="drag-handle"><span class="drag-indicator">⋮⋮</span></div>
     <div class="plot-header">
       <div class="plot-controls">
         <select id="plot-type-select" title="Select graph type">
@@ -1755,6 +1890,7 @@
     </div>
     <div class="tumor-info-size"><span id="tumor-info-mm">25</span> mm</div>
     <div class="tumor-info-pdl1">PD-L1: <span id="tumor-info-pdl1-value">--</span></div>
+    <div class="tumor-info-temp">Immune: <span id="tumor-info-temp-value">--</span></div>
     <button id="tumor-info-delete">Surgically Remove</button>
   </div>
 
@@ -1783,7 +1919,7 @@
   </div>
 
   <!-- Reset Panel Positions Button -->
-  <button id="reset-panels-btn" title="Reset all panels to default positions">Reset Panels</button>
+  <button id="reset-panels-btn" title="Reset panels and camera to default positions">Reset View</button>
 
   <!-- Draggable Panels Script -->
   <script>
@@ -1901,10 +2037,11 @@
           });
         });
 
-        // Reset button
+        // Reset button - resets panels AND camera
         const resetBtn = document.getElementById('reset-panels-btn');
         if (resetBtn) {
           resetBtn.addEventListener('click', () => {
+            // Reset panel positions
             localStorage.removeItem(STORAGE_KEY);
             panels.forEach(panel => {
               if (defaultPositions[panel.id]) {
@@ -1916,6 +2053,10 @@
                 panel.style.transform = '';  // Restore CSS transform
               }
             });
+            // Reset camera position and zoom
+            if (window.JourneyResetCamera) {
+              window.JourneyResetCamera();
+            }
           });
         }
       }
@@ -1926,6 +2067,46 @@
       } else {
         initDraggable();
       }
+    })();
+
+    // Tumor preview color updates based on dropdown selections
+    (function() {
+      function updateTumorPreviewColor() {
+        const tumor2d = document.getElementById('tumor-2d');
+        const tempSelect = document.getElementById('tumor-temp-select');
+        const pdl1Select = document.getElementById('tumor-pdl1-select');
+        if (!tumor2d) return;
+
+        // Get temperature - either explicit or derived from PD-L1
+        let temp = tempSelect?.value;
+        if (!temp) {
+          // Auto-derive from PD-L1
+          const pdl1 = pdl1Select?.value;
+          if (pdl1 === 'high') temp = 'hot';
+          else if (pdl1 === 'negative') temp = 'cold';
+          else temp = 'warm'; // low or unknown defaults to warm
+        }
+
+        // Remove all temp classes and add the current one
+        tumor2d.classList.remove('temp-hot', 'temp-warm', 'temp-cold');
+        tumor2d.classList.add('temp-' + temp);
+      }
+
+      // Listen to dropdown changes
+      document.addEventListener('DOMContentLoaded', () => {
+        const tempSelect = document.getElementById('tumor-temp-select');
+        const pdl1Select = document.getElementById('tumor-pdl1-select');
+
+        if (tempSelect) {
+          tempSelect.addEventListener('change', updateTumorPreviewColor);
+        }
+        if (pdl1Select) {
+          pdl1Select.addEventListener('change', updateTumorPreviewColor);
+        }
+
+        // Set initial color
+        updateTumorPreviewColor();
+      });
     })();
   </script>
 </body>

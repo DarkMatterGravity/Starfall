@@ -31,11 +31,11 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       enabled: true,
       enableDamping: true,
       dampingFactor: 0.08,     // Smoother easing
-      zoomSpeed: 0.3,          // Slower, incremental zoom
+      zoomSpeed: 0.5,          // Zoom speed
       enableZoom: true,
-      enablePan: false,
-      minDistance: 3.6,        // Can zoom in 40% closer
-      maxDistance: 6.0         // Can't zoom out past starting position
+      enablePan: true,         // Right-click to pan
+      minDistance: 2.0,        // Can zoom in closer
+      maxDistance: 12.0        // Can zoom out further than start
     },
 
     // Gradient background
@@ -171,12 +171,47 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = CONFIG.controls.enableDamping;
     controls.dampingFactor = CONFIG.controls.dampingFactor;
-    controls.zoomSpeed = CONFIG.controls.zoomSpeed || 0.5;
-    controls.enableZoom = CONFIG.controls.enableZoom;
+    controls.enableZoom = false; // Disable built-in zoom, use custom smooth zoom
     controls.enablePan = CONFIG.controls.enablePan;
+    controls.panSpeed = 0.8;           // Pan speed
+    controls.screenSpacePanning = true; // Pan parallel to screen
     controls.minDistance = CONFIG.controls.minDistance;
     controls.maxDistance = CONFIG.controls.maxDistance;
     controls.target.set(0, 0.5, 0);  // Orbit around body center
+    // Right mouse button for panning (default), left for rotate
+    controls.mouseButtons = {
+      LEFT: THREE.MOUSE.ROTATE,
+      MIDDLE: THREE.MOUSE.DOLLY,
+      RIGHT: THREE.MOUSE.PAN
+    };
+
+    // Custom smooth zoom
+    let targetZoom = camera.position.distanceTo(controls.target);
+    const minZoom = CONFIG.controls.minDistance;
+    const maxZoom = CONFIG.controls.maxDistance;
+    const zoomSpeed = 0.15; // How much each wheel tick changes zoom
+    const zoomLerp = 0.08;  // Smoothing factor
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 1 : -1;
+      targetZoom = Math.max(minZoom, Math.min(maxZoom, targetZoom * (1 + delta * zoomSpeed)));
+    }, { passive: false });
+
+    // Update zoom smoothly in animation loop
+    window.updateSmoothZoom = function() {
+      const currentDist = camera.position.distanceTo(controls.target);
+      if (Math.abs(currentDist - targetZoom) > 0.01) {
+        const newDist = currentDist + (targetZoom - currentDist) * zoomLerp;
+        const direction = camera.position.clone().sub(controls.target).normalize();
+        camera.position.copy(controls.target).add(direction.multiplyScalar(newDist));
+      }
+    };
+
+    // Allow resetting target zoom (for camera reset)
+    window.setTargetZoom = function(zoom) {
+      targetZoom = zoom;
+    };
     canvas.style.pointerEvents = 'auto';
   }
 
@@ -246,6 +281,32 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     side: THREE.BackSide  // Only render back faces = outline
   };
 
+  // Organ outline shader - thin white outline, no fill
+  const organOutlineShader = {
+    uniforms: {
+      uOutlineColor: { value: new THREE.Color(0xffffff) },
+      uOutlineThickness: { value: 0.002 },  // Thinner than body
+      uOpacity: { value: 0.6 }
+    },
+    vertexShader: `
+      uniform float uOutlineThickness;
+      void main() {
+        vec3 pos = position + normal * uOutlineThickness;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uOutlineColor;
+      uniform float uOpacity;
+      void main() {
+        gl_FragColor = vec4(uOutlineColor, uOpacity);
+      }
+    `,
+    side: THREE.BackSide,
+    transparent: true,
+    depthTest: false
+  };
+
   // Inner fill shader - dark/transparent interior with scan lines
   const innerShader = {
     uniforms: {
@@ -308,10 +369,11 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           innerMesh.material = innerMaterial;
           humanBodyMesh.add(innerMesh);
 
-          // Outline mesh (back faces) - pushed outward
-          const outlineMesh = mesh.clone();
-          outlineMesh.material = outlineMaterial;
-          humanBodyMesh.add(outlineMesh);
+          // OUTLINE DISABLED - uncomment to re-enable
+          // // Outline mesh (back faces) - pushed outward
+          // const outlineMesh = mesh.clone();
+          // outlineMesh.material = outlineMaterial;
+          // humanBodyMesh.add(outlineMesh);
         });
 
         humanBodyMesh.position.set(
@@ -364,31 +426,15 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
         gltf.scene.traverse((child) => {
           if (child.isMesh) {
-            // Inner mesh - x-ray visible fill (subtle)
+            // Inner mesh only - no outline
             const innerMesh = child.clone();
             innerMesh.material = new THREE.MeshBasicMaterial({
-              color: 0xcc9999,  // Pinkish brain color
-              transparent: true,
-              opacity: 0.25,
+              color: 0x607a79,
               depthTest: false
             });
             innerMesh.renderOrder = 998;
             innerMesh.onBeforeRender = (renderer) => renderer.clearDepth();
             brainGroup.add(innerMesh);
-
-            // Outline mesh - inverted hull technique (subtle)
-            const outlineMesh = child.clone();
-            outlineMesh.material = new THREE.MeshBasicMaterial({
-              color: 0xffffff,
-              transparent: true,
-              opacity: 0.3,
-              side: THREE.BackSide,
-              depthTest: false
-            });
-            outlineMesh.scale.multiplyScalar(1.03); // Push outward for outline
-            outlineMesh.renderOrder = 997;
-            outlineMesh.onBeforeRender = (renderer) => renderer.clearDepth();
-            brainGroup.add(outlineMesh);
           }
         });
 
@@ -426,45 +472,30 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       (error) => console.error('Failed to load brain:', error)
     );
 
-    // Lungs mesh
-    gltfLoader.load(
-      './Mesh/lungs.glb',
-      (gltf) => {
+    // Lungs mesh (FBX)
+    const fbxLoader = new FBXLoader();
+    fbxLoader.load(
+      './Mesh/Lungs_02.fbx',
+      (fbx) => {
         const lungsGroup = new THREE.Group();
 
-        gltf.scene.traverse((child) => {
+        fbx.traverse((child) => {
           if (child.isMesh) {
-            // Inner mesh - x-ray visible fill (subtle)
+            // Inner mesh only - no outline
             const innerMesh = child.clone();
             innerMesh.material = new THREE.MeshBasicMaterial({
-              color: 0x99aacc,  // Bluish lung color
-              transparent: true,
-              opacity: 0.25,
+              color: 0x607a79,
               depthTest: false
             });
             innerMesh.renderOrder = 998;
             innerMesh.onBeforeRender = (renderer) => renderer.clearDepth();
             lungsGroup.add(innerMesh);
-
-            // Outline mesh - inverted hull technique (subtle)
-            const outlineMesh = child.clone();
-            outlineMesh.material = new THREE.MeshBasicMaterial({
-              color: 0xffffff,
-              transparent: true,
-              opacity: 0.3,
-              side: THREE.BackSide,
-              depthTest: false
-            });
-            outlineMesh.scale.multiplyScalar(1.03);
-            outlineMesh.renderOrder = 997;
-            outlineMesh.onBeforeRender = (renderer) => renderer.clearDepth();
-            lungsGroup.add(outlineMesh);
           }
         });
 
-        // Position in chest cavity (calibrated to HumanBody.fbx mesh)
-        lungsGroup.position.set(60, -7, -1);
-        lungsGroup.scale.setScalar(0.65); // Adjust scale to fit chest
+        // Position in chest cavity - calibrating for Lungs_02.fbx
+        lungsGroup.position.set(0, 80, 0);
+        lungsGroup.scale.setScalar(0.22);
         lungsGroup.rotation.set(0, 0, 0);
 
         // Store reference for collision detection
@@ -534,31 +565,15 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
         gltf.scene.traverse((child) => {
           if (child.isMesh) {
-            // Inner mesh - x-ray visible fill (subtle)
+            // Inner mesh only - no outline
             const innerMesh = child.clone();
             innerMesh.material = new THREE.MeshBasicMaterial({
-              color: 0xaa6655,  // Brownish liver color
-              transparent: true,
-              opacity: 0.25,
+              color: 0x607a79,
               depthTest: false
             });
             innerMesh.renderOrder = 998;
             innerMesh.onBeforeRender = (renderer) => renderer.clearDepth();
             liverGroup.add(innerMesh);
-
-            // Outline mesh - inverted hull technique (subtle)
-            const outlineMesh = child.clone();
-            outlineMesh.material = new THREE.MeshBasicMaterial({
-              color: 0xffffff,
-              transparent: true,
-              opacity: 0.3,
-              side: THREE.BackSide,
-              depthTest: false
-            });
-            outlineMesh.scale.multiplyScalar(1.03);
-            outlineMesh.renderOrder = 997;
-            outlineMesh.onBeforeRender = (renderer) => renderer.clearDepth();
-            liverGroup.add(outlineMesh);
           }
         });
 
@@ -604,31 +619,15 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
         gltf.scene.traverse((child) => {
           if (child.isMesh) {
-            // Inner mesh - x-ray visible fill (subtle)
+            // Inner mesh only - no outline
             const innerMesh = child.clone();
             innerMesh.material = new THREE.MeshBasicMaterial({
-              color: 0xccaa77,  // Tan/beige stomach color
-              transparent: true,
-              opacity: 0.25,
+              color: 0x607a79,
               depthTest: false
             });
             innerMesh.renderOrder = 998;
             innerMesh.onBeforeRender = (renderer) => renderer.clearDepth();
             stomachGroup.add(innerMesh);
-
-            // Outline mesh - inverted hull technique (subtle)
-            const outlineMesh = child.clone();
-            outlineMesh.material = new THREE.MeshBasicMaterial({
-              color: 0xffffff,
-              transparent: true,
-              opacity: 0.3,
-              side: THREE.BackSide,
-              depthTest: false
-            });
-            outlineMesh.scale.multiplyScalar(1.03);
-            outlineMesh.renderOrder = 997;
-            outlineMesh.onBeforeRender = (renderer) => renderer.clearDepth();
-            stomachGroup.add(outlineMesh);
           }
         });
 
@@ -1077,6 +1076,12 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
       // Show clone at mouse position
       updateCloneSize();
+
+      // Copy temperature class to clone for matching color
+      tumor2DClone.classList.remove('temp-hot', 'temp-warm', 'temp-cold');
+      const tempClass = [...tumor2D.classList].find(c => c.startsWith('temp-'));
+      if (tempClass) tumor2DClone.classList.add(tempClass);
+
       tumor2DClone.classList.add('visible');
       tumor2DClone.style.left = (e.clientX - parseInt(tumor2DClone.style.width || 40) / 2) + 'px';
       tumor2DClone.style.top = (e.clientY - parseInt(tumor2DClone.style.height || 40) / 2) + 'px';
@@ -1162,14 +1167,15 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       CONFIG.tumor.lumpiness
     );
 
-    // Create simple solid material colored by region
+    // Create solid material (color will be set by temperature system)
     const solidMat = new THREE.MeshBasicMaterial({
-      color: region.color,
+      color: 0xFFAA33, // Default warm, will be updated
       depthTest: false
     });
 
     const newTumor = new THREE.Group();
     const mesh = new THREE.Mesh(tumorGeo, solidMat);
+    mesh.name = 'tumorMesh';
     mesh.renderOrder = 999;
     mesh.onBeforeRender = function(renderer) {
       renderer.clearDepth();
@@ -1190,6 +1196,18 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     if (pdl1Select && pdl1Select.value) {
       newTumor.userData.pdl1 = pdl1Select.value;
     }
+
+    // Get temperature from selector or derive from PD-L1
+    const tempSelect = document.getElementById('tumor-temp-select');
+    if (tempSelect && tempSelect.value) {
+      newTumor.userData.temperature = tempSelect.value;
+    } else {
+      // Auto-derive from PD-L1
+      newTumor.userData.temperature = getTemperatureFromPDL1(newTumor.userData.pdl1);
+    }
+
+    // Apply temperature-based color and glow
+    applyTemperatureVisuals(newTumor);
 
     // Scale based on size
     const targetScale = (sizeMM * MM_TO_SCALE) / CONFIG.tumor.size;
@@ -1421,6 +1439,15 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       }
     }
 
+    // Display temperature status
+    const infoTemp = document.getElementById('tumor-info-temp-value');
+    if (infoTemp) {
+      const temp = getTumorTemperature(tumor);
+      const visuals = getTemperatureVisuals(temp);
+      infoTemp.textContent = visuals.name;
+      infoTemp.className = `temp-${temp}`;
+    }
+
     infoDialog.style.display = 'block';
     infoDialog.style.left = x + 'px';
     infoDialog.style.top = y + 'px';
@@ -1480,6 +1507,77 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
   // Marble = 15mm, Max = 70mm
   // Scale: 0.021 base dropped size = ~25mm
   const MM_TO_SCALE = 1.4 / 25; // Scale units per mm (scaled for HumanBody.fbx)
+
+  // ============================================
+  // TUMOR TEMPERATURE SYSTEM (hot/warm/cold)
+  // Replaces organ-based coloring with immune microenvironment
+  // ============================================
+  const TUMOR_TEMPERATURES = {
+    hot:  { color: 0xFF5533, glowColor: 0xFF4422, glowIntensity: 0.8, name: 'Hot' },
+    warm: { color: 0xFFAA33, glowColor: 0xFFAA33, glowIntensity: 0.3, name: 'Warm' },
+    cold: { color: 0x3388EE, glowColor: 0x3388EE, glowIntensity: 0.1, name: 'Cold' }
+  };
+
+  // Derive temperature from PD-L1 status
+  function getTemperatureFromPDL1(pdl1) {
+    switch (pdl1) {
+      case 'high': return 'hot';
+      case 'low': return 'warm';
+      case 'negative': return 'cold';
+      default: return 'warm'; // Unknown defaults to warm
+    }
+  }
+
+  // Get tumor temperature (from explicit setting or derived from PD-L1)
+  function getTumorTemperature(tumor) {
+    if (tumor.userData.temperature) {
+      return tumor.userData.temperature;
+    }
+    return getTemperatureFromPDL1(tumor.userData.pdl1);
+  }
+
+  // Get color and glow settings for a temperature
+  function getTemperatureVisuals(temp) {
+    return TUMOR_TEMPERATURES[temp] || TUMOR_TEMPERATURES.warm;
+  }
+
+  // Apply temperature-based visuals to a tumor (color + glow)
+  function applyTemperatureVisuals(tumor) {
+    const temp = getTumorTemperature(tumor);
+    const visuals = getTemperatureVisuals(temp);
+
+    // Find the main tumor mesh
+    const mesh = tumor.getObjectByName('tumorMesh');
+    if (mesh && mesh.material) {
+      mesh.material.color.setHex(visuals.color);
+    }
+
+    // Remove existing glow if any
+    const existingGlow = tumor.getObjectByName('tumorGlow');
+    if (existingGlow) {
+      tumor.remove(existingGlow);
+    }
+
+    // Add glow for hot/warm tumors
+    if (visuals.glowIntensity > 0.2 && mesh) {
+      const glowGeo = mesh.geometry.clone();
+      const glowMat = new THREE.MeshBasicMaterial({
+        color: visuals.glowColor,
+        transparent: true,
+        opacity: visuals.glowIntensity * 0.4,
+        side: THREE.BackSide,
+        depthTest: false
+      });
+      const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+      glowMesh.name = 'tumorGlow';
+      glowMesh.scale.setScalar(1.3); // Glow extends beyond tumor
+      glowMesh.renderOrder = 998;
+      glowMesh.onBeforeRender = function(renderer) {
+        renderer.clearDepth();
+      };
+      tumor.add(glowMesh);
+    }
+  }
 
   // ============================================
   // ANATOMICAL REGIONS (in body local space)
@@ -2161,6 +2259,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     // 3D tumor panel replaced by 2D HTML panel - no position updates needed
 
     if (controls) controls.update();
+
+    // Smooth zoom update
+    if (window.updateSmoothZoom) window.updateSmoothZoom();
 
     // Update NEW MET notification lines (follow camera)
     if (typeof updateMetNotifications === 'function') {
@@ -5565,8 +5666,17 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     'lung': 'Lungs',
     'lungs': 'Lungs',
     'pulmonary': 'Lungs',
+    'lobe': 'Lungs',
+    'upper lobe': 'Lungs',
+    'lower lobe': 'Lungs',
+    'middle lobe': 'Lungs',
     'left lung': 'Lungs (Left)',
     'right lung': 'Lungs (Right)',
+    'left upper lobe': 'Lungs (Left)',
+    'left lower lobe': 'Lungs (Left)',
+    'right upper lobe': 'Lungs (Right)',
+    'right middle lobe': 'Lungs (Right)',
+    'right lower lobe': 'Lungs (Right)',
     'liver': 'Liver',
     'hepatic': 'Liver',
     'stomach': 'Stomach',
@@ -5588,8 +5698,8 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         };
       }
     }
-    // Default to center of body
-    return { x: 0, y: 1.3, z: 0.03 };
+    // Default to center of body (in local mesh coordinates)
+    return { x: 0, y: 85, z: 0.03 };
   }
 
   // Parse tumor info from OCR text
@@ -6254,14 +6364,15 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       CONFIG.tumor.lumpiness
     );
 
-    // Create simple material
+    // Create simple material (color set by temperature system)
     const solidMat = new THREE.MeshBasicMaterial({
-      color: region.color || 0x2E5470,
+      color: 0xFFAA33, // Default warm, will be updated
       depthTest: false
     });
 
     const tumor = new THREE.Group();
     const mesh = new THREE.Mesh(tumorGeo, solidMat);
+    mesh.name = 'tumorMesh';
     mesh.renderOrder = 999;
     mesh.onBeforeRender = function(renderer) {
       renderer.clearDepth();
@@ -6276,6 +6387,11 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     // Store data
     tumor.userData.region = regionName;
     tumor.userData.sizeMM = sizeMM;
+    // Temperature will be set later based on PD-L1 or defaults to warm
+    tumor.userData.temperature = 'warm';
+
+    // Apply temperature visuals
+    applyTemperatureVisuals(tumor);
 
     humanBodyMesh.add(tumor);
     droppedTumors.push(tumor);
@@ -6383,6 +6499,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
               if (pdl1Info.pdl1) {
                 tumor.userData.pdl1 = pdl1Info.pdl1;
                 tumor.userData.pdl1Score = pdl1Info.pdl1Score;
+                // Derive temperature from PD-L1 and apply visuals
+                tumor.userData.temperature = getTemperatureFromPDL1(pdl1Info.pdl1);
+                applyTemperatureVisuals(tumor);
               }
             }
           });
@@ -6439,6 +6558,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
                 if (pdl1Info.pdl1) {
                   tumor.userData.pdl1 = pdl1Info.pdl1;
                   tumor.userData.pdl1Score = pdl1Info.pdl1Score;
+                  // Derive temperature from PD-L1 and apply visuals
+                  tumor.userData.temperature = getTemperatureFromPDL1(pdl1Info.pdl1);
+                  applyTemperatureVisuals(tumor);
                 }
               }
             });
@@ -6669,7 +6791,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           historyMonths: tumor.userData.historyMonths || 0,
           // Save PD-L1 biomarker data
           pdl1: tumor.userData.pdl1 || null,
-          pdl1Score: tumor.userData.pdl1Score || null
+          pdl1Score: tumor.userData.pdl1Score || null,
+          // Save temperature (hot/warm/cold)
+          temperature: tumor.userData.temperature || null
         };
       });
 
@@ -6772,6 +6896,13 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           if (tumorData.pdl1Score != null) {
             tumor.userData.pdl1Score = tumorData.pdl1Score;
           }
+          // Restore temperature (or derive from PD-L1) and apply visuals
+          if (tumorData.temperature) {
+            tumor.userData.temperature = tumorData.temperature;
+          } else {
+            tumor.userData.temperature = getTemperatureFromPDL1(tumorData.pdl1);
+          }
+          applyTemperatureVisuals(tumor);
         }
       });
 
@@ -6800,12 +6931,13 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     );
 
     const tumorMat = new THREE.MeshBasicMaterial({
-      color: 0x2E5470,
+      color: 0xFFAA33, // Default warm, will be updated
       depthTest: false
     });
 
     const tumor = new THREE.Group();
     const mesh = new THREE.Mesh(tumorGeo, tumorMat);
+    mesh.name = 'tumorMesh';
     mesh.renderOrder = 999;
     mesh.onBeforeRender = function(renderer) {
       renderer.clearDepth();
@@ -6842,6 +6974,16 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     if (tumorData.pdl1Score != null) {
       tumor.userData.pdl1Score = tumorData.pdl1Score;
     }
+
+    // Restore temperature (or derive from PD-L1)
+    if (tumorData.temperature) {
+      tumor.userData.temperature = tumorData.temperature;
+    } else {
+      tumor.userData.temperature = getTemperatureFromPDL1(tumorData.pdl1);
+    }
+
+    // Apply temperature-based visuals (color + glow)
+    applyTemperatureVisuals(tumor);
 
     // Add to body and tracking
     humanBodyMesh.add(tumor);
@@ -7084,6 +7226,19 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
   // Export save function for use when tumors are dropped
   window.JourneySaveSubject = saveCurrentSubject;
+
+  // Reset camera to default position and zoom
+  window.JourneyResetCamera = function() {
+    if (camera && controls) {
+      camera.position.set(CONFIG.camera.position.x, CONFIG.camera.position.y, CONFIG.camera.position.z);
+      controls.target.set(0, 0.5, 0);
+      controls.update();
+      // Reset smooth zoom target
+      if (window.setTargetZoom) {
+        window.setTargetZoom(CONFIG.camera.position.z);
+      }
+    }
+  };
 
   console.log('Journey scene ready. Drag tumor onto body.');
 })();

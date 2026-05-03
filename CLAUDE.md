@@ -47,11 +47,14 @@ PD-L1 expression is now a tumor property affecting ICI medication response:
 ```
 Journey/
 ├── index.html              # Main HTML with UI panels, Three.js import map
-├── three-background.js     # Main Three.js scene (~2700+ lines)
+├── three-background.js     # Main Three.js scene (~7200+ lines)
 ├── three-background-cyber.js # Backup of cyber/dark style
 └── Mesh/
-    ├── Anatomy.fbx         # High-poly human body model (8.7MB)
-    └── Lowpoly-Base.fbx    # Low-poly model (not used)
+    ├── MedicalHuman_02.fbx # Human body model (current)
+    ├── human_brain.glb     # Brain organ mesh
+    ├── Lungs_02.fbx        # Simplified lungs mesh (Krea)
+    ├── human_liver.glb     # Liver organ mesh
+    └── stomach.glb         # Stomach organ mesh
 ```
 
 ## UI Layout
@@ -123,19 +126,20 @@ python -m http.server 8000
 - **Selection highlight**: clicked tumor brightens (cyan) with pulse rings emanating outward
 
 ### 3D Organ Meshes
-Real anatomical organ models loaded from GLB files with x-ray rendering:
+Real anatomical organ models loaded with x-ray rendering (calibrated for MedicalHuman_02.fbx):
 
-| Organ | File | Position | Scale | Color |
+| Organ | File | Position | Scale | Notes |
 |-------|------|----------|-------|-------|
-| Brain | human_brain.glb | (0, 1.63, 0.025) | 0.0018 | Pinkish (0xcc9999) |
-| Lungs | lungs.glb | (0.74, 0.18, -0.01) | 0.008 | Bluish (0x99aacc) |
-| Liver | human_liver.glb | (0.030, 1.15, 0.02) | 0.032 | Brownish (0xaa6655) |
+| Brain | human_brain.glb | (0, 109, 0) | 0.12 | GLB format |
+| Lungs | Lungs_02.fbx | (0, 80, 0) | 0.22 | FBX format, simplified mesh |
+| Liver | human_liver.glb | (0, 76, 1.3) | 2.1 | Rotated (PI, PI, 0) |
+| Stomach | stomach.glb | (0, 73, 1.3) | (0.67, 1.3, 1.3) | Non-uniform scale |
 
 **Rendering:**
+- Solid fill matching body color (0x607a79)
+- No outlines on organs (cleaner look, tumors stand out more)
 - X-ray effect (depthTest: false, clearDepth)
-- Semi-transparent fill (25% opacity)
-- White outline (30% opacity, inverted hull)
-- Visible inside body mesh
+- Body outline is commented out but can be re-enabled (lines 372-375)
 
 **Tumor Placement:**
 - Tumors dropped on organs are repositioned inside the organ mesh
@@ -729,6 +733,18 @@ let subjects = [];
 - [x] Growth Rate plot (mm/month velocity)
 - [x] Target vs Non-Target lesion tracking (RECIST 1.1)
 - [x] Graph type dropdown with Size button on same line (11 chart types)
+- [x] Tumor temperature system (hot/warm/cold based on immune microenvironment)
+- [x] Temperature dropdown in tumor creation panel
+- [x] Dynamic tumor preview color (2D panel changes with dropdown selection)
+- [x] Draggable tumor clone matches temperature color
+- [x] Lung lobe OCR aliases ("right upper lobe" → Lungs (Right), etc.)
+- [x] Fixed default tumor position for "Other" region (was placing at feet)
+- [x] Simplified organ rendering (solid fill, no outlines)
+- [x] Body outline disabled (code preserved, can be re-enabled)
+- [x] New simplified Lungs_02.fbx mesh from Krea
+- [x] Custom smooth zoom with lerping (replaces jumpy OrbitControls zoom)
+- [x] Camera reset button
+- [x] Draggable panel headers edge-to-edge styling
 
 ## Past Issues & Solutions
 
