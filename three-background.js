@@ -55,10 +55,10 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     // Human body with outline glow
     humanBody: {
       enabled: true,
-      modelPath: './Mesh/MedicalHuman_02.fbx',
-      position: { x: 0, y: -1.35, z: 0 },   // Moved down more
+      modelPath: './Mesh/MedicalHuman_03.fbx',
+      position: { x: 0, y: 0.5, z: 0 },   // Moved up for MedicalHuman_03
       rotation: { x: 0, y: 0, z: 0 },   // Facing camera
-      scale: 0.030,  // Slightly smaller
+      scale: 0.015,  // Adjusted for MedicalHuman_03 remesh
       // Outline settings
       outlineColor: 0xffffff,      // White outline
       innerColor: 0x9DB3B2,        // Teal-gray fill
@@ -438,9 +438,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           }
         });
 
-        // Position inside head (calibrated to HumanBody.fbx mesh)
-        brainGroup.position.set(0, 109, 0);
-        brainGroup.scale.setScalar(0.12); // Scaled to fit inside head
+        // Position inside head (calibrating for MedicalHuman_03.fbx)
+        brainGroup.position.set(0, 84, -3);
+        brainGroup.scale.setScalar(0.228); // Scaled to fit inside head
         brainGroup.rotation.set(0, 0, 0); // Forward facing
 
         // Store reference for collision detection
@@ -494,9 +494,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           }
         });
 
-        // Position in chest cavity - calibrating for Lungs_04.fbx (remeshed)
-        lungsGroup.position.set(0, 90, -1.5);
-        lungsGroup.scale.setScalar(0.10);
+        // Position in chest cavity - calibrating for MedicalHuman_03.fbx
+        lungsGroup.position.set(0, 52, -6);
+        lungsGroup.scale.setScalar(0.19);
         lungsGroup.rotation.set(0, 0, 0);
 
         // Store reference for collision detection
@@ -578,9 +578,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           }
         });
 
-        // Position in abdomen (right side) (calibrated to HumanBody.fbx mesh)
-        liverGroup.position.set(0, 76, 1.3);
-        liverGroup.scale.setScalar(2.1);
+        // Position in abdomen (right side) - calibrating for MedicalHuman_03.fbx
+        liverGroup.position.set(0, 21, -0.4);
+        liverGroup.scale.setScalar(4.0);
         liverGroup.rotation.set(Math.PI, Math.PI, 0);
 
         // Store reference for collision detection
@@ -632,9 +632,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           }
         });
 
-        // Position in abdomen (center-left) (calibrated to HumanBody.fbx mesh)
-        stomachGroup.position.set(0, 73, 1.3);
-        stomachGroup.scale.set(0.67, 1.3, 1.3); // Half width
+        // Position in abdomen (center-left) - calibrating for MedicalHuman_03.fbx
+        stomachGroup.position.set(0, 15, -0.4);
+        stomachGroup.scale.set(1.27, 2.47, 2.47); // Half width
         stomachGroup.rotation.set(0, 0, 0);
 
         // Store reference for collision detection
