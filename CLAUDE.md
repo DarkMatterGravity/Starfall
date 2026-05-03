@@ -131,7 +131,7 @@ Real anatomical organ models loaded with x-ray rendering (calibrated for Medical
 | Organ | File | Position | Scale | Notes |
 |-------|------|----------|-------|-------|
 | Brain | human_brain.glb | (0, 109, 0) | 0.12 | GLB format |
-| Lungs | Lungs_02.fbx | (0, 80, 0) | 0.22 | FBX format, simplified mesh |
+| Lungs | Lungs_04.fbx | (0, 90, -1.5) | 0.10 | Remeshed 3k polys via Meshy AI (133KB) |
 | Liver | human_liver.glb | (0, 76, 1.3) | 2.1 | Rotated (PI, PI, 0) |
 | Stomach | stomach.glb | (0, 73, 1.3) | (0.67, 1.3, 1.3) | Non-uniform scale |
 
@@ -745,6 +745,8 @@ let subjects = [];
 - [x] Custom smooth zoom with lerping (replaces jumpy OrbitControls zoom)
 - [x] Camera reset button
 - [x] Draggable panel headers edge-to-edge styling
+- [x] Historical tumor trajectory simulation (continues shrink rate from scan data)
+- [x] Meshy AI remeshed lungs (38MB → 133KB, loads instantly)
 
 ## Past Issues & Solutions
 
