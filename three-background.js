@@ -472,10 +472,11 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       (error) => console.error('Failed to load brain:', error)
     );
 
-    // Lungs mesh (FBX)
+    // Lungs mesh (FBX - remeshed to 3k polys)
+    // BACKUP: Original high-poly is Lungs_02.fbx
     const fbxLoader = new FBXLoader();
     fbxLoader.load(
-      './Mesh/Lungs_02.fbx',
+      './Mesh/Lungs_04.fbx',
       (fbx) => {
         const lungsGroup = new THREE.Group();
 
@@ -493,9 +494,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           }
         });
 
-        // Position in chest cavity - calibrating for Lungs_02.fbx
-        lungsGroup.position.set(0, 80, 0);
-        lungsGroup.scale.setScalar(0.22);
+        // Position in chest cavity - calibrating for Lungs_04.fbx (remeshed)
+        lungsGroup.position.set(0, 90, -1.5);
+        lungsGroup.scale.setScalar(0.10);
         lungsGroup.rotation.set(0, 0, 0);
 
         // Store reference for collision detection
@@ -2665,18 +2666,72 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     // Track when treatment started for this tumor
     tumor.userData.medStartMonth = currentMonth;
 
-    // Roll once to determine response
+    // Check for historical response pattern (from prior scan data)
+    const priorSize = tumor.userData.priorSize;
+    const currentSize = tumor.userData.sizeMM;
+    const historyMonths = tumor.userData.historyMonths || 0;
+    let historicalResponse = null;
+    let historicalShrinkRate = 0;
+
+    if (priorSize && currentSize && historyMonths > 0) {
+      // Calculate actual trajectory from historical data (mm per month)
+      const sizeChange = priorSize - currentSize; // positive = shrinking
+      historicalShrinkRate = sizeChange / historyMonths;
+
+      if (currentSize < priorSize) {
+        // Tumor was shrinking between scans - likely responding to treatment
+        historicalResponse = 'responding';
+        console.log(`Historical data: tumor shrank from ${priorSize}mm to ${currentSize}mm over ${historyMonths} months (${historicalShrinkRate.toFixed(2)} mm/month)`);
+      } else if (currentSize > priorSize * 1.2) {
+        // Tumor grew significantly - likely resistant
+        historicalResponse = 'progressing';
+        console.log(`Historical data: tumor grew from ${priorSize}mm to ${currentSize}mm - likely resistant`);
+      }
+    }
+
+    // Roll to determine response, biased by historical data
     const roll = Math.random();
-    if (roll < combinedShrinkChance) {
-      tumor.userData.medResponse = 'shrinking';
-      tumor.userData.shrinkRate = combinedShrinkRate;
-      console.log(`Tumor responding - SHRINKING (ramping up over ${MED_RAMP_TIME} months)`);
-    } else if (roll < combinedShrinkChance + combinedHaltChance) {
-      tumor.userData.medResponse = 'halted';
-      console.log(`Tumor responding - growth will HALT (ramping up)`);
+
+    if (historicalResponse === 'responding') {
+      // Tumor was already responding - 80% chance to continue shrinking, 15% halted, 5% resistant
+      if (roll < 0.80) {
+        tumor.userData.medResponse = 'shrinking';
+        // Use the historical shrink rate to continue the trajectory
+        tumor.userData.shrinkRate = historicalShrinkRate > 0 ? historicalShrinkRate : (combinedShrinkRate || 0.15);
+        console.log(`Tumor continuing response - SHRINKING at ${tumor.userData.shrinkRate.toFixed(2)} mm/month`);
+      } else if (roll < 0.95) {
+        tumor.userData.medResponse = 'halted';
+        console.log(`Tumor response stabilized - HALTED`);
+      } else {
+        tumor.userData.medResponse = 'resistant';
+        console.log(`Tumor developed RESISTANCE despite prior response`);
+      }
+    } else if (historicalResponse === 'progressing') {
+      // Tumor was growing - 70% chance resistant, 20% halted, 10% shrinking
+      if (roll < 0.70) {
+        tumor.userData.medResponse = 'resistant';
+        console.log(`Tumor continuing progression - RESISTANT`);
+      } else if (roll < 0.90) {
+        tumor.userData.medResponse = 'halted';
+        console.log(`Tumor progression halted - HALTED`);
+      } else {
+        tumor.userData.medResponse = 'shrinking';
+        tumor.userData.shrinkRate = combinedShrinkRate || 0.15;
+        console.log(`Tumor now responding - SHRINKING`);
+      }
     } else {
-      tumor.userData.medResponse = 'resistant';
-      console.log(`Tumor RESISTANT to treatment`);
+      // No historical data - use standard random assignment
+      if (roll < combinedShrinkChance) {
+        tumor.userData.medResponse = 'shrinking';
+        tumor.userData.shrinkRate = combinedShrinkRate;
+        console.log(`Tumor responding - SHRINKING (ramping up over ${MED_RAMP_TIME} months)`);
+      } else if (roll < combinedShrinkChance + combinedHaltChance) {
+        tumor.userData.medResponse = 'halted';
+        console.log(`Tumor responding - growth will HALT (ramping up)`);
+      } else {
+        tumor.userData.medResponse = 'resistant';
+        console.log(`Tumor RESISTANT to treatment`);
+      }
     }
   }
 
