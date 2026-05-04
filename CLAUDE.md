@@ -50,11 +50,12 @@ Journey/
 ├── three-background.js     # Main Three.js scene (~7200+ lines)
 ├── three-background-cyber.js # Backup of cyber/dark style
 └── Mesh/
-    ├── MedicalHuman_03.fbx # Human body model (Meshy remesh, 1.1MB)
-    ├── human_brain.glb     # Brain organ mesh (3.7MB)
-    ├── Lungs_04.fbx        # Lungs mesh (Meshy remesh, 133KB)
-    ├── human_liver.glb     # Liver organ mesh (209KB)
-    └── stomach.glb         # Stomach organ mesh (17MB)
+    ├── Body.fbx    # Human body (Meshy remesh, 1.1MB)
+    ├── Brain.fbx   # Brain (Meshy remesh, 128KB)
+    ├── Lungs.fbx   # Lungs (Meshy remesh, 133KB)
+    ├── Liver.glb   # Liver (209KB)
+    └── Stomach.fbx # Stomach (Meshy remesh, 126KB)
+    # Total: 1.7MB (was 50MB+ before optimization)
 ```
 
 ## UI Layout
@@ -126,14 +127,14 @@ python -m http.server 8000
 - **Selection highlight**: clicked tumor brightens (cyan) with pulse rings emanating outward
 
 ### 3D Organ Meshes
-Real anatomical organ models loaded with x-ray rendering (calibrated for MedicalHuman_03.fbx at scale 0.015):
+Real anatomical organ models loaded with x-ray rendering (calibrated for Body.fbx at scale 0.015):
 
 | Organ | File | Position | Scale | Notes |
 |-------|------|----------|-------|-------|
-| Brain | human_brain.glb | (0, 84, -3) | 0.228 | GLB format |
-| Lungs | Lungs_04.fbx | (0, 52, -6) | 0.19 | Remeshed 3k polys via Meshy AI (133KB) |
-| Liver | human_liver.glb | (0, 21, -0.4) | 4.0 | Rotated (PI, PI, 0) |
-| Stomach | stomach.glb | (0, 15, -0.4) | (1.27, 2.47, 2.47) | Non-uniform scale |
+| Brain | Brain.fbx | (0, 90, -1) | 0.11 | Meshy remesh (128KB) |
+| Lungs | Lungs.fbx | (0, 52, -6) | 0.19 | Meshy remesh (133KB) |
+| Liver | Liver.glb | (0, 25, -0.4) | 4.0 | Rotated (PI, PI, 0) |
+| Stomach | Stomach.fbx | (0, 11, -0.4) | 0.12 | Meshy remesh (126KB) |
 
 **Rendering:**
 - Solid fill matching body color (0x607a79)
@@ -746,9 +747,13 @@ let subjects = [];
 - [x] Camera reset button
 - [x] Draggable panel headers edge-to-edge styling
 - [x] Historical tumor trajectory simulation (continues shrink rate from scan data)
-- [x] Meshy AI remeshed lungs (38MB → 133KB, loads instantly)
-- [x] Meshy AI remeshed body (MedicalHuman_03.fbx, 28MB → 1.1MB)
-- [x] Recalibrated all organ positions for new body mesh
+- [x] Meshy AI remeshed lungs (38MB → 133KB)
+- [x] Meshy AI remeshed body (28MB → 1.1MB)
+- [x] Meshy AI remeshed brain (3.7MB → 128KB)
+- [x] Meshy AI remeshed stomach (17MB → 126KB)
+- [x] Recalibrated all organ positions for new meshes
+- [x] Simplified mesh filenames (Body, Brain, Lungs, Liver, Stomach)
+- [x] Total mesh size reduced from 50MB+ to 1.7MB
 
 ## Past Issues & Solutions
 

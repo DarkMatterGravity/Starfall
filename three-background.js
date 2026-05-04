@@ -55,7 +55,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     // Human body with outline glow
     humanBody: {
       enabled: true,
-      modelPath: './Mesh/MedicalHuman_03.fbx',
+      modelPath: './Mesh/Body.fbx',
       position: { x: 0, y: 0.5, z: 0 },   // Moved up for MedicalHuman_03
       rotation: { x: 0, y: 0, z: 0 },   // Facing camera
       scale: 0.015,  // Adjusted for MedicalHuman_03 remesh
@@ -418,13 +418,15 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
   function loadOrganMeshes() {
     const gltfLoader = new GLTFLoader();
 
-    // Brain mesh
-    gltfLoader.load(
-      './Mesh/human_brain.glb',
-      (gltf) => {
+    // Brain mesh (FBX - remeshed via Meshy AI)
+    // BACKUP: Original high-poly is human_brain.glb (3.7MB)
+    const brainFbxLoader = new FBXLoader();
+    brainFbxLoader.load(
+      './Mesh/Brain.fbx',
+      (fbx) => {
         const brainGroup = new THREE.Group();
 
-        gltf.scene.traverse((child) => {
+        fbx.traverse((child) => {
           if (child.isMesh) {
             // Inner mesh only - no outline
             const innerMesh = child.clone();
@@ -438,9 +440,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           }
         });
 
-        // Position inside head (calibrating for MedicalHuman_03.fbx)
-        brainGroup.position.set(0, 84, -3);
-        brainGroup.scale.setScalar(0.228); // Scaled to fit inside head
+        // Position inside head - calibrating for Brain_02.fbx
+        brainGroup.position.set(0, 90, -1);
+        brainGroup.scale.setScalar(0.11); // Calibrated
         brainGroup.rotation.set(0, 0, 0); // Forward facing
 
         // Store reference for collision detection
@@ -476,7 +478,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     // BACKUP: Original high-poly is Lungs_02.fbx
     const fbxLoader = new FBXLoader();
     fbxLoader.load(
-      './Mesh/Lungs_04.fbx',
+      './Mesh/Lungs.fbx',
       (fbx) => {
         const lungsGroup = new THREE.Group();
 
@@ -560,7 +562,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
     // Liver mesh
     gltfLoader.load(
-      './Mesh/human_liver.glb',
+      './Mesh/Liver.glb',
       (gltf) => {
         const liverGroup = new THREE.Group();
 
@@ -579,7 +581,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         });
 
         // Position in abdomen (right side) - calibrating for MedicalHuman_03.fbx
-        liverGroup.position.set(0, 21, -0.4);
+        liverGroup.position.set(0, 25, -0.4);
         liverGroup.scale.setScalar(4.0);
         liverGroup.rotation.set(Math.PI, Math.PI, 0);
 
@@ -612,13 +614,14 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       (error) => console.error('Failed to load liver:', error)
     );
 
-    // Stomach mesh
-    gltfLoader.load(
-      './Mesh/stomach.glb',
-      (gltf) => {
+    // Stomach mesh (FBX - remeshed via Meshy AI)
+    // BACKUP: Original high-poly is stomach.glb (17MB)
+    fbxLoader.load(
+      './Mesh/Stomach.fbx',
+      (fbx) => {
         const stomachGroup = new THREE.Group();
 
-        gltf.scene.traverse((child) => {
+        fbx.traverse((child) => {
           if (child.isMesh) {
             // Inner mesh only - no outline
             const innerMesh = child.clone();
@@ -632,9 +635,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           }
         });
 
-        // Position in abdomen (center-left) - calibrating for MedicalHuman_03.fbx
-        stomachGroup.position.set(0, 15, -0.4);
-        stomachGroup.scale.set(1.27, 2.47, 2.47); // Half width
+        // Position in abdomen (center-left) - calibrating for Stomach_02.fbx
+        stomachGroup.position.set(0, 11, -0.4);
+        stomachGroup.scale.setScalar(0.12); // Calibrating
         stomachGroup.rotation.set(0, 0, 0);
 
         // Store reference for collision detection
@@ -1587,49 +1590,50 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
   // Scale factor from old mesh: 66.67x (2.0 / 0.030)
   // ============================================
   // Calibrated from actual mesh coordinates:
-  // Head: y ≈ 103-123, Chest: y ≈ 83-100, Stomach: y ≈ 67-80
+  // Calibrated for MedicalHuman_03.fbx at scale 0.015
+  // Brain: y≈84, Lungs: y≈52, Liver: y≈21, Stomach: y≈15
   // X: center ≈ 0, left side (viewer's right) = positive, right = negative
   const BODY_REGIONS = [
     {
       name: 'Brain',
       color: 0x9966CC,  // Purple
-      yMin: 103, yMax: 123,
+      yMin: 75, yMax: 95,
       xMin: -7, xMax: 7
     },
     {
       name: 'Lungs (Left)',
       color: 0x334466,  // Dark blue (darker for visibility)
-      yMin: 87, yMax: 100,
+      yMin: 42, yMax: 62,
       xMin: 2, xMax: 8
     },
     {
       name: 'Lungs (Right)',
       color: 0x334466,  // Dark blue (darker for visibility)
-      yMin: 87, yMax: 100,
+      yMin: 42, yMax: 62,
       xMin: -8, xMax: -2
     },
     {
       name: 'Breast (Left)',
       color: 0xCC9999,  // Pink
-      yMin: 83, yMax: 92,
+      yMin: 38, yMax: 48,
       xMin: 1.5, xMax: 7
     },
     {
       name: 'Breast (Right)',
       color: 0xCC9999,  // Pink
-      yMin: 83, yMax: 92,
+      yMin: 38, yMax: 48,
       xMin: -7, xMax: -1.5
     },
     {
       name: 'Liver',
       color: 0x8B4513,  // Brown
-      yMin: 70, yMax: 83,
+      yMin: 15, yMax: 30,
       xMin: -7, xMax: 1.5
     },
     {
       name: 'Stomach',
       color: 0xDAA520,  // Goldenrod
-      yMin: 67, yMax: 80,
+      yMin: 8, yMax: 22,
       xMin: -1.5, xMax: 7
     }
   ];
@@ -5753,8 +5757,8 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         };
       }
     }
-    // Default to center of body (in local mesh coordinates)
-    return { x: 0, y: 85, z: 0.03 };
+    // Default to center of torso (calibrated for MedicalHuman_03.fbx)
+    return { x: 0, y: 45, z: 0.03 };
   }
 
   // Parse tumor info from OCR text
