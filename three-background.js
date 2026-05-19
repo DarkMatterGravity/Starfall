@@ -2419,7 +2419,8 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     return injury;
   }
 
-  // API
+  // API - Note: clearAllTumors and createInjury call functions defined later
+  // This works because the functions are only called at runtime, not at definition time
   window.ThreeBackground = {
     scene,
     camera,
@@ -2435,11 +2436,13 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       });
       droppedTumors.length = 0;
       tumorInitialSizes.clear();
-      tumorGrowthData.clear();
-      tumorIdCounter = 0;
+      // tumorGrowthData and tumorIdCounter are cleared in clearAllTumorsExtended if available
+      if (typeof clearAllTumorsExtended === 'function') {
+        clearAllTumorsExtended();
+      }
       console.log('All injuries cleared');
     },
-    createInjury: createInjury,
+    createInjury: (injuryData) => createInjury(injuryData),
     setOutlineColor: (hex) => {
       if (humanBodyMaterial && humanBodyMaterial.outline) {
         humanBodyMaterial.outline.uniforms.uOutlineColor.value.setHex(hex);
@@ -5346,6 +5349,12 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
   // Track tumor data over time: { tumorId: [{month, size}, ...] }
   const tumorGrowthData = new Map();
   let tumorIdCounter = 0;
+
+  // Extended clear function for API (clears graph data)
+  function clearAllTumorsExtended() {
+    tumorGrowthData.clear();
+    tumorIdCounter = 0;
+  }
 
   // Line colors for each tumor
   const lineColors = [
