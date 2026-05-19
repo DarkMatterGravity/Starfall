@@ -4130,14 +4130,26 @@
 
         // Apply treatment
         if (treatmentType === 'stasis') {
-          // Stasis halts growth
+          // Stasis halts growth - set medResponse so graph shows trajectory
           injury.userData.stasisUntil = Date.now() + 30000; // 30 seconds
           injury.userData.growthRate = 0;
+          injury.userData.medResponse = 'halted';
+          injury.userData.treatmentApplied = treatmentType;
           console.log(`Stasis field applied to ${injury.userData.injuryType} - growth halted for 30s`);
         } else {
           // Other treatments shrink the injury
           const shrinkAmount = injury.userData.sizeMM * effect * 0.3;
           injury.userData.sizeMM = Math.max(1, injury.userData.sizeMM - shrinkAmount);
+
+          // Set medResponse so simulation tracks projected trajectory
+          if (effect >= 0.7) {
+            injury.userData.medResponse = 'shrinking';
+            injury.userData.shrinkRate = 0.03 * effect;
+          } else if (effect >= 0.3) {
+            injury.userData.medResponse = 'halted';
+          }
+          injury.userData.treatmentApplied = treatmentType;
+          injury.userData.treatmentEffectiveness = effect;
 
           // Update visual scale
           const newScale = (injury.userData.sizeMM * 0.00084) / 0.35;

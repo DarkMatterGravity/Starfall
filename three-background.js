@@ -2415,6 +2415,11 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     initTumorTracking(injury);
     recordTumorData(injury);
 
+    // Update medication panel to show relevant treatments
+    if (typeof updateMedicationPanel === 'function') {
+      updateMedicationPanel();
+    }
+
     console.log(`Injury placed: ${type} in ${targetRegion}, ${sizeMM}mm`);
     return injury;
   }
