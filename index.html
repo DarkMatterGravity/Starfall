@@ -2374,6 +2374,11 @@
 
         if (screenId === 'universe-map') {
           initMapScreen();
+        } else if (screenId === 'stasis-chamber') {
+          // Trigger resize to fix Three.js canvas dimensions
+          setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+          }, 50);
         }
       }
     }
