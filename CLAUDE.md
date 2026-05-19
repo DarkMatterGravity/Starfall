@@ -234,6 +234,96 @@ Risk: Aggression spike under heat stress
 - CSS variables for theming
 - Tesseract.js (preserved from Journey, may repurpose)
 
+## 3D Lifeform Models (Planned)
+
+### Model Format
+- **GLB/GLTF** preferred - embeds skeleton and animations in single file
+- Rig and animate in **Meshy** (or Blender), export as GLB
+- Budget ~500KB-2MB per creature depending on complexity
+- Lazy-load models as needed
+
+### Rendering by Context
+| Context | Rendering |
+|---------|-----------|
+| Stasis Chamber | Silhouette shader (like current body), static or subtle breathing |
+| Collection/Storage | Fully textured, idle animation looping |
+| Extraction Scene | Full render + movement animations |
+
+### Animation System
+Three.js provides `AnimationMixer` for skeletal animation. We'll build a lightweight state machine wrapper (~100-150 lines).
+
+**Core pattern:**
+```javascript
+const loader = new GLTFLoader();
+loader.load('creature.glb', (gltf) => {
+  const model = gltf.scene;
+  const mixer = new AnimationMixer(model);
+  const idleClip = gltf.animations.find(a => a.name === 'Idle');
+  mixer.clipAction(idleClip).play();
+  // mixer.update(deltaTime) in render loop
+});
+```
+
+### Animation State Machine (To Build)
+```javascript
+const CreatureAnimator = {
+  states: {
+    idle: { clip: 'Idle', loop: true },
+    hurt: { clip: 'Hurt', loop: false, next: 'idle' },
+    alert: { clip: 'Alert', loop: true },
+    dying: { clip: 'Death', loop: false }
+  },
+
+  transitions: {
+    'idle->hurt': { duration: 0.2 },
+    'hurt->idle': { duration: 0.5 },
+    'idle->alert': { duration: 0.3 },
+    '*->dying': { duration: 0.1 }
+  },
+
+  setState(newState) {
+    // Uses AnimationAction.crossFadeTo() for smooth blending
+  }
+};
+```
+
+### Blend Scenarios
+| Trigger | Transition |
+|---------|------------|
+| Extracted, critical | `idle` → `hurt` (fast 0.2s) |
+| Stabilized | `hurt` → `idle` (slow 0.5s ease) |
+| Player approaches | `idle` → `alert` |
+| Treatment applied | blend `hurt` weight down over time |
+
+### Additive Blending (Layered)
+- Base layer: idle breathing
+- Additive layer: occasional twitch, look around, injury favoring
+
+## Lifeform Generator
+
+Procedural system for generating lifeform data:
+
+```javascript
+LifeformGenerator = {
+  // Name generation: prefix + suffix + optional title
+  // e.g., "Gorak the Ancient", "Zyx", "Tharion"
+
+  // Age: "Unknown", "~1.2 million years", "247 years", "Estimated: 50,000+ years"
+
+  // Origin: Galaxy / System / Planet / Region
+  // e.g., "Andromeda Reach / Theron IV / Crystal Caverns"
+
+  // Traits: ["Heavy", "Armored", "Radiation-Resistant", ...]
+
+  // Injuries by alert type:
+  //   crash: "Crash Trauma", "Impact Fractures"
+  //   battle: "Combat Wounds", "Energy Burns"
+  //   injury: "Environmental Exposure", "Toxic Contamination"
+
+  // Status/Severity: critical, high, moderate
+}
+```
+
 ## Completed Features
 
 - [x] Main menu with Oblivion-style UI
@@ -242,15 +332,22 @@ Risk: Aggression spike under heat stress
 - [x] Grid/scanline/vignette effects
 - [x] Alert markers and list
 - [x] Basic stasis chamber integration
+- [x] Procedural lifeform generator (names, ages, traits, injuries, origins)
+- [x] Lifeform info panel in stasis chamber (replaces patient panel)
+- [x] Alert → Deploy → Stasis flow (lifeform data populates on deploy)
+- [x] Status color coding (critical/high/moderate/recovered)
+- [x] Alert selection UI with visual feedback
 
 ## TODO
 
 ### Core Mechanics
 - [ ] Map drill-down (galaxy → system → planet → region)
 - [ ] Extraction mission (top-down drone gameplay)
-- [ ] Lifeform 3D models (replace human body)
+- [ ] Lifeform 3D models (replace human body placeholder)
+- [ ] Animation state machine with blending
 - [ ] Treatment system (stabilization, diagnostics, intervention)
 - [ ] Collection hall / archive grid
+- [ ] Recover lifeform button → save to collection
 
 ### Polish
 - [ ] Animated alert markers (pulsing)
@@ -267,20 +364,31 @@ Risk: Aggression spike under heat stress
 
 ## Git Repository
 
-- **Repo:** https://github.com/DarkMatterGravity/Starfall
-- **Live Site:** https://darkmattergravity.github.io/Starfall/
-- **Visibility:** Public (for GitHub Pages)
-- **LFS:** Tracks `*.fbx` and `*.glb` files
+- **Repo:** https://github.com/DarkMatterGravity/Starfall (private, source)
+- **Public Repo:** https://github.com/DarkMatterGravity/Journey-app (encrypted deploy)
+- **Live Site:** https://darkmattergravity.github.io/Journey-app/
+- **Password:** `DrToppGear` (Staticrypt AES-256)
+- **Note:** No Git LFS - GitHub Pages doesn't serve LFS files correctly
 
 ## Deployment
 
-Push to `master` branch auto-deploys to GitHub Pages.
+Uses `deploy.ps1` script to encrypt and push to public repo:
 
 ```bash
+# Commit to private repo first
 git add .
 git commit -m "Update message"
 git push origin master
+
+# Then deploy (encrypts with Staticrypt, pushes to Journey-app)
+powershell -File deploy.ps1
 ```
+
+The script:
+1. Copies files to `.deploy-temp/`
+2. Encrypts `index.html` with Staticrypt
+3. Force pushes to `Journey-app` repo
+4. GitHub Pages serves the encrypted site
 
 ## Origin
 
