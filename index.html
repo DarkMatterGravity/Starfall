@@ -1582,103 +1582,57 @@
       margin-left: 5px;
     }
     .target-y { left: -45px; }
-    #timeline-panel {
+    #status-panel {
       position: fixed;
       bottom: 30px;
       left: 50%;
       transform: translateX(-50%);
       display: flex;
       align-items: center;
-      gap: 15px;
-      padding: 12px 20px;
-      background: rgba(20, 26, 34, 0.9);
-      border: 1px solid #5F7B7A;
-      border-radius: 10px;
+      gap: 30px;
+      padding: 15px 25px;
+      background: rgba(10, 10, 15, 0.92);
+      border: 1px solid var(--sf-border);
+      border-radius: 8px;
       z-index: 100;
+      font-family: var(--sf-font-mono);
     }
-    #play-pause-btn {
-      width: 40px;
-      height: 40px;
-      background: #2E5470;
-      border: none;
-      border-radius: 50%;
-      color: #fff;
-      font-size: 16px;
-      cursor: pointer;
+    .status-timer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .status-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--sf-text-dim);
+      text-transform: uppercase;
+    }
+    .status-value {
+      font-family: var(--sf-font-display);
+      font-size: 24px;
+      color: var(--sf-primary);
+      letter-spacing: 2px;
+    }
+    .injury-legend {
+      display: flex;
+      gap: 20px;
+    }
+    .legend-item {
       display: flex;
       align-items: center;
-      justify-content: center;
-      transition: background 0.2s;
+      gap: 8px;
     }
-    #play-pause-btn:hover {
-      background: #3a6a8a;
-    }
-    #timeline-container {
-      width: 600px;
-    }
-    #timeline-bar {
-      position: relative;
-      height: 6px;
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 3px;
-      cursor: pointer;
-    }
-    #timeline-progress {
-      position: absolute;
-      left: 0;
-      top: 0;
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, #5F7B7A, #8AA5A4);
-      border-radius: 3px;
-    }
-    #timeline-handle {
-      position: absolute;
-      top: 50%;
-      left: 0%;
-      width: 14px;
-      height: 14px;
-      background: #fff;
+    .legend-color {
+      width: 12px;
+      height: 12px;
       border-radius: 50%;
-      transform: translate(-50%, -50%);
-      cursor: grab;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      box-shadow: 0 0 6px currentColor;
     }
-    #timeline-handle:active {
-      cursor: grabbing;
-    }
-    #timeline-labels {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 6px;
-      font-family: system-ui, sans-serif;
+    .legend-label {
       font-size: 11px;
-      color: rgba(255, 255, 255, 0.5);
-    }
-    #timeline-current {
-      font-family: system-ui, sans-serif;
-      font-size: 14px;
-      color: #8AA5A4;
-      min-width: 50px;
-      text-align: right;
-    }
-    #reset-btn {
-      width: 40px;
-      height: 40px;
-      background: #704040;
-      border: none;
-      border-radius: 50%;
-      color: #fff;
-      font-size: 18px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s;
-      margin-left: 10px;
-    }
-    #reset-btn:hover {
-      background: #905050;
+      color: var(--sf-text-dim);
     }
     #body-hint {
       top: 12%;
@@ -2176,13 +2130,13 @@
       #spider-plot { transform: scale(0.75); transform-origin: top right; right: 15px; }
       #patient-info-panel { transform: scale(0.85); transform-origin: top left; left: 15px; min-width: 320px; }
       #tumor-creator { transform: scale(0.85); transform-origin: top center; left: 28%; }
-      #timeline-panel { transform: scale(0.9); transform-origin: bottom center; }
+      #status-panel { transform: scale(0.9); transform-origin: bottom center; }
     }
     @media (max-width: 1200px) {
       #spider-plot { transform: scale(0.6); transform-origin: top right; right: 10px; top: 18%; }
       #patient-info-panel { transform: scale(0.75); transform-origin: top left; left: 10px; top: 15%; min-width: 280px; }
       #tumor-creator { transform: scale(0.75); transform-origin: top left; left: auto; right: 10px; top: auto; bottom: 120px; }
-      #timeline-panel { transform: scale(0.8); transform-origin: bottom center; bottom: 15px; }
+      #status-panel { transform: scale(0.8); transform-origin: bottom center; bottom: 15px; }
       #medication-panel { transform: scale(0.85); transform-origin: top center; }
       #upload-panel { bottom: 15px; right: 15px; transform: scale(0.9); transform-origin: bottom right; }
     }
@@ -2190,14 +2144,14 @@
       #spider-plot { transform: scale(0.5); right: 5px; top: 12%; }
       #patient-info-panel { transform: scale(0.65); left: 5px; top: 10%; }
       #tumor-creator { transform: scale(0.65); right: 5px; bottom: 100px; }
-      #timeline-panel { transform: scale(0.65); bottom: 10px; }
+      #status-panel { transform: scale(0.65); bottom: 10px; }
       #medication-panel { transform: scale(0.75); }
     }
     @media (max-width: 800px) {
       #spider-plot { display: none !important; }
       #patient-info-panel { transform: scale(0.6); top: 5%; left: 5px; max-height: 40vh; overflow-y: auto; }
       #tumor-creator { transform: scale(0.6); top: 5%; right: 5px; bottom: auto; }
-      #timeline-panel { transform: scale(0.55); bottom: 5px; }
+      #status-panel { transform: scale(0.55); bottom: 5px; }
       #medication-panel { transform: scale(0.65); top: 10px; }
       #upload-panel { transform: scale(0.8); bottom: 80px; }
     }
@@ -2562,20 +2516,26 @@
       </div>
     </div>
 
-    <!-- Timeline Panel -->
-    <div id="timeline-panel">
-      <button id="play-pause-btn">&#9654;</button>
-      <div id="timeline-container">
-        <div id="timeline-bar">
-          <div id="timeline-progress"></div>
-          <div id="timeline-handle"></div>
+    <!-- Status Panel (replaces timeline) -->
+    <div id="status-panel">
+      <div class="status-timer">
+        <span class="status-label">TIME IN STASIS</span>
+        <span id="acquisition-timer" class="status-value">00:00:00</span>
+      </div>
+      <div class="injury-legend">
+        <div class="legend-item">
+          <span class="legend-color" style="background: #FF4444;"></span>
+          <span class="legend-label">Radiation/Crash</span>
         </div>
-        <div id="timeline-labels">
-          <span>0</span><span>6</span><span>12</span><span>18 months</span>
+        <div class="legend-item">
+          <span class="legend-color" style="background: #FFAA33;"></span>
+          <span class="legend-label">Combat Wounds</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-color" style="background: #44AAFF;"></span>
+          <span class="legend-label">Parasitic/Infection</span>
         </div>
       </div>
-      <div id="timeline-current">0 mo</div>
-      <button id="reset-btn" title="Reset Simulation">&#8634;</button>
     </div>
 
     <!-- Tumor Size Menu -->
@@ -3678,13 +3638,11 @@
       if (traitsEl) traitsEl.textContent = lifeform.traits.join(', ');
 
       // Clear existing injuries/tumors in Three.js scene and create new ones
-      // Use setTimeout to ensure Three.js has time to initialize
-      setTimeout(() => {
-        if (window.ThreeBackground) {
+      // Wait for body mesh to be loaded before placing injuries
+      function tryCreateInjuries(attempts = 0) {
+        if (window.ThreeBackground && window.ThreeBackground.getHumanBody && window.ThreeBackground.getHumanBody()) {
           try {
             window.ThreeBackground.clearAllTumors();
-
-            // Place injuries on the 3D model
             lifeform.injuries.forEach(injury => {
               if (window.ThreeBackground.createInjury) {
                 window.ThreeBackground.createInjury(injury);
@@ -3693,10 +3651,14 @@
           } catch (e) {
             console.error('Error creating injuries:', e);
           }
+        } else if (attempts < 20) {
+          // Retry up to 20 times (2 seconds total)
+          setTimeout(() => tryCreateInjuries(attempts + 1), 100);
         } else {
-          console.warn('ThreeBackground not available yet');
+          console.warn('Could not create injuries - body mesh not available');
         }
-      }, 100);
+      }
+      tryCreateInjuries();
 
       // Update timeline to show time since acquisition
       updateAcquisitionTimer();
@@ -3705,21 +3667,22 @@
     // Update timer showing time since lifeform acquisition
     function updateAcquisitionTimer() {
       const lifeform = GameState.currentLifeform;
-      if (!lifeform || !lifeform.acquiredAt) return;
+      const timerEl = document.getElementById('acquisition-timer');
+      if (!timerEl) return;
+
+      if (!lifeform || !lifeform.acquiredAt) {
+        timerEl.textContent = '00:00:00';
+        return;
+      }
 
       const elapsed = Date.now() - lifeform.acquiredAt;
-      const seconds = Math.floor(elapsed / 1000);
-      const minutes = Math.floor(seconds / 60);
-      const hours = Math.floor(minutes / 60);
+      const totalSeconds = Math.floor(elapsed / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
 
-      const timeStr = hours > 0
-        ? `${hours}h ${minutes % 60}m`
-        : minutes > 0
-          ? `${minutes}m ${seconds % 60}s`
-          : `${seconds}s`;
-
-      const timeEl = document.getElementById('timeline-current');
-      if (timeEl) timeEl.textContent = timeStr;
+      const pad = (n) => n.toString().padStart(2, '0');
+      timerEl.textContent = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
     }
 
     // Start acquisition timer loop
