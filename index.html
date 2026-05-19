@@ -698,6 +698,57 @@
     #stasis-chamber {
       background: linear-gradient(to bottom, #8EA1A0 0%, #141A22 100%);
     }
+    /* Dying state - red flashing */
+    #stasis-chamber.dying {
+      animation: dyingFlash 0.5s ease-in-out infinite;
+    }
+    @keyframes dyingFlash {
+      0%, 100% {
+        box-shadow: inset 0 0 100px rgba(255, 0, 0, 0.3);
+      }
+      50% {
+        box-shadow: inset 0 0 150px rgba(255, 0, 0, 0.5);
+      }
+    }
+    #stasis-chamber.dying .draggable-panel {
+      animation: panelFlash 0.5s ease-in-out infinite;
+    }
+    @keyframes panelFlash {
+      0%, 100% {
+        border-color: rgba(255, 100, 100, 0.5);
+        box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+      }
+      50% {
+        border-color: rgba(255, 0, 0, 0.8);
+        box-shadow: 0 0 40px rgba(255, 0, 0, 0.5);
+      }
+    }
+    /* Dead state */
+    #stasis-chamber.dead {
+      filter: grayscale(0.8) brightness(0.6);
+    }
+    #stasis-chamber.dead::after {
+      content: 'SPECIMEN LOST';
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: var(--sf-font-display, 'Orbitron', sans-serif);
+      font-size: 48px;
+      color: #ff4444;
+      text-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+      z-index: 1000;
+      letter-spacing: 8px;
+    }
+    /* Status colors */
+    .patient-info-value.status-dead {
+      color: #ff4444;
+      animation: deadPulse 1s ease-in-out infinite;
+    }
+    @keyframes deadPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
     #three-canvas {
       position: fixed;
       top: 0;
@@ -3579,6 +3630,11 @@
     function loadLifeformIntoStasis(lifeform) {
       GameState.currentLifeform = lifeform;
 
+      // Reset death state from previous lifeform
+      if (typeof resetDeathState === 'function') {
+        resetDeathState();
+      }
+
       // Save lifeform name to database
       saveLifeformName(lifeform.name, lifeform.designation);
 
@@ -3671,6 +3727,203 @@
     // Start acquisition timer loop
     setInterval(updateAcquisitionTimer, 1000);
 
+    // ============================================
+    // REAL-TIME INJURY GROWTH & DEATH MECHANICS
+    // ============================================
+    const INJURY_GROWTH_INTERVAL = 2000; // Grow every 2 seconds
+    const MAX_INJURY_SIZE = 70; // mm
+    const CRITICAL_BURDEN = 150; // Total mm of injuries for critical state
+    const DEATH_BURDEN = 250; // Total mm for death
+    const DEATH_DELAY = 10000; // 10 seconds at death burden before dying
+
+    let criticalStartTime = null;
+    let isDying = false;
+    let isLifeformDead = false;
+
+    // Update injury growth
+    function updateInjuryGrowth() {
+      if (!window.ThreeBackground || !GameState.currentLifeform || isLifeformDead) return;
+
+      const injuries = window.ThreeBackground.getDroppedTumors();
+      if (!injuries || injuries.length === 0) return;
+
+      const now = Date.now();
+
+      injuries.forEach(injury => {
+        if (!injury.userData.isInjury) return;
+
+        // Check if in stasis
+        if (injury.userData.stasisUntil && now < injury.userData.stasisUntil) {
+          return; // Still in stasis, no growth
+        }
+
+        // Restore growth rate if stasis expired
+        if (injury.userData.stasisUntil && now >= injury.userData.stasisUntil) {
+          injury.userData.stasisUntil = null;
+          // Restore original growth rate based on category
+          const config = InjuryTypes[injury.userData.injuryCategory];
+          if (config) {
+            injury.userData.growthRate = config.growthRate.min + Math.random() * (config.growthRate.max - config.growthRate.min);
+          }
+        }
+
+        // Calculate growth
+        const growthRate = injury.userData.growthRate || 1.0;
+        const growthPerSecond = growthRate * 0.1; // mm per second base
+        const growth = growthPerSecond * (INJURY_GROWTH_INTERVAL / 1000);
+
+        // Apply growth
+        injury.userData.sizeMM = Math.min(MAX_INJURY_SIZE, injury.userData.sizeMM + growth);
+
+        // Update visual scale
+        const MM_TO_SCALE = 0.00084;
+        const newScale = (injury.userData.sizeMM * MM_TO_SCALE) / 0.35;
+        injury.scale.setScalar(newScale);
+
+        // Random chance to spread (create new injury)
+        if (injury.userData.canSpread && Math.random() < injury.userData.spreadChance * (INJURY_GROWTH_INTERVAL / 1000)) {
+          spreadInjury(injury);
+        }
+      });
+
+      // Check total burden
+      const totalBurden = calculateTotalBurden();
+      updateBurdenDisplay(totalBurden);
+      checkDeathCondition(totalBurden);
+    }
+
+    // Calculate total injury burden
+    function calculateTotalBurden() {
+      if (!window.ThreeBackground) return 0;
+      const injuries = window.ThreeBackground.getDroppedTumors();
+      if (!injuries) return 0;
+
+      return injuries.reduce((total, injury) => {
+        if (injury.userData.isInjury) {
+          return total + (injury.userData.sizeMM || 0);
+        }
+        return total;
+      }, 0);
+    }
+
+    // Update burden display
+    function updateBurdenDisplay(burden) {
+      const statusEl = document.getElementById('patient-exam-date');
+      if (!statusEl || !GameState.currentLifeform) return;
+
+      if (burden >= DEATH_BURDEN) {
+        statusEl.textContent = 'CRITICAL - FAILING';
+        statusEl.className = 'patient-info-value status-critical';
+      } else if (burden >= CRITICAL_BURDEN) {
+        statusEl.textContent = 'Critical';
+        statusEl.className = 'patient-info-value status-critical';
+      } else if (burden >= CRITICAL_BURDEN * 0.7) {
+        statusEl.textContent = 'Serious';
+        statusEl.className = 'patient-info-value status-high';
+      } else {
+        statusEl.textContent = 'Stable';
+        statusEl.className = 'patient-info-value status-moderate';
+      }
+    }
+
+    // Check death condition
+    function checkDeathCondition(burden) {
+      if (isLifeformDead) return;
+
+      if (burden >= DEATH_BURDEN) {
+        if (!criticalStartTime) {
+          criticalStartTime = Date.now();
+          startDyingAnimation();
+        } else if (Date.now() - criticalStartTime >= DEATH_DELAY) {
+          triggerDeath();
+        }
+      } else {
+        // Reset if burden goes back down
+        if (criticalStartTime) {
+          criticalStartTime = null;
+          stopDyingAnimation();
+        }
+      }
+    }
+
+    // Start dying animation (red flashing)
+    function startDyingAnimation() {
+      if (isDying) return;
+      isDying = true;
+
+      const stasisChamber = document.getElementById('stasis-chamber');
+      if (stasisChamber) {
+        stasisChamber.classList.add('dying');
+      }
+    }
+
+    // Stop dying animation
+    function stopDyingAnimation() {
+      isDying = false;
+      const stasisChamber = document.getElementById('stasis-chamber');
+      if (stasisChamber) {
+        stasisChamber.classList.remove('dying');
+      }
+    }
+
+    // Trigger death
+    function triggerDeath() {
+      isLifeformDead = true;
+      stopDyingAnimation();
+
+      const stasisChamber = document.getElementById('stasis-chamber');
+      if (stasisChamber) {
+        stasisChamber.classList.add('dead');
+      }
+
+      // Update status
+      const statusEl = document.getElementById('patient-exam-date');
+      if (statusEl) {
+        statusEl.textContent = 'DECEASED';
+        statusEl.className = 'patient-info-value status-dead';
+      }
+
+      console.log(`Lifeform ${GameState.currentLifeform?.name} has died.`);
+    }
+
+    // Spread injury (create new one nearby)
+    function spreadInjury(sourceInjury) {
+      if (!window.ThreeBackground || !GameState.currentLifeform) return;
+
+      const organs = ['Brain', 'Lungs (Left)', 'Lungs (Right)', 'Liver', 'Stomach'];
+      const newOrgan = organs[Math.floor(Math.random() * organs.length)];
+
+      const newInjury = {
+        id: Date.now(),
+        type: sourceInjury.userData.injuryType + ' (spread)',
+        category: sourceInjury.userData.injuryCategory,
+        organ: newOrgan,
+        sizeMM: 5 + Math.random() * 10, // Start small
+        color: sourceInjury.userData.temperature,
+        growthRate: sourceInjury.userData.growthRate,
+        canSpread: sourceInjury.userData.canSpread,
+        spreadChance: sourceInjury.userData.spreadChance * 0.5 // Lower spread chance for children
+      };
+
+      window.ThreeBackground.createInjury(newInjury);
+      console.log(`Injury spread to ${newOrgan}!`);
+    }
+
+    // Reset death state when new lifeform loaded
+    function resetDeathState() {
+      isLifeformDead = false;
+      isDying = false;
+      criticalStartTime = null;
+      stopDyingAnimation();
+      const stasisChamber = document.getElementById('stasis-chamber');
+      if (stasisChamber) {
+        stasisChamber.classList.remove('dead');
+      }
+    }
+
+    // Start injury growth loop
+    setInterval(updateInjuryGrowth, INJURY_GROWTH_INTERVAL);
+
     // Recover/save lifeform to collection
     function recoverLifeform() {
       if (!GameState.currentLifeform) return;
@@ -3754,6 +4007,139 @@
       window.addEventListener('resize', () => {
         // Map animation handles its own resize
       });
+
+      // ============================================
+      // TREATMENT DRAG & DROP
+      // ============================================
+      const treatmentItems = document.querySelectorAll('.treatment-item');
+      let draggedTreatment = null;
+      let treatmentClone = null;
+
+      treatmentItems.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+          draggedTreatment = item.dataset.treatment;
+          item.classList.add('dragging');
+
+          // Create visual clone
+          treatmentClone = document.createElement('div');
+          treatmentClone.className = 'treatment-clone';
+          treatmentClone.style.background = item.querySelector('.treatment-icon').style.background;
+          treatmentClone.innerHTML = item.querySelector('.treatment-icon').innerHTML;
+          document.body.appendChild(treatmentClone);
+
+          // Hide default drag image
+          const emptyImg = new Image();
+          e.dataTransfer.setDragImage(emptyImg, 0, 0);
+        });
+
+        item.addEventListener('drag', (e) => {
+          if (treatmentClone && e.clientX && e.clientY) {
+            treatmentClone.style.left = (e.clientX - 25) + 'px';
+            treatmentClone.style.top = (e.clientY - 25) + 'px';
+            treatmentClone.style.display = 'flex';
+          }
+        });
+
+        item.addEventListener('dragend', (e) => {
+          item.classList.remove('dragging');
+          if (treatmentClone) {
+            treatmentClone.remove();
+            treatmentClone = null;
+          }
+
+          // Try to apply treatment at drop location
+          if (draggedTreatment && window.ThreeBackground) {
+            applyTreatmentAtPosition(e.clientX, e.clientY, draggedTreatment);
+          }
+          draggedTreatment = null;
+        });
+      });
+
+      // Apply treatment to injury at screen position
+      function applyTreatmentAtPosition(x, y, treatmentType) {
+        if (!window.ThreeBackground) return;
+
+        const droppedTumors = window.ThreeBackground.getDroppedTumors();
+        if (!droppedTumors || droppedTumors.length === 0) return;
+
+        const camera = window.ThreeBackground.camera;
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2(
+          (x / window.innerWidth) * 2 - 1,
+          -(y / window.innerHeight) * 2 + 1
+        );
+
+        raycaster.setFromCamera(mouse, camera);
+
+        // Find closest injury
+        let closestInjury = null;
+        let closestDist = Infinity;
+
+        droppedTumors.forEach(injury => {
+          const hits = raycaster.intersectObject(injury, true);
+          if (hits.length > 0 && hits[0].distance < closestDist) {
+            closestDist = hits[0].distance;
+            closestInjury = injury;
+          }
+        });
+
+        if (closestInjury) {
+          applyTreatmentToInjury(closestInjury, treatmentType);
+        }
+      }
+
+      // Apply treatment effect to an injury
+      function applyTreatmentToInjury(injury, treatmentType) {
+        const category = injury.userData.injuryCategory || 'injury';
+
+        // Treatment effectiveness based on type match
+        const effectiveness = {
+          nanobots: { crash: 1.0, battle: 0.3, injury: 0.5 },
+          biofoam: { crash: 0.3, battle: 1.0, injury: 0.3 },
+          antiparasitic: { crash: 0.2, battle: 0.2, injury: 1.0 },
+          stasis: { crash: 0.7, battle: 0.7, injury: 0.7 }
+        };
+
+        const effect = effectiveness[treatmentType]?.[category] || 0.3;
+
+        // Apply treatment
+        if (treatmentType === 'stasis') {
+          // Stasis halts growth
+          injury.userData.stasisUntil = Date.now() + 30000; // 30 seconds
+          injury.userData.growthRate = 0;
+          console.log(`Stasis field applied to ${injury.userData.injuryType} - growth halted for 30s`);
+        } else {
+          // Other treatments shrink the injury
+          const shrinkAmount = injury.userData.sizeMM * effect * 0.3;
+          injury.userData.sizeMM = Math.max(1, injury.userData.sizeMM - shrinkAmount);
+
+          // Update visual scale
+          const newScale = (injury.userData.sizeMM * 0.00084) / 0.35;
+          injury.scale.setScalar(newScale);
+
+          console.log(`${treatmentType} applied to ${injury.userData.injuryType}: -${shrinkAmount.toFixed(1)}mm (${(effect * 100).toFixed(0)}% effective)`);
+        }
+
+        // Visual feedback - flash the injury
+        const mesh = injury.children.find(c => c.name === 'injuryMesh');
+        if (mesh) {
+          const originalColor = mesh.material.color.getHex();
+          mesh.material.color.setHex(0x00ff00); // Flash green
+          setTimeout(() => {
+            mesh.material.color.setHex(originalColor);
+          }, 200);
+        }
+
+        // Check if injury is "cured" (very small)
+        if (injury.userData.sizeMM <= 2) {
+          // Remove the injury
+          if (injury.parent) injury.parent.remove(injury);
+          const tumors = window.ThreeBackground.getDroppedTumors();
+          const idx = tumors.indexOf(injury);
+          if (idx > -1) tumors.splice(idx, 1);
+          console.log(`${injury.userData.injuryType} successfully treated!`);
+        }
+      }
     });
   </script>
 
