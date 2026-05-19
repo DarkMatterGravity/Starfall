@@ -1909,6 +1909,36 @@
       font-size: 10px;
       color: rgba(255, 255, 255, 0.5);
     }
+    .treatment-effectiveness {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .eff-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      opacity: 0.4;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .eff-dot.eff-best {
+      opacity: 1;
+      box-shadow: 0 0 6px currentColor;
+      transform: scale(1.1);
+    }
+    .eff-dot.eff-mid {
+      opacity: 0.7;
+    }
+    .eff-dot.eff-low {
+      opacity: 0.3;
+    }
+    .treatment-item:hover .eff-dot {
+      opacity: 0.7;
+    }
+    .treatment-item:hover .eff-dot.eff-best {
+      opacity: 1;
+      transform: scale(1.2);
+    }
     .treatment-hint {
       font-size: 11px;
       color: rgba(255, 255, 255, 0.4);
@@ -2287,32 +2317,52 @@
           <div class="treatment-icon" style="background: #4fd1d9;">&#9670;</div>
           <div class="treatment-info">
             <div class="treatment-name">Nanobots</div>
-            <div class="treatment-desc">Targets tumors & radiation damage</div>
+            <div class="treatment-desc">Repairs radiation & crash damage</div>
+            <div class="treatment-effectiveness">
+              <span class="eff-dot eff-best" style="background:#FF4444;" title="100% vs Radiation"></span>
+              <span class="eff-dot eff-low" style="background:#FFAA33;" title="30% vs Combat"></span>
+              <span class="eff-dot eff-mid" style="background:#44AAFF;" title="50% vs Parasites"></span>
+            </div>
           </div>
         </div>
         <div class="treatment-item" data-treatment="biofoam" draggable="true">
           <div class="treatment-icon" style="background: #f4a62a;">&#9679;</div>
           <div class="treatment-info">
             <div class="treatment-name">Bio-Foam</div>
-            <div class="treatment-desc">Seals wounds & burns</div>
+            <div class="treatment-desc">Seals combat wounds & burns</div>
+            <div class="treatment-effectiveness">
+              <span class="eff-dot eff-low" style="background:#FF4444;" title="30% vs Radiation"></span>
+              <span class="eff-dot eff-best" style="background:#FFAA33;" title="100% vs Combat"></span>
+              <span class="eff-dot eff-low" style="background:#44AAFF;" title="30% vs Parasites"></span>
+            </div>
           </div>
         </div>
         <div class="treatment-item" data-treatment="antiparasitic" draggable="true">
           <div class="treatment-icon" style="background: #4fd97f;">&#9733;</div>
           <div class="treatment-info">
             <div class="treatment-name">Anti-Parasitic</div>
-            <div class="treatment-desc">Kills parasites & infections</div>
+            <div class="treatment-desc">Eliminates parasites & infections</div>
+            <div class="treatment-effectiveness">
+              <span class="eff-dot eff-low" style="background:#FF4444;" title="20% vs Radiation"></span>
+              <span class="eff-dot eff-low" style="background:#FFAA33;" title="20% vs Combat"></span>
+              <span class="eff-dot eff-best" style="background:#44AAFF;" title="100% vs Parasites"></span>
+            </div>
           </div>
         </div>
         <div class="treatment-item" data-treatment="stasis" draggable="true">
           <div class="treatment-icon" style="background: #9b59b6;">&#8859;</div>
           <div class="treatment-info">
             <div class="treatment-name">Stasis Field</div>
-            <div class="treatment-desc">Halts all growth temporarily</div>
+            <div class="treatment-desc">Halts all injury growth (30s)</div>
+            <div class="treatment-effectiveness">
+              <span class="eff-dot eff-mid" style="background:#FF4444;" title="70% vs Radiation"></span>
+              <span class="eff-dot eff-mid" style="background:#FFAA33;" title="70% vs Combat"></span>
+              <span class="eff-dot eff-mid" style="background:#44AAFF;" title="70% vs Parasites"></span>
+            </div>
           </div>
         </div>
       </div>
-      <div class="treatment-hint">Drag treatment to injury site</div>
+      <div class="treatment-hint">Drag to injury • Dots show effectiveness</div>
     </div>
 
     <!-- Clone element for dragging -->
