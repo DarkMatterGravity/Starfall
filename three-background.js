@@ -116,11 +116,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
   // ============================================
 
   const canvas = document.getElementById('three-canvas');
-  console.log('Three.js init - canvas found:', !!canvas);
-  if (!canvas) {
-    console.error('three-canvas element not found!');
-    return;
-  }
+  if (!canvas) return;
 
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -2316,7 +2312,6 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     composer.render();
   }
 
-  console.log('Three.js starting animation loop');
   animate();
 
   // ============================================
