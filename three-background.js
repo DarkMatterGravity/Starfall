@@ -521,28 +521,45 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         const localMax = worldBox.max.clone().applyMatrix4(bodyMatrixInverse);
 
         // Store bounds for left and right lungs (split at center X)
-        const centerX = (localMin.x + localMax.x) / 2;
+        // Add asymmetric padding - more upward (into neck), less downward (avoid liver)
+        const yPaddingUp = (localMax.y - localMin.y) * 0.3;    // 30% upward padding
+        const yPaddingDown = (localMax.y - localMin.y) * 0.1;  // 10% downward padding (less to avoid liver)
+        const xPadding = (localMax.x - localMin.x) * 0.15;     // 15% horizontal padding
+        const zPadding = (localMax.z - localMin.z) * 0.2;      // 20% depth padding
+
+        const paddedMin = new THREE.Vector3(
+          localMin.x - xPadding,
+          localMin.y - yPaddingDown,
+          localMin.z - zPadding
+        );
+        const paddedMax = new THREE.Vector3(
+          localMax.x + xPadding,
+          localMax.y + yPaddingUp,
+          localMax.z + zPadding
+        );
+
+        const centerX = (paddedMin.x + paddedMax.x) / 2;
         lungsGroup.userData.bounds = {
-          min: localMin,
-          max: localMax,
+          min: paddedMin,
+          max: paddedMax,
           centerX: centerX,
           // Left lung (positive X in body space)
           left: {
             xMin: centerX + 0.005,  // Small gap at center
-            xMax: localMax.x,
-            yMin: localMin.y,
-            yMax: localMax.y,
-            zMin: localMin.z,
-            zMax: localMax.z
+            xMax: paddedMax.x,
+            yMin: paddedMin.y,
+            yMax: paddedMax.y,
+            zMin: paddedMin.z,
+            zMax: paddedMax.z
           },
           // Right lung (negative X in body space)
           right: {
-            xMin: localMin.x,
+            xMin: paddedMin.x,
             xMax: centerX - 0.005,  // Small gap at center
-            yMin: localMin.y,
-            yMax: localMax.y,
-            zMin: localMin.z,
-            zMax: localMax.z
+            yMin: paddedMin.y,
+            yMax: paddedMax.y,
+            zMin: paddedMin.z,
+            zMax: paddedMax.z
           }
         };
 
@@ -1748,12 +1765,31 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
   // Find the nearest organ to a given point (for snapping tumors)
   function getNearestOrgan(localPos) {
+    // Get lung center positions from bounds if available
+    let leftLungCenter = new THREE.Vector3(4, 52, -6);
+    let rightLungCenter = new THREE.Vector3(-4, 52, -6);
+
+    if (organMeshes.lungs && organMeshes.lungs.userData.bounds) {
+      const lb = organMeshes.lungs.userData.bounds.left;
+      const rb = organMeshes.lungs.userData.bounds.right;
+      leftLungCenter = new THREE.Vector3(
+        (lb.xMin + lb.xMax) / 2,
+        (lb.yMin + lb.yMax) / 2,
+        (lb.zMin + lb.zMax) / 2
+      );
+      rightLungCenter = new THREE.Vector3(
+        (rb.xMin + rb.xMax) / 2,
+        (rb.yMin + rb.yMax) / 2,
+        (rb.zMin + rb.zMax) / 2
+      );
+    }
+
     const organCenters = [
-      { name: 'Brain', color: 0x9966CC, center: organMeshes.brain ? organMeshes.brain.position.clone() : new THREE.Vector3(0, 109, 0) },
-      { name: 'Lungs (Left)', color: 0x334466, center: new THREE.Vector3(4, 93, 0) },
-      { name: 'Lungs (Right)', color: 0x334466, center: new THREE.Vector3(-4, 93, 0) },
-      { name: 'Liver', color: 0x8B4513, center: organMeshes.liver ? organMeshes.liver.position.clone() : new THREE.Vector3(0, 76, 1.3) },
-      { name: 'Stomach', color: 0xDAA520, center: organMeshes.stomach ? organMeshes.stomach.position.clone() : new THREE.Vector3(0, 73, 1.3) }
+      { name: 'Brain', color: 0x9966CC, center: organMeshes.brain ? organMeshes.brain.position.clone() : new THREE.Vector3(0, 90, -1) },
+      { name: 'Lungs (Left)', color: 0x334466, center: leftLungCenter },
+      { name: 'Lungs (Right)', color: 0x334466, center: rightLungCenter },
+      { name: 'Liver', color: 0x8B4513, center: organMeshes.liver ? organMeshes.liver.position.clone() : new THREE.Vector3(0, 25, -0.4) },
+      { name: 'Stomach', color: 0xDAA520, center: organMeshes.stomach ? organMeshes.stomach.position.clone() : new THREE.Vector3(0, 11, -0.4) }
     ];
 
     let nearest = organCenters[0];
