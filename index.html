@@ -695,6 +695,9 @@
     /* ============================================
        JOURNEY LEGACY STYLES (All original styles)
        ============================================ */
+    #stasis-chamber {
+      background: linear-gradient(to bottom, #8EA1A0 0%, #141A22 100%);
+    }
     #three-canvas {
       position: fixed;
       top: 0;
@@ -3621,16 +3624,25 @@
       if (traitsEl) traitsEl.textContent = lifeform.traits.join(', ');
 
       // Clear existing injuries/tumors in Three.js scene and create new ones
-      if (window.ThreeBackground) {
-        window.ThreeBackground.clearAllTumors();
+      // Use setTimeout to ensure Three.js has time to initialize
+      setTimeout(() => {
+        if (window.ThreeBackground) {
+          try {
+            window.ThreeBackground.clearAllTumors();
 
-        // Place injuries on the 3D model
-        lifeform.injuries.forEach(injury => {
-          if (window.ThreeBackground.createInjury) {
-            window.ThreeBackground.createInjury(injury);
+            // Place injuries on the 3D model
+            lifeform.injuries.forEach(injury => {
+              if (window.ThreeBackground.createInjury) {
+                window.ThreeBackground.createInjury(injury);
+              }
+            });
+          } catch (e) {
+            console.error('Error creating injuries:', e);
           }
-        });
-      }
+        } else {
+          console.warn('ThreeBackground not available yet');
+        }
+      }, 100);
 
       // Update timeline to show time since acquisition
       updateAcquisitionTimer();
