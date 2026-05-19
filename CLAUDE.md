@@ -324,41 +324,96 @@ LifeformGenerator = {
 }
 ```
 
+### Lifeform Name Database
+Good generated names are automatically saved to localStorage (`starfall_lifeform_names`).
+- Keeps last 100 names and designations
+- Can be used for name suggestions or preventing duplicates
+
+## Injury System
+
+Injuries are auto-generated when a lifeform is loaded into stasis, based on their alert type:
+
+| Alert Type | Injury Category | Growth Rate | Can Spread | Color |
+|------------|-----------------|-------------|------------|-------|
+| **Crash** | Radiation Tumors | 1.5-3.0x (aggressive) | Yes (3%) | Red/hot |
+| **Battle** | Combat Wounds | 0.5-1.5x (slower) | No | Yellow/warm |
+| **Exploration** | Parasitic Infection | 2.0-4.0x (fast) | Yes (5%) | Blue/cold |
+
+### Injury Types by Category
+**Crash (Radiation Tumors):**
+- Radiation Tumor, Impact Mass, Cryo-Burn, Decompression Nodule, Shrapnel Fragment
+
+**Battle (Combat Wounds):**
+- Plasma Burn, Energy Laceration, Projectile Wound, Neural Damage, Chemical Burn
+
+**Exploration (Parasitic Infection):**
+- Parasite Cluster, Fungal Growth, Toxic Buildup, Pathogen Colony, Symbiote Mass
+
+### Injury Count by Severity
+| Severity | Injuries |
+|----------|----------|
+| Critical | 4-6 |
+| High | 3-5 |
+| Moderate | 2-3 |
+| Low | 1-2 |
+
+## Treatments Panel
+
+Replaced the medication panel with draggable treatments:
+
+| Treatment | Target | Effect |
+|-----------|--------|--------|
+| **Nanobots** | Tumors/radiation | Shrinks radiation damage |
+| **Bio-Foam** | Wounds/burns | Seals combat injuries |
+| **Anti-Parasitic** | Parasites/infections | Kills parasitic growths |
+| **Stasis Field** | All injuries | Temporarily halts growth |
+
+Drag treatments onto injury sites to apply.
+
 ## Completed Features
 
 - [x] Main menu with Oblivion-style UI
 - [x] Universe map with alert system
 - [x] Screen navigation system
 - [x] Grid/scanline/vignette effects
-- [x] Alert markers and list
 - [x] Basic stasis chamber integration
 - [x] Procedural lifeform generator (names, ages, traits, injuries, origins)
 - [x] Lifeform info panel in stasis chamber (replaces patient panel)
 - [x] Alert → Deploy → Stasis flow (lifeform data populates on deploy)
 - [x] Status color coding (critical/high/moderate/recovered)
-- [x] Alert selection UI with visual feedback
+- [x] Cinematic map drill-down (universe → galaxy → system → planet → region)
+- [x] Single signal notification (replaced multi-alert list)
+- [x] Click ping or notification to zoom through levels
+- [x] Animated map views (orbiting planets, twinkling stars, pulsing pings)
+- [x] Injury generation system based on alert type (tumors/wounds/parasites)
+- [x] Auto-place injuries on 3D model when lifeform loads
+- [x] Lifeform name database (saves good generated names)
+- [x] Treatments panel (replaces medication toggles)
+- [x] Acquisition timer (real-time from pickup)
 
 ## TODO
 
 ### Core Mechanics
-- [ ] Map drill-down (galaxy → system → planet → region)
+- [ ] Treatment drag-and-drop functionality
+- [ ] Treatment effects (shrink injuries, halt growth)
+- [ ] Real-time injury growth (instead of simulated timeline)
+- [ ] Death mechanics (injury burden threshold → death)
+- [ ] Dying animations (panels flash red when critical)
 - [ ] Extraction mission (top-down drone gameplay)
 - [ ] Lifeform 3D models (replace human body placeholder)
 - [ ] Animation state machine with blending
-- [ ] Treatment system (stabilization, diagnostics, intervention)
 - [ ] Collection hall / archive grid
 - [ ] Recover lifeform button → save to collection
 
 ### Polish
-- [ ] Animated alert markers (pulsing)
-- [ ] Map zoom/pan controls
+- [ ] Map zoom transition effects (stars flying by)
 - [ ] Smooth screen transitions
 - [ ] Sound effects
 - [ ] Keyboard navigation
 
 ### Content
 - [ ] Multiple lifeform designs
-- [ ] Planet/environment variety
+- [ ] Planet surface images/meshes
 - [ ] Evolution paths
 - [ ] Deployment missions
 
