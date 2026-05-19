@@ -3969,7 +3969,16 @@
       // Main menu buttons
       document.getElementById('btn-start-mission')?.addEventListener('click', () => showScreen('universe-map'));
       document.getElementById('btn-collection')?.addEventListener('click', () => console.log('Collection Archive - Coming Soon'));
-      document.getElementById('btn-stasis-direct')?.addEventListener('click', () => showScreen('stasis-chamber'));
+      document.getElementById('btn-stasis-direct')?.addEventListener('click', () => {
+        // Generate a signal/lifeform if none exists
+        if (!GameState.signal) {
+          GameState.signal = generateSignal();
+        }
+        if (GameState.signal && GameState.signal.lifeform) {
+          loadLifeformIntoStasis(GameState.signal.lifeform);
+        }
+        showScreen('stasis-chamber');
+      });
 
       // Map screen - back button navigates up levels
       document.getElementById('map-back-btn')?.addEventListener('click', () => {
