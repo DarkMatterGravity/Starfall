@@ -2332,6 +2332,93 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     }
   });
 
+  // Create an injury at a specific organ with given properties
+  function createInjury(injuryData) {
+    if (!humanBodyMesh) return null;
+
+    const { organ, sizeMM, color, type, id, growthRate, canSpread, spreadChance, category } = injuryData;
+
+    // Map organ names
+    let targetRegion = organ;
+    if (organ === 'Lungs') {
+      targetRegion = Math.random() < 0.5 ? 'Lungs (Left)' : 'Lungs (Right)';
+    }
+
+    // Use mesh-aware positioning
+    const organRegions = ['Brain', 'Lungs (Left)', 'Lungs (Right)', 'Liver', 'Stomach'];
+    let pos;
+
+    if (organRegions.includes(targetRegion)) {
+      const basePos = getRegionPosition(targetRegion);
+      const randomDropPoint = new THREE.Vector3(
+        basePos.x + (Math.random() - 0.5) * 0.08,
+        basePos.y + (Math.random() - 0.5) * 0.08,
+        basePos.z
+      );
+      const organPos = getPositionInsideOrgan(randomDropPoint, targetRegion);
+      pos = { x: organPos.x, y: organPos.y, z: organPos.z };
+    } else {
+      pos = getRegionPosition(targetRegion);
+    }
+
+    // Create injury geometry (lumpy sphere)
+    const injuryGeo = createLumpySphere(
+      CONFIG.tumor.size,
+      CONFIG.tumor.segments,
+      CONFIG.tumor.lumpiness
+    );
+
+    // Color based on injury type
+    const colorMap = {
+      hot: 0xFF4444,   // Red for radiation tumors
+      warm: 0xFFAA33,  // Orange/yellow for wounds
+      cold: 0x44AAFF   // Blue for parasites
+    };
+
+    const solidMat = new THREE.MeshBasicMaterial({
+      color: colorMap[color] || 0xFFAA33,
+      depthTest: false
+    });
+
+    const injury = new THREE.Group();
+    const mesh = new THREE.Mesh(injuryGeo, solidMat);
+    mesh.name = 'injuryMesh';
+    mesh.renderOrder = 999;
+    mesh.onBeforeRender = function(renderer) {
+      renderer.clearDepth();
+    };
+    injury.add(mesh);
+
+    // Position and scale
+    injury.position.set(pos.x, pos.y, pos.z);
+    const targetScale = (sizeMM * MM_TO_SCALE) / CONFIG.tumor.size;
+    injury.scale.setScalar(targetScale);
+
+    // Store injury data
+    injury.userData.region = targetRegion;
+    injury.userData.sizeMM = sizeMM;
+    injury.userData.initialSizeMM = sizeMM;
+    injury.userData.injuryType = type;
+    injury.userData.injuryCategory = category;
+    injury.userData.injuryId = id;
+    injury.userData.temperature = color;
+    injury.userData.growthRate = growthRate;
+    injury.userData.canSpread = canSpread;
+    injury.userData.spreadChance = spreadChance;
+    injury.userData.isInjury = true;
+
+    humanBodyMesh.add(injury);
+    droppedTumors.push(injury);
+    tumorInitialSizes.set(injury, targetScale);
+
+    // Initialize tracking for graphs
+    initTumorTracking(injury);
+    recordTumorData(injury);
+
+    console.log(`Injury placed: ${type} in ${targetRegion}, ${sizeMM}mm`);
+    return injury;
+  }
+
   // API
   window.ThreeBackground = {
     scene,
@@ -2342,13 +2429,17 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     getTumor: () => tumorGroup,
     getDroppedTumors: () => droppedTumors,
     clearAllTumors: () => {
-      // Remove all dropped tumors from body
+      // Remove all dropped tumors/injuries from body
       droppedTumors.forEach(tumor => {
         if (tumor.parent) tumor.parent.remove(tumor);
       });
       droppedTumors.length = 0;
-      console.log('All tumors cleared');
+      tumorInitialSizes.clear();
+      tumorGrowthData.clear();
+      tumorIdCounter = 0;
+      console.log('All injuries cleared');
     },
+    createInjury: createInjury,
     setOutlineColor: (hex) => {
       if (humanBodyMaterial && humanBodyMaterial.outline) {
         humanBodyMaterial.outline.uniforms.uOutlineColor.value.setHex(hex);
