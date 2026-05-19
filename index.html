@@ -319,7 +319,8 @@
       color: var(--sf-primary);
     }
 
-    .map-breadcrumb .separator {
+    .map-breadcrumb .separator,
+    .map-breadcrumb .crumb-sep {
       color: var(--sf-text-muted);
       cursor: default;
     }
@@ -327,6 +328,15 @@
     .map-breadcrumb .current {
       color: var(--sf-text);
       cursor: default;
+    }
+
+    .map-breadcrumb .crumb {
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .map-breadcrumb .crumb:hover:not(.current) {
+      color: var(--sf-primary);
     }
 
     .back-btn {
@@ -363,93 +373,161 @@
       height: 100%;
     }
 
-    /* Alert panel */
-    .alerts-panel {
+    /* Signal notification (top right corner) */
+    .signal-notification {
       position: fixed;
       top: 80px;
       right: 24px;
-      width: 320px;
-      max-height: calc(100vh - 180px);
       background: var(--sf-bg-panel);
-      border: 1px solid var(--sf-border);
+      border: 1px solid var(--sf-alert);
+      padding: 16px 20px;
       z-index: 100;
-      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      min-width: 280px;
     }
 
-    .alerts-header {
-      padding: 16px;
-      border-bottom: 1px solid var(--sf-border);
+    .signal-notification:hover {
+      background: rgba(232, 90, 60, 0.15);
+      border-color: var(--sf-alert);
+    }
+
+    .signal-notification.hidden {
+      opacity: 0;
+      transform: translateX(100%);
+      pointer-events: none;
+    }
+
+    .signal-header {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
     }
 
-    .alerts-title {
+    .signal-ping {
+      width: 12px;
+      height: 12px;
+      background: var(--sf-alert);
+      border-radius: 50%;
+      animation: signalPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes signalPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.3); }
+    }
+
+    .signal-type {
       font-family: var(--sf-font-display);
-      font-size: 12px;
+      font-size: 11px;
       letter-spacing: 2px;
       color: var(--sf-alert);
       text-transform: uppercase;
     }
 
-    .alerts-count {
-      background: var(--sf-alert);
-      color: var(--sf-bg-dark);
-      font-size: 11px;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 2px;
-    }
-
-    .alerts-list {
-      max-height: 400px;
-      overflow-y: auto;
-    }
-
-    .alert-item {
-      padding: 16px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .alert-item:hover {
-      background: rgba(232, 90, 60, 0.1);
-    }
-
-    .alert-item.crash { border-left: 3px solid var(--sf-alert); }
-    .alert-item.battle { border-left: 3px solid var(--sf-warning); }
-    .alert-item.injury { border-left: 3px solid var(--sf-success); }
-
-    .alert-type {
-      font-family: var(--sf-font-display);
-      font-size: 10px;
-      letter-spacing: 1px;
-      color: var(--sf-alert);
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-
-    .alert-item.battle .alert-type { color: var(--sf-warning); }
-    .alert-item.injury .alert-type { color: var(--sf-success); }
-
-    .alert-location {
+    .signal-location {
       font-size: 13px;
       color: var(--sf-text);
       margin-bottom: 4px;
     }
 
-    .alert-coords {
+    .signal-coords {
       font-size: 11px;
       color: var(--sf-text-dim);
     }
 
-    .alert-time {
-      font-size: 10px;
-      color: var(--sf-text-muted);
-      margin-top: 4px;
+    .signal-notification.battle .signal-ping { background: var(--sf-warning); }
+    .signal-notification.battle .signal-type { color: var(--sf-warning); }
+    .signal-notification.battle { border-color: var(--sf-warning); }
+
+    .signal-notification.injury .signal-ping { background: var(--sf-success); }
+    .signal-notification.injury .signal-type { color: var(--sf-success); }
+    .signal-notification.injury { border-color: var(--sf-success); }
+
+    /* Zoom transition overlay */
+    .zoom-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--sf-bg-dark);
+      z-index: 200;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
     }
 
+    .zoom-overlay.active {
+      opacity: 1;
+    }
+
+    /* Star field for zoom animation */
+    .star-field {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 201;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    .star-field.active {
+      opacity: 1;
+    }
+
+    .star-field .star {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+    }
+
+    /* Level indicator */
+    .level-indicator {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--sf-font-display);
+      font-size: 14px;
+      letter-spacing: 3px;
+      color: var(--sf-primary);
+      text-transform: uppercase;
+      opacity: 0.7;
+      z-index: 50;
+    }
+
+    /* Planet view styles */
+    .planet-surface {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .planet-surface.visible {
+      opacity: 1;
+    }
+
+    /* LEGACY - keeping for backwards compat, will remove */
+    .alerts-panel { display: none; }
+    .alerts-header { display: none; }
+    .alerts-title { display: none; }
+    .alerts-count { display: none; }
+    .alerts-list { display: none; }
+    .alert-item { display: none; }
+    .alert-type { display: none; }
+    .alert-location { display: none; }
+    .alert-coords { display: none; }
+    .alert-time { display: none; }
     .alert-lifeform-name {
       font-family: var(--sf-font-display);
       font-size: 15px;
@@ -2048,41 +2126,51 @@
         <span>&#9664;</span> BACK
       </button>
       <div class="map-breadcrumb" id="map-breadcrumb">
-        <span class="current">UNIVERSE</span>
+        <span class="crumb" data-level="universe">UNIVERSE</span>
       </div>
       <div class="map-location" id="map-location">SECTOR OVERVIEW</div>
     </div>
 
     <div class="map-container">
       <canvas id="map-canvas"></canvas>
+      <div class="planet-surface" id="planet-surface"></div>
     </div>
 
-    <div class="alerts-panel">
-      <div class="alerts-header">
-        <span class="alerts-title">Active Signals</span>
-        <span class="alerts-count" id="alerts-count">3</span>
+    <!-- Single signal notification (top right) -->
+    <div class="signal-notification hidden" id="signal-notification">
+      <div class="signal-header">
+        <div class="signal-ping"></div>
+        <span class="signal-type" id="signal-type">DISTRESS SIGNAL</span>
       </div>
-      <div class="alerts-list" id="alerts-list"></div>
+      <div class="signal-location" id="signal-location">Unknown Sector</div>
+      <div class="signal-coords" id="signal-coords">Coordinates locked</div>
     </div>
+
+    <!-- Level indicator -->
+    <div class="level-indicator" id="level-indicator">UNIVERSE VIEW</div>
+
+    <!-- Zoom transition elements -->
+    <div class="zoom-overlay" id="zoom-overlay"></div>
+    <div class="star-field" id="star-field"></div>
 
     <div class="map-footer">
       <div class="map-stats">
         <div class="stat-item">
-          <div class="stat-value" id="stat-recovered">47</div>
+          <div class="stat-value" id="stat-recovered">0</div>
           <div class="stat-label">Recovered</div>
         </div>
         <div class="stat-item">
-          <div class="stat-value" id="stat-active">3</div>
-          <div class="stat-label">Active Signals</div>
+          <div class="stat-value" id="stat-active">1</div>
+          <div class="stat-label">Active Signal</div>
         </div>
         <div class="stat-item">
-          <div class="stat-value" id="stat-species">12</div>
+          <div class="stat-value" id="stat-species">0</div>
           <div class="stat-label">Species</div>
         </div>
       </div>
       <div class="map-actions">
-        <button class="action-btn" id="btn-scan">SCAN SECTOR</button>
-        <button class="action-btn primary" id="btn-deploy">DEPLOY</button>
+        <button class="action-btn" id="btn-scan" style="display:none;">SCAN SECTOR</button>
+        <button class="action-btn primary" id="btn-deploy" style="display:none;">DEPLOY</button>
       </div>
     </div>
   </div>
@@ -2566,18 +2654,6 @@
     // GAME STATE & SCREEN MANAGEMENT
     // ============================================
     const COLLECTION_KEY = 'starfall_collection';
-    const ALERTS_KEY = 'starfall_alerts';
-
-    // Load or generate alerts
-    function loadOrGenerateAlerts() {
-      // Always generate fresh alerts for now (can add persistence later)
-      const alerts = [];
-      const alertCount = Math.floor(Math.random() * 4) + 3; // 3-6 alerts
-      for (let i = 1; i <= alertCount; i++) {
-        alerts.push(LifeformGenerator.generateAlert(i));
-      }
-      return alerts;
-    }
 
     // Load collection from storage
     function loadCollection() {
@@ -2598,14 +2674,62 @@
       }
     }
 
+    // Generate a single alert with full location hierarchy
+    function generateSignal() {
+      const types = ['crash', 'crash', 'battle', 'injury'];
+      const severities = ['critical', 'high', 'moderate'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      const severity = severities[Math.floor(Math.random() * severities.length)];
+
+      // Generate full location path
+      const galaxy = LifeformGenerator.galaxies[Math.floor(Math.random() * LifeformGenerator.galaxies.length)];
+      const system = LifeformGenerator.systems[Math.floor(Math.random() * LifeformGenerator.systems.length)];
+      const planetSuffix = LifeformGenerator.planets[Math.floor(Math.random() * LifeformGenerator.planets.length)];
+      const planet = `${system} ${planetSuffix}`;
+      const region = LifeformGenerator.regions[Math.floor(Math.random() * LifeformGenerator.regions.length)];
+
+      // Normalized coordinates for each level (0-1)
+      const coords = {
+        universe: { x: Math.random() * 0.6 + 0.2, y: Math.random() * 0.6 + 0.2 },
+        galaxy: { x: Math.random() * 0.6 + 0.2, y: Math.random() * 0.6 + 0.2 },
+        system: Math.floor(Math.random() * 5), // planet index
+        planet: { x: Math.random() * 0.6 + 0.2, y: Math.random() * 0.6 + 0.2 }
+      };
+
+      const lifeform = LifeformGenerator.generate(1, type, severity);
+      lifeform.origin = { galaxy, system, planet, region, full: `${galaxy} / ${system} / ${planet}` };
+      lifeform.location = lifeform.origin.full;
+      lifeform.region = region;
+
+      return {
+        id: 1,
+        type,
+        severity,
+        galaxy,
+        system,
+        planet,
+        region,
+        coords,
+        lifeform
+      };
+    }
+
+    // Map state for cinematic navigation
+    const MapState = {
+      level: 'universe', // universe, galaxy, system, planet, region
+      isAnimating: false,
+      animationFrame: null,
+      stars: [],
+      planets: [],
+      pingPhase: 0
+    };
+
     const GameState = {
       currentScreen: 'main-menu',
       mapLevel: 'universe',
-      selectedAlert: null,
+      signal: null, // single active signal
       currentLifeform: null,
       missionDay: Math.floor(Math.random() * 1000) + 1,
-      navigationStack: [],
-      alerts: loadOrGenerateAlerts(),
       collection: loadCollection()
     };
 
@@ -2622,7 +2746,6 @@
         if (screenId === 'universe-map') {
           initMapScreen();
         } else if (screenId === 'stasis-chamber') {
-          // Trigger resize to fix Three.js canvas dimensions
           setTimeout(() => {
             window.dispatchEvent(new Event('resize'));
           }, 50);
@@ -2630,47 +2753,636 @@
       }
     }
 
+    // ============================================
+    // CINEMATIC MAP SYSTEM
+    // ============================================
     function initMapScreen() {
-      renderAlerts();
-      initMapCanvas();
+      // Generate signal if none exists
+      if (!GameState.signal) {
+        GameState.signal = generateSignal();
+      }
+
+      // Reset to universe level
+      MapState.level = 'universe';
+      MapState.isAnimating = false;
+
+      // Generate background stars
+      MapState.stars = [];
+      for (let i = 0; i < 300; i++) {
+        MapState.stars.push({
+          x: Math.random(),
+          y: Math.random(),
+          size: Math.random() * 2 + 0.5,
+          brightness: Math.random() * 0.7 + 0.3,
+          twinkleSpeed: Math.random() * 2 + 1
+        });
+      }
+
+      // Generate planets for system view
+      MapState.planets = [];
+      const planetColors = ['#8B4513', '#CD853F', '#4169E1', '#2F4F4F', '#8B0000', '#FFD700', '#708090'];
+      for (let i = 0; i < 6; i++) {
+        MapState.planets.push({
+          orbitRadius: 80 + i * 60,
+          size: 8 + Math.random() * 20,
+          color: planetColors[Math.floor(Math.random() * planetColors.length)],
+          angle: Math.random() * Math.PI * 2,
+          speed: 0.0005 + Math.random() * 0.001,
+          name: `Planet ${i + 1}`
+        });
+      }
+
+      updateSignalNotification();
+      updateMapUI();
+      startMapAnimation();
     }
 
-    function renderAlerts() {
-      const alertsList = document.getElementById('alerts-list');
-      if (!alertsList) return;
-      alertsList.innerHTML = '';
+    function updateSignalNotification() {
+      const signal = GameState.signal;
+      if (!signal) return;
 
-      GameState.alerts.forEach(alert => {
-        const lf = alert.lifeform;
-        const alertEl = document.createElement('div');
-        alertEl.className = `alert-item ${alert.type}`;
-        alertEl.innerHTML = `
-          <div class="alert-type">${alert.type.toUpperCase()} SIGNAL</div>
-          <div class="alert-lifeform-name">${lf.name}</div>
-          <div class="alert-location">${alert.location}</div>
-          <div class="alert-coords">${alert.region} // ${alert.coords}</div>
-          <div class="alert-meta">
-            <span class="alert-status status-${alert.severity}">${lf.status}</span>
-            <span class="alert-injury">${lf.injury}</span>
-          </div>
-          <div class="alert-time">${alert.time}</div>
-        `;
-        alertEl.addEventListener('click', (e) => {
-          GameState.selectedAlert = alert;
-          document.querySelectorAll('.alert-item').forEach(el => el.classList.remove('selected'));
-          alertEl.classList.add('selected');
-        });
-        alertsList.appendChild(alertEl);
-      });
+      const notification = document.getElementById('signal-notification');
+      const typeEl = document.getElementById('signal-type');
+      const locationEl = document.getElementById('signal-location');
+      const coordsEl = document.getElementById('signal-coords');
 
-      const countEl = document.getElementById('alerts-count');
-      const activeEl = document.getElementById('stat-active');
-      const speciesEl = document.getElementById('stat-species');
+      if (!notification) return;
+
+      // Update notification content based on map level
+      notification.className = `signal-notification ${signal.type}`;
+      typeEl.textContent = `${signal.type.toUpperCase()} SIGNAL DETECTED`;
+
+      const levelNames = {
+        universe: signal.galaxy,
+        galaxy: `${signal.system} System`,
+        system: signal.planet,
+        planet: signal.region,
+        region: signal.lifeform.name
+      };
+
+      locationEl.textContent = levelNames[MapState.level] || signal.galaxy;
+
+      const coordLabels = {
+        universe: 'Click ping to investigate',
+        galaxy: 'Signal source narrowed',
+        system: 'Planetary scan required',
+        planet: 'Surface coordinates locked',
+        region: 'Lifeform located'
+      };
+
+      coordsEl.textContent = coordLabels[MapState.level];
+      notification.classList.remove('hidden');
+    }
+
+    function updateMapUI() {
+      const levelIndicator = document.getElementById('level-indicator');
+      const breadcrumb = document.getElementById('map-breadcrumb');
+      const location = document.getElementById('map-location');
+      const signal = GameState.signal;
+
+      const levelLabels = {
+        universe: 'UNIVERSE VIEW',
+        galaxy: 'GALAXY VIEW',
+        system: 'SYSTEM VIEW',
+        planet: 'PLANETARY VIEW',
+        region: 'SURFACE SCAN'
+      };
+
+      if (levelIndicator) levelIndicator.textContent = levelLabels[MapState.level];
+
+      // Build breadcrumb
+      if (breadcrumb && signal) {
+        const levels = ['universe'];
+        if (MapState.level !== 'universe') levels.push('galaxy');
+        if (['system', 'planet', 'region'].includes(MapState.level)) levels.push('system');
+        if (['planet', 'region'].includes(MapState.level)) levels.push('planet');
+        if (MapState.level === 'region') levels.push('region');
+
+        const names = {
+          universe: 'UNIVERSE',
+          galaxy: signal.galaxy.toUpperCase(),
+          system: signal.system.toUpperCase(),
+          planet: signal.planet.toUpperCase(),
+          region: signal.region.toUpperCase()
+        };
+
+        breadcrumb.innerHTML = levels.map((l, i) => {
+          const isLast = i === levels.length - 1;
+          return `<span class="crumb${isLast ? ' current' : ''}" data-level="${l}">${names[l]}</span>`;
+        }).join(' <span class="crumb-sep">›</span> ');
+      }
+
+      // Update location text
+      if (location && signal) {
+        const locationText = {
+          universe: 'SCANNING FOR SIGNALS...',
+          galaxy: `${signal.galaxy.toUpperCase()} - SIGNAL DETECTED`,
+          system: `${signal.system.toUpperCase()} SYSTEM - SCANNING`,
+          planet: `${signal.planet.toUpperCase()} - SURFACE ANALYSIS`,
+          region: `${signal.region.toUpperCase()} - LIFEFORM LOCATED`
+        };
+        location.textContent = locationText[MapState.level];
+      }
+
+      // Show deploy button only at region level
+      const deployBtn = document.getElementById('btn-deploy');
+      if (deployBtn) {
+        deployBtn.style.display = MapState.level === 'region' ? 'block' : 'none';
+      }
+
+      // Update stats
       const recoveredEl = document.getElementById('stat-recovered');
-      if (countEl) countEl.textContent = GameState.alerts.length;
-      if (activeEl) activeEl.textContent = GameState.alerts.length;
-      if (speciesEl) speciesEl.textContent = GameState.collection.length;
+      const speciesEl = document.getElementById('stat-species');
       if (recoveredEl) recoveredEl.textContent = GameState.collection.length;
+      if (speciesEl) speciesEl.textContent = GameState.collection.length;
+    }
+
+    function startMapAnimation() {
+      if (MapState.animationFrame) {
+        cancelAnimationFrame(MapState.animationFrame);
+      }
+
+      const canvas = document.getElementById('map-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      function animate() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+
+        // Clear
+        ctx.fillStyle = '#0a0a0f';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw based on level
+        switch (MapState.level) {
+          case 'universe':
+            drawUniverseView(ctx, canvas);
+            break;
+          case 'galaxy':
+            drawGalaxyView(ctx, canvas);
+            break;
+          case 'system':
+            drawSystemView(ctx, canvas);
+            break;
+          case 'planet':
+            drawPlanetView(ctx, canvas);
+            break;
+          case 'region':
+            drawRegionView(ctx, canvas);
+            break;
+        }
+
+        MapState.pingPhase += 0.05;
+        MapState.animationFrame = requestAnimationFrame(animate);
+      }
+
+      animate();
+    }
+
+    function drawStars(ctx, canvas, density = 1, parallax = 1) {
+      const time = Date.now() * 0.001;
+      MapState.stars.forEach((star, i) => {
+        if (i >= MapState.stars.length * density) return;
+        const twinkle = Math.sin(time * star.twinkleSpeed + i) * 0.3 + 0.7;
+        const alpha = star.brightness * twinkle;
+        ctx.beginPath();
+        ctx.arc(
+          star.x * canvas.width * parallax,
+          star.y * canvas.height * parallax,
+          star.size,
+          0, Math.PI * 2
+        );
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        ctx.fill();
+      });
+    }
+
+    function drawGrid(ctx, canvas, spacing = 100, opacity = 0.03) {
+      ctx.strokeStyle = `rgba(79, 209, 217, ${opacity})`;
+      ctx.lineWidth = 1;
+      for (let x = 0; x < canvas.width; x += spacing) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += spacing) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+    }
+
+    function drawPing(ctx, x, y, color, size = 40) {
+      const pulse = Math.sin(MapState.pingPhase) * 0.5 + 0.5;
+
+      // Outer glow
+      const gradient = ctx.createRadialGradient(x, y, 0, x, y, size * (1 + pulse * 0.5));
+      gradient.addColorStop(0, color.replace(')', ', 0.8)').replace('rgb', 'rgba'));
+      gradient.addColorStop(1, color.replace(')', ', 0)').replace('rgb', 'rgba'));
+      ctx.beginPath();
+      ctx.arc(x, y, size * (1 + pulse * 0.5), 0, Math.PI * 2);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      // Center dot
+      ctx.beginPath();
+      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      // Ring
+      ctx.beginPath();
+      ctx.arc(x, y, 15 + pulse * 10, 0, Math.PI * 2);
+      ctx.strokeStyle = color.replace(')', ', 0.5)').replace('rgb', 'rgba');
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    function drawTargetBox(ctx, x, y, size, color) {
+      const half = size / 2;
+      const corner = size * 0.2;
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+
+      // Top-left corner
+      ctx.beginPath();
+      ctx.moveTo(x - half, y - half + corner);
+      ctx.lineTo(x - half, y - half);
+      ctx.lineTo(x - half + corner, y - half);
+      ctx.stroke();
+
+      // Top-right corner
+      ctx.beginPath();
+      ctx.moveTo(x + half - corner, y - half);
+      ctx.lineTo(x + half, y - half);
+      ctx.lineTo(x + half, y - half + corner);
+      ctx.stroke();
+
+      // Bottom-left corner
+      ctx.beginPath();
+      ctx.moveTo(x - half, y + half - corner);
+      ctx.lineTo(x - half, y + half);
+      ctx.lineTo(x - half + corner, y + half);
+      ctx.stroke();
+
+      // Bottom-right corner
+      ctx.beginPath();
+      ctx.moveTo(x + half - corner, y + half);
+      ctx.lineTo(x + half, y + half);
+      ctx.lineTo(x + half, y + half - corner);
+      ctx.stroke();
+    }
+
+    function getSignalColor(type) {
+      const colors = {
+        crash: 'rgb(232, 90, 60)',
+        battle: 'rgb(244, 166, 42)',
+        injury: 'rgb(79, 217, 127)'
+      };
+      return colors[type] || colors.crash;
+    }
+
+    function drawUniverseView(ctx, canvas) {
+      drawStars(ctx, canvas, 0.5);
+      drawGrid(ctx, canvas, 150, 0.02);
+
+      // Draw distant galaxy clusters
+      for (let i = 0; i < 8; i++) {
+        const gx = (i % 4) * canvas.width / 4 + canvas.width / 8;
+        const gy = Math.floor(i / 4) * canvas.height / 2 + canvas.height / 4;
+        const gradient = ctx.createRadialGradient(gx, gy, 0, gx, gy, 40);
+        gradient.addColorStop(0, 'rgba(100, 120, 150, 0.3)');
+        gradient.addColorStop(1, 'rgba(100, 120, 150, 0)');
+        ctx.beginPath();
+        ctx.arc(gx, gy, 40, 0, Math.PI * 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+      }
+
+      // Signal ping with target box
+      const signal = GameState.signal;
+      if (signal) {
+        const px = signal.coords.universe.x * canvas.width;
+        const py = signal.coords.universe.y * canvas.height;
+        const color = getSignalColor(signal.type);
+
+        drawTargetBox(ctx, px, py, 120, color);
+        drawPing(ctx, px, py, color);
+      }
+    }
+
+    function drawGalaxyView(ctx, canvas) {
+      drawStars(ctx, canvas, 0.8);
+      drawGrid(ctx, canvas, 100, 0.03);
+
+      // Draw spiral galaxy shape
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      ctx.save();
+      ctx.translate(cx, cy);
+
+      for (let arm = 0; arm < 4; arm++) {
+        for (let i = 0; i < 100; i++) {
+          const angle = (arm * Math.PI / 2) + (i * 0.1);
+          const radius = 30 + i * 2;
+          const x = Math.cos(angle) * radius;
+          const y = Math.sin(angle) * radius * 0.6;
+          const size = Math.random() * 2 + 0.5;
+          ctx.beginPath();
+          ctx.arc(x, y, size, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(150, 180, 200, ${0.3 + Math.random() * 0.3})`;
+          ctx.fill();
+        }
+      }
+
+      ctx.restore();
+
+      // Signal ping
+      const signal = GameState.signal;
+      if (signal) {
+        const px = signal.coords.galaxy.x * canvas.width;
+        const py = signal.coords.galaxy.y * canvas.height;
+        const color = getSignalColor(signal.type);
+
+        drawTargetBox(ctx, px, py, 100, color);
+        drawPing(ctx, px, py, color, 35);
+      }
+    }
+
+    function drawSystemView(ctx, canvas) {
+      drawStars(ctx, canvas, 0.3);
+      drawGrid(ctx, canvas, 80, 0.02);
+
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+
+      // Draw sun
+      const sunGradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, 40);
+      sunGradient.addColorStop(0, '#FFD700');
+      sunGradient.addColorStop(0.5, '#FFA500');
+      sunGradient.addColorStop(1, 'rgba(255, 165, 0, 0)');
+      ctx.beginPath();
+      ctx.arc(cx, cy, 40, 0, Math.PI * 2);
+      ctx.fillStyle = sunGradient;
+      ctx.fill();
+
+      // Draw orbit paths and planets
+      const signal = GameState.signal;
+      const targetPlanetIndex = signal ? signal.coords.system : 2;
+
+      MapState.planets.forEach((planet, i) => {
+        // Update angle
+        planet.angle += planet.speed;
+
+        // Orbit path
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, planet.orbitRadius, planet.orbitRadius * 0.6, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(79, 209, 217, 0.1)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Planet position
+        const px = cx + Math.cos(planet.angle) * planet.orbitRadius;
+        const py = cy + Math.sin(planet.angle) * planet.orbitRadius * 0.6;
+
+        // Planet
+        ctx.beginPath();
+        ctx.arc(px, py, planet.size, 0, Math.PI * 2);
+        ctx.fillStyle = planet.color;
+        ctx.fill();
+
+        // Highlight target planet
+        if (i === targetPlanetIndex && signal) {
+          const color = getSignalColor(signal.type);
+          drawTargetBox(ctx, px, py, planet.size * 4, color);
+          drawPing(ctx, px, py, color, 30);
+        }
+      });
+    }
+
+    function drawPlanetView(ctx, canvas) {
+      drawStars(ctx, canvas, 0.2);
+
+      // Draw planet taking up lower portion
+      const planetY = canvas.height * 0.8;
+      const planetRadius = canvas.width * 0.8;
+
+      const gradient = ctx.createRadialGradient(
+        canvas.width / 2, planetY, 0,
+        canvas.width / 2, planetY, planetRadius
+      );
+      gradient.addColorStop(0, '#2a4a3a');
+      gradient.addColorStop(0.3, '#1a3a2a');
+      gradient.addColorStop(0.6, '#0a2a1a');
+      gradient.addColorStop(1, '#0a0a0f');
+
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, planetY, planetRadius, 0, Math.PI * 2);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      // Atmosphere glow
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, planetY, planetRadius + 20, Math.PI, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(79, 209, 217, 0.2)';
+      ctx.lineWidth = 30;
+      ctx.stroke();
+
+      // Grid on surface
+      drawGrid(ctx, canvas, 60, 0.04);
+
+      // Signal ping on surface
+      const signal = GameState.signal;
+      if (signal) {
+        const px = signal.coords.planet.x * canvas.width;
+        const py = canvas.height * 0.3 + signal.coords.planet.y * canvas.height * 0.4;
+        const color = getSignalColor(signal.type);
+
+        drawTargetBox(ctx, px, py, 80, color);
+        drawPing(ctx, px, py, color, 25);
+      }
+    }
+
+    function drawRegionView(ctx, canvas) {
+      // Surface view - terrain-like grid
+      const horizon = canvas.height * 0.4;
+
+      // Sky gradient
+      const skyGradient = ctx.createLinearGradient(0, 0, 0, horizon);
+      skyGradient.addColorStop(0, '#0a0a15');
+      skyGradient.addColorStop(1, '#1a2a25');
+      ctx.fillStyle = skyGradient;
+      ctx.fillRect(0, 0, canvas.width, horizon);
+
+      drawStars(ctx, canvas, 0.1);
+
+      // Ground gradient
+      const groundGradient = ctx.createLinearGradient(0, horizon, 0, canvas.height);
+      groundGradient.addColorStop(0, '#1a2a25');
+      groundGradient.addColorStop(1, '#0a1510');
+      ctx.fillStyle = groundGradient;
+      ctx.fillRect(0, horizon, canvas.width, canvas.height - horizon);
+
+      // Perspective grid
+      ctx.strokeStyle = 'rgba(79, 209, 217, 0.15)';
+      ctx.lineWidth = 1;
+
+      // Horizontal lines with perspective
+      for (let i = 0; i < 20; i++) {
+        const y = horizon + (i / 20) * (canvas.height - horizon);
+        const perspective = (i + 1) / 20;
+        ctx.globalAlpha = perspective * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      // Vertical lines converging to horizon
+      ctx.globalAlpha = 1;
+      const vanishingPoint = canvas.width / 2;
+      for (let i = -10; i <= 10; i++) {
+        const bottomX = vanishingPoint + i * 80;
+        ctx.beginPath();
+        ctx.moveTo(vanishingPoint, horizon);
+        ctx.lineTo(bottomX, canvas.height);
+        ctx.strokeStyle = 'rgba(79, 209, 217, 0.1)';
+        ctx.stroke();
+      }
+
+      // Signal ping (lifeform location)
+      const signal = GameState.signal;
+      if (signal) {
+        const px = canvas.width / 2;
+        const py = horizon + (canvas.height - horizon) * 0.4;
+        const color = getSignalColor(signal.type);
+
+        drawTargetBox(ctx, px, py, 100, color);
+        drawPing(ctx, px, py, color, 35);
+
+        // Label
+        ctx.font = '14px "Orbitron", sans-serif';
+        ctx.fillStyle = color;
+        ctx.textAlign = 'center';
+        ctx.fillText('LIFEFORM DETECTED', px, py - 70);
+        ctx.font = '12px "Share Tech Mono", monospace';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.fillText(signal.lifeform.name, px, py - 50);
+      }
+    }
+
+    // Handle map clicks for drill-down
+    function handleMapClick(e) {
+      if (MapState.isAnimating) return;
+
+      const canvas = document.getElementById('map-canvas');
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / canvas.width;
+      const y = (e.clientY - rect.top) / canvas.height;
+
+      const signal = GameState.signal;
+      if (!signal) return;
+
+      // Check if click is near the signal ping
+      let targetCoords;
+      let hitRadius = 0.15;
+
+      switch (MapState.level) {
+        case 'universe':
+          targetCoords = signal.coords.universe;
+          break;
+        case 'galaxy':
+          targetCoords = signal.coords.galaxy;
+          break;
+        case 'system':
+          // For system, check if clicking near target planet
+          const targetPlanet = MapState.planets[signal.coords.system];
+          if (targetPlanet) {
+            const cx = 0.5;
+            const cy = 0.5;
+            const px = cx + Math.cos(targetPlanet.angle) * (targetPlanet.orbitRadius / canvas.width);
+            const py = cy + Math.sin(targetPlanet.angle) * (targetPlanet.orbitRadius * 0.6 / canvas.height);
+            targetCoords = { x: px, y: py };
+            hitRadius = 0.1;
+          }
+          break;
+        case 'planet':
+          targetCoords = {
+            x: signal.coords.planet.x,
+            y: 0.3 + signal.coords.planet.y * 0.4
+          };
+          break;
+        case 'region':
+          // At region level, clicking deploys
+          if (signal.lifeform) {
+            loadLifeformIntoStasis(signal.lifeform);
+            showScreen('stasis-chamber');
+          }
+          return;
+      }
+
+      if (targetCoords) {
+        const dist = Math.sqrt(Math.pow(x - targetCoords.x, 2) + Math.pow(y - targetCoords.y, 2));
+        if (dist < hitRadius) {
+          zoomToNextLevel();
+        }
+      }
+    }
+
+    function zoomToNextLevel() {
+      const levels = ['universe', 'galaxy', 'system', 'planet', 'region'];
+      const currentIndex = levels.indexOf(MapState.level);
+
+      if (currentIndex < levels.length - 1) {
+        MapState.isAnimating = true;
+
+        // Show zoom overlay briefly
+        const overlay = document.getElementById('zoom-overlay');
+        if (overlay) {
+          overlay.classList.add('active');
+          setTimeout(() => {
+            MapState.level = levels[currentIndex + 1];
+            updateSignalNotification();
+            updateMapUI();
+            overlay.classList.remove('active');
+            MapState.isAnimating = false;
+          }, 300);
+        } else {
+          MapState.level = levels[currentIndex + 1];
+          updateSignalNotification();
+          updateMapUI();
+          MapState.isAnimating = false;
+        }
+      }
+    }
+
+    function zoomToPreviousLevel() {
+      const levels = ['universe', 'galaxy', 'system', 'planet', 'region'];
+      const currentIndex = levels.indexOf(MapState.level);
+
+      if (currentIndex > 0) {
+        MapState.isAnimating = true;
+        const overlay = document.getElementById('zoom-overlay');
+        if (overlay) {
+          overlay.classList.add('active');
+          setTimeout(() => {
+            MapState.level = levels[currentIndex - 1];
+            updateSignalNotification();
+            updateMapUI();
+            overlay.classList.remove('active');
+            MapState.isAnimating = false;
+          }, 300);
+        } else {
+          MapState.level = levels[currentIndex - 1];
+          updateSignalNotification();
+          updateMapUI();
+          MapState.isAnimating = false;
+        }
+      }
     }
 
     // Load lifeform data into stasis chamber panel
@@ -2723,8 +3435,8 @@
         saveCollection(GameState.collection);
       }
 
-      // Remove from alerts
-      GameState.alerts = GameState.alerts.filter(a => a.lifeform.id !== lifeform.id || a.lifeform.designation !== lifeform.designation);
+      // Clear current signal and generate new one
+      GameState.signal = null;
 
       // Update status
       const statusEl = document.getElementById('patient-exam-date');
@@ -2736,79 +3448,7 @@
       console.log(`Recovered: ${lifeform.name} (${lifeform.designation})`);
     }
 
-    function initMapCanvas() {
-      const canvas = document.getElementById('map-canvas');
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-
-      canvas.width = canvas.parentElement.clientWidth;
-      canvas.height = canvas.parentElement.clientHeight;
-
-      ctx.fillStyle = '#0a0a0f';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Stars
-      for (let i = 0; i < 200; i++) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        const radius = Math.random() * 1.5;
-        const opacity = Math.random() * 0.8 + 0.2;
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
-        ctx.fill();
-      }
-
-      // Alert markers
-      GameState.alerts.forEach((alert, i) => {
-        const x = 200 + i * 250 + Math.random() * 100;
-        const y = 150 + Math.random() * (canvas.height - 300);
-
-        const gradient = ctx.createRadialGradient(x, y, 0, x, y, 30);
-        if (alert.type === 'crash') {
-          gradient.addColorStop(0, 'rgba(232, 90, 60, 0.8)');
-          gradient.addColorStop(1, 'rgba(232, 90, 60, 0)');
-        } else if (alert.type === 'battle') {
-          gradient.addColorStop(0, 'rgba(244, 166, 42, 0.8)');
-          gradient.addColorStop(1, 'rgba(244, 166, 42, 0)');
-        } else {
-          gradient.addColorStop(0, 'rgba(79, 217, 127, 0.8)');
-          gradient.addColorStop(1, 'rgba(79, 217, 127, 0)');
-        }
-
-        ctx.beginPath();
-        ctx.arc(x, y, 30, 0, Math.PI * 2);
-        ctx.fillStyle = gradient;
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(x, y, 6, 0, Math.PI * 2);
-        ctx.fillStyle = alert.type === 'crash' ? '#e85a3c' : alert.type === 'battle' ? '#f4a62a' : '#4fd97f';
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(x, y, 15, 0, Math.PI * 2);
-        ctx.strokeStyle = alert.type === 'crash' ? 'rgba(232, 90, 60, 0.5)' : alert.type === 'battle' ? 'rgba(244, 166, 42, 0.5)' : 'rgba(79, 217, 127, 0.5)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      });
-
-      // Grid
-      ctx.strokeStyle = 'rgba(79, 209, 217, 0.05)';
-      ctx.lineWidth = 1;
-      for (let x = 0; x < canvas.width; x += 100) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-      }
-      for (let y = 0; y < canvas.height; y += 100) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-      }
-    }
+    // Old initMapCanvas removed - now using cinematic map system above
 
     function updateSystemTime() {
       const now = new Date();
@@ -2829,30 +3469,39 @@
       document.getElementById('btn-collection')?.addEventListener('click', () => console.log('Collection Archive - Coming Soon'));
       document.getElementById('btn-stasis-direct')?.addEventListener('click', () => showScreen('stasis-chamber'));
 
-      // Map screen
+      // Map screen - back button navigates up levels
       document.getElementById('map-back-btn')?.addEventListener('click', () => {
-        if (GameState.mapLevel === 'universe') {
+        if (MapState.level === 'universe') {
           showScreen('main-menu');
         } else {
-          GameState.mapLevel = 'universe';
-          initMapScreen();
+          zoomToPreviousLevel();
         }
       });
 
+      // Map canvas click handler for drill-down
+      document.getElementById('map-canvas')?.addEventListener('click', handleMapClick);
+
+      // Signal notification click - zoom to next level
+      document.getElementById('signal-notification')?.addEventListener('click', () => {
+        if (MapState.level !== 'region') {
+          zoomToNextLevel();
+        }
+      });
+
+      // Deploy button - only visible at region level
       document.getElementById('btn-deploy')?.addEventListener('click', () => {
-        if (GameState.selectedAlert && GameState.selectedAlert.lifeform) {
-          loadLifeformIntoStasis(GameState.selectedAlert.lifeform);
+        if (GameState.signal && GameState.signal.lifeform) {
+          loadLifeformIntoStasis(GameState.signal.lifeform);
+          showScreen('stasis-chamber');
         }
-        showScreen('stasis-chamber');
       });
 
-      // Stasis exit
+      // Stasis exit - go back to map
       document.getElementById('stasis-exit-btn')?.addEventListener('click', () => showScreen('universe-map'));
 
+      // Handle resize
       window.addEventListener('resize', () => {
-        if (GameState.currentScreen === 'universe-map') {
-          initMapCanvas();
-        }
+        // Map animation handles its own resize
       });
     });
   </script>
