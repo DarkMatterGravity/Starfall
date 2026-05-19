@@ -265,6 +265,37 @@ Risk: Aggression spike under heat stress
 - [ ] Evolution paths
 - [ ] Deployment missions
 
+## Git Repository
+
+- **Repo:** https://github.com/DarkMatterGravity/Starfall
+- **Live Site:** https://darkmattergravity.github.io/Starfall/
+- **Visibility:** Public (for GitHub Pages)
+- **LFS:** Tracks `*.fbx` and `*.glb` files
+
+## Deployment
+
+Push to `master` branch auto-deploys to GitHub Pages.
+
+```bash
+git add .
+git commit -m "Update message"
+git push origin master
+```
+
 ## Origin
 
-Starfall is a game project built from the Journey codebase (medical visualization app). Journey remains untouched at its original location. This is a separate creative project exploring the "galactic creature rescue" concept.
+Starfall is a game project built from the Journey codebase (medical visualization app). Journey remains untouched at `C:\Users\mattl\Documents\Journey`. This is a separate creative project exploring the "galactic creature rescue" concept.
+
+## Reference Materials
+
+Concept documents located at:
+- `C:\Users\mattl\Downloads\Starfall_Extraction_Concept_v2.pdf`
+- UI Reference images: `C:\Users\mattl\Downloads\reference\` (Oblivion FUI screenshots)
+
+## Key Design Decisions
+
+1. **Not a creature battler** - This is "rescue collector + care sim + tactical deployment"
+2. **Combat is secondary** - Only as simulation/training, not the main loop
+3. **Oblivion UI style** - Cold, minimal, data-driven interface
+4. **CreatureBox art style** - For lifeforms: painterly, exaggerated, colorful
+5. **Terminology matters** - Never "aliens", always clinical then personal names
