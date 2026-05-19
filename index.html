@@ -450,6 +450,56 @@
       margin-top: 4px;
     }
 
+    .alert-lifeform-name {
+      font-family: var(--sf-font-display);
+      font-size: 15px;
+      color: var(--sf-text);
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .alert-meta {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+      font-size: 11px;
+    }
+
+    .alert-status {
+      padding: 2px 8px;
+      border-radius: 2px;
+      font-family: var(--sf-font-display);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .status-critical {
+      background: rgba(232, 90, 60, 0.2);
+      color: var(--sf-alert);
+      border: 1px solid var(--sf-alert);
+    }
+
+    .status-high {
+      background: rgba(245, 166, 35, 0.2);
+      color: var(--sf-warning);
+      border: 1px solid var(--sf-warning);
+    }
+
+    .status-moderate {
+      background: rgba(79, 209, 217, 0.2);
+      color: var(--sf-primary);
+      border: 1px solid var(--sf-primary);
+    }
+
+    .alert-injury {
+      color: var(--sf-text-dim);
+    }
+
+    .alert-item.selected {
+      background: rgba(79, 209, 217, 0.15);
+      border-left-width: 4px;
+    }
+
     /* Map footer */
     .map-footer {
       position: fixed;
@@ -938,6 +988,18 @@
       color: #B8CFCE;
       text-align: right;
       word-break: break-word;
+    }
+    .patient-info-value.status-critical {
+      color: var(--sf-alert);
+    }
+    .patient-info-value.status-high {
+      color: var(--sf-warning);
+    }
+    .patient-info-value.status-moderate {
+      color: var(--sf-primary);
+    }
+    .patient-info-value.status-recovered {
+      color: var(--sf-success);
     }
     #add-report-btn {
       width: 100%;
@@ -2334,43 +2396,217 @@
        ============================================ -->
   <script>
     // ============================================
+    // LIFEFORM GENERATOR
+    // ============================================
+    const LifeformGenerator = {
+      // Name components
+      prefixes: ['Gor', 'Zyx', 'Thar', 'Vel', 'Krix', 'Morn', 'Xel', 'Quar', 'Brak', 'Vorn', 'Nex', 'Plix', 'Draz', 'Skel', 'Yith', 'Crul', 'Jex', 'Rax', 'Fenn', 'Glim'],
+      suffixes: ['ak', 'ion', 'us', 'ax', 'or', 'ith', 'ex', 'ul', 'an', 'os', 'ir', 'eth', 'ix', 'om', 'ar', 'un', 'ek', 'ol', 'yn', 'az'],
+      titles: ['the Crusher', 'the Silent', 'the Ancient', 'the Wanderer', 'the Lost', 'the Forgotten', 'the Eternal', 'the Broken', 'the Swift', 'the Mighty', 'the Last', 'the First', 'the Dreamer', 'the Watcher', 'the Hollow', 'the Burned', 'the Cold', 'the Radiant', '', '', '', ''],
+
+      // Location components
+      galaxies: ['Andromeda Reach', 'Varnax Cluster', 'Outer Rim', 'Nexus Expanse', 'Void Territories', 'Crimson Nebula', 'Shattered Arm', 'Deep Core', 'Forgotten Sector', 'Binary Reach'],
+      systems: ['Theron', 'Kethis', 'Brakka', 'Nexor', 'Valis', 'Zenthar', 'Korrus', 'Mythax', 'Pyrion', 'Crylos', 'Delvax', 'Orix', 'Solvan', 'Umbrix', 'Zephon'],
+      planets: ['Prime', 'VII', 'IX', 'Alpha', 'Beta', 'Minor', 'Major', 'Outpost', 'Station', 'Colony', 'Secundus', 'Tertius', 'Omega', 'Delta', 'Sigma'],
+      regions: ['Ash Belt', 'Northern Wastes', 'Crystal Caverns', 'Molten Fields', 'Ice Flats', 'Toxic Marshes', 'Radiation Zone', 'Impact Crater', 'Ancient Ruins', 'Drift Sector', 'Storm Valley', 'Dead Zone', 'Fungal Forest', 'Glass Desert', 'Bone Fields'],
+
+      // Traits
+      traitPool: [
+        'Heavy', 'Lightweight', 'Armored', 'Fragile', 'Radiation-Resistant', 'Heat-Resistant', 'Cold-Adapted',
+        'Aggressive', 'Docile', 'Territorial', 'Social', 'Solitary', 'Nocturnal', 'Bioluminescent',
+        'Psychic', 'Telepathic', 'Regenerative', 'Venomous', 'Camouflaged', 'Amphibious', 'Aquatic',
+        'Airborne', 'Burrowing', 'Parasitic', 'Symbiotic', 'Photosynthetic', 'Silicon-Based', 'Crystalline',
+        'Electromagnetic', 'Phase-Shifting', 'Multi-Limbed', 'Tentacled', 'Winged', 'Chitinous', 'Scaled',
+        'Furred', 'Translucent', 'Massive', 'Microscopic', 'Hive-Mind', 'Ancient', 'Juvenile', 'Elder'
+      ],
+
+      // Injury types by alert type
+      injuries: {
+        crash: ['Crash Trauma', 'Impact Fractures', 'Decompression Damage', 'Shrapnel Wounds', 'Burn Trauma', 'Concussive Injury', 'Hull Breach Exposure', 'Cryo-System Failure'],
+        battle: ['Combat Wounds', 'Energy Burns', 'Projectile Damage', 'Blade Lacerations', 'Plasma Scarring', 'Neural Disruption', 'Limb Severance', 'Chemical Burns'],
+        injury: ['Environmental Exposure', 'Toxic Contamination', 'Radiation Sickness', 'Parasitic Infection', 'Starvation', 'Dehydration', 'Predator Attack', 'Disease', 'Unknown Pathogen']
+      },
+
+      // Age formats
+      generateAge() {
+        const formats = [
+          () => 'Unknown',
+          () => 'Unknown',
+          () => `~${Math.floor(Math.random() * 500) + 20} cycles`,
+          () => `${Math.floor(Math.random() * 200) + 10} years`,
+          () => `Est. ${Math.floor(Math.random() * 1000) + 100} years`,
+          () => `~${(Math.random() * 50 + 1).toFixed(1)} million years`,
+          () => `${Math.floor(Math.random() * 10000) + 500} cycles`,
+          () => 'Ancient',
+          () => 'Indeterminate',
+          () => `${Math.floor(Math.random() * 50) + 5} local years`,
+          () => 'Juvenile',
+          () => 'Elder',
+          () => `>${Math.floor(Math.random() * 100) + 10},000 years`
+        ];
+        return formats[Math.floor(Math.random() * formats.length)]();
+      },
+
+      // Generate a unique designation
+      generateDesignation(id) {
+        const types = ['INDIGENOUS LIFEFORM', 'UNCLASSIFIED ENTITY', 'SIGNAL-LINKED LIFEFORM', 'BIOLOGICAL SPECIMEN', 'RECOVERED SUBJECT'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        const suffix = String.fromCharCode(65 + Math.floor(Math.random() * 26)); // A-Z
+        return `${type} ${id}-${suffix}`;
+      },
+
+      // Generate a name
+      generateName() {
+        const prefix = this.prefixes[Math.floor(Math.random() * this.prefixes.length)];
+        const suffix = this.suffixes[Math.floor(Math.random() * this.suffixes.length)];
+        const title = this.titles[Math.floor(Math.random() * this.titles.length)];
+        const name = prefix + suffix;
+        return title ? `${name} ${title}` : name;
+      },
+
+      // Generate origin location
+      generateOrigin() {
+        const galaxy = this.galaxies[Math.floor(Math.random() * this.galaxies.length)];
+        const system = this.systems[Math.floor(Math.random() * this.systems.length)];
+        const planet = this.planets[Math.floor(Math.random() * this.planets.length)];
+        const region = this.regions[Math.floor(Math.random() * this.regions.length)];
+        return {
+          full: `${galaxy} / ${system}-${planet}`,
+          galaxy,
+          system: `${system}-${planet}`,
+          region,
+          coords: `${(Math.random() * 180 - 90).toFixed(3)}, ${(Math.random() * 360 - 180).toFixed(3)}`
+        };
+      },
+
+      // Generate traits (2-4 traits)
+      generateTraits() {
+        const count = Math.floor(Math.random() * 3) + 2;
+        const shuffled = [...this.traitPool].sort(() => Math.random() - 0.5);
+        return shuffled.slice(0, count);
+      },
+
+      // Generate injury based on alert type
+      generateInjury(alertType) {
+        const injuries = this.injuries[alertType] || this.injuries.injury;
+        return injuries[Math.floor(Math.random() * injuries.length)];
+      },
+
+      // Generate status based on severity
+      generateStatus(severity) {
+        const statusMap = {
+          critical: ['Critical', 'Failing', 'Terminal', 'Unstable'],
+          high: ['Serious', 'Declining', 'Unstable', 'Guarded'],
+          moderate: ['Stable', 'Recovering', 'Guarded', 'Fair'],
+          low: ['Stable', 'Good', 'Recovering', 'Minor Injuries']
+        };
+        const options = statusMap[severity] || statusMap.moderate;
+        return options[Math.floor(Math.random() * options.length)];
+      },
+
+      // Generate time since signal
+      generateTime() {
+        const times = [
+          `${Math.floor(Math.random() * 12) + 1} cycles ago`,
+          `${Math.floor(Math.random() * 48) + 1} hours ago`,
+          `${Math.floor(Math.random() * 30) + 1} days ago`,
+          'Just detected',
+          'Signal fading',
+          `~${Math.floor(Math.random() * 6) + 1} rotations ago`
+        ];
+        return times[Math.floor(Math.random() * times.length)];
+      },
+
+      // Generate a complete lifeform
+      generate(id, alertType = 'crash', severity = 'moderate') {
+        const origin = this.generateOrigin();
+        return {
+          id,
+          designation: this.generateDesignation(id),
+          name: this.generateName(),
+          age: this.generateAge(),
+          origin,
+          location: origin.full,
+          region: origin.region,
+          coords: origin.coords,
+          traits: this.generateTraits(),
+          injury: this.generateInjury(alertType),
+          status: this.generateStatus(severity),
+          alertType,
+          severity,
+          time: this.generateTime(),
+          recovered: false,
+          recoveredDate: null
+        };
+      },
+
+      // Generate an alert with attached lifeform
+      generateAlert(id) {
+        const types = ['crash', 'crash', 'battle', 'injury', 'injury'];
+        const severities = ['critical', 'high', 'moderate', 'moderate', 'low'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        const severity = severities[Math.floor(Math.random() * severities.length)];
+
+        const lifeform = this.generate(id, type, severity);
+
+        return {
+          id,
+          type,
+          severity,
+          location: lifeform.location,
+          region: lifeform.region,
+          coords: lifeform.coords,
+          time: lifeform.time,
+          lifeform
+        };
+      }
+    };
+
+    // ============================================
     // GAME STATE & SCREEN MANAGEMENT
     // ============================================
+    const COLLECTION_KEY = 'starfall_collection';
+    const ALERTS_KEY = 'starfall_alerts';
+
+    // Load or generate alerts
+    function loadOrGenerateAlerts() {
+      // Always generate fresh alerts for now (can add persistence later)
+      const alerts = [];
+      const alertCount = Math.floor(Math.random() * 4) + 3; // 3-6 alerts
+      for (let i = 1; i <= alertCount; i++) {
+        alerts.push(LifeformGenerator.generateAlert(i));
+      }
+      return alerts;
+    }
+
+    // Load collection from storage
+    function loadCollection() {
+      try {
+        const saved = localStorage.getItem(COLLECTION_KEY);
+        return saved ? JSON.parse(saved) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    // Save collection to storage
+    function saveCollection(collection) {
+      try {
+        localStorage.setItem(COLLECTION_KEY, JSON.stringify(collection));
+      } catch (e) {
+        console.error('Failed to save collection:', e);
+      }
+    }
+
     const GameState = {
       currentScreen: 'main-menu',
       mapLevel: 'universe',
       selectedAlert: null,
-      missionDay: 1,
+      currentLifeform: null,
+      missionDay: Math.floor(Math.random() * 1000) + 1,
       navigationStack: [],
-      alerts: [
-        {
-          id: 1,
-          type: 'crash',
-          location: 'Varnax System / Brakka-9',
-          region: 'Ash Belt',
-          coords: '47.234, -122.891',
-          time: '2 cycles ago',
-          severity: 'critical'
-        },
-        {
-          id: 2,
-          type: 'battle',
-          location: 'Nexus Cluster / Theron-7',
-          region: 'Northern Wastes',
-          coords: '12.567, 89.234',
-          time: '5 cycles ago',
-          severity: 'high'
-        },
-        {
-          id: 3,
-          type: 'injury',
-          location: 'Outer Rim / Kethis Prime',
-          region: 'Crystal Caverns',
-          coords: '-34.891, 156.432',
-          time: '8 cycles ago',
-          severity: 'moderate'
-        }
-      ]
+      alerts: loadOrGenerateAlerts(),
+      collection: loadCollection()
     };
 
     function showScreen(screenId) {
@@ -2405,26 +2641,99 @@
       alertsList.innerHTML = '';
 
       GameState.alerts.forEach(alert => {
+        const lf = alert.lifeform;
         const alertEl = document.createElement('div');
         alertEl.className = `alert-item ${alert.type}`;
         alertEl.innerHTML = `
-          <div class="alert-type">${alert.type.toUpperCase()} DETECTED</div>
+          <div class="alert-type">${alert.type.toUpperCase()} SIGNAL</div>
+          <div class="alert-lifeform-name">${lf.name}</div>
           <div class="alert-location">${alert.location}</div>
           <div class="alert-coords">${alert.region} // ${alert.coords}</div>
+          <div class="alert-meta">
+            <span class="alert-status status-${alert.severity}">${lf.status}</span>
+            <span class="alert-injury">${lf.injury}</span>
+          </div>
           <div class="alert-time">${alert.time}</div>
         `;
         alertEl.addEventListener('click', (e) => {
           GameState.selectedAlert = alert;
-          document.querySelectorAll('.alert-item').forEach(el => el.style.background = '');
-          alertEl.style.background = 'rgba(79, 209, 217, 0.15)';
+          document.querySelectorAll('.alert-item').forEach(el => el.classList.remove('selected'));
+          alertEl.classList.add('selected');
         });
         alertsList.appendChild(alertEl);
       });
 
       const countEl = document.getElementById('alerts-count');
       const activeEl = document.getElementById('stat-active');
+      const speciesEl = document.getElementById('stat-species');
+      const recoveredEl = document.getElementById('stat-recovered');
       if (countEl) countEl.textContent = GameState.alerts.length;
       if (activeEl) activeEl.textContent = GameState.alerts.length;
+      if (speciesEl) speciesEl.textContent = GameState.collection.length;
+      if (recoveredEl) recoveredEl.textContent = GameState.collection.length;
+    }
+
+    // Load lifeform data into stasis chamber panel
+    function loadLifeformIntoStasis(lifeform) {
+      GameState.currentLifeform = lifeform;
+
+      // Update designation
+      const designationEl = document.getElementById('lifeform-designation');
+      if (designationEl) designationEl.textContent = lifeform.designation;
+
+      // Update name
+      const nameEl = document.getElementById('subject-name');
+      if (nameEl) nameEl.textContent = lifeform.name;
+
+      // Update info fields
+      const ageEl = document.getElementById('patient-dob');
+      if (ageEl) ageEl.textContent = lifeform.age;
+
+      const statusEl = document.getElementById('patient-exam-date');
+      if (statusEl) {
+        statusEl.textContent = lifeform.status;
+        statusEl.className = 'patient-info-value status-' + lifeform.severity;
+      }
+
+      const priorScanEl = document.getElementById('patient-prior-exam');
+      if (priorScanEl) priorScanEl.textContent = lifeform.recovered ? 'Previous scan on file' : 'First Contact';
+
+      const injuryEl = document.getElementById('patient-scan-type');
+      if (injuryEl) injuryEl.textContent = lifeform.injury;
+
+      const originEl = document.getElementById('patient-hospital');
+      if (originEl) originEl.textContent = lifeform.origin.full;
+
+      const traitsEl = document.getElementById('patient-physician');
+      if (traitsEl) traitsEl.textContent = lifeform.traits.join(', ');
+    }
+
+    // Recover/save lifeform to collection
+    function recoverLifeform() {
+      if (!GameState.currentLifeform) return;
+
+      const lifeform = GameState.currentLifeform;
+      lifeform.recovered = true;
+      lifeform.recoveredDate = new Date().toISOString();
+
+      // Add to collection if not already there
+      const exists = GameState.collection.find(lf => lf.id === lifeform.id && lf.designation === lifeform.designation);
+      if (!exists) {
+        GameState.collection.push(lifeform);
+        saveCollection(GameState.collection);
+      }
+
+      // Remove from alerts
+      GameState.alerts = GameState.alerts.filter(a => a.lifeform.id !== lifeform.id || a.lifeform.designation !== lifeform.designation);
+
+      // Update status
+      const statusEl = document.getElementById('patient-exam-date');
+      if (statusEl) {
+        statusEl.textContent = 'Stable - Recovered';
+        statusEl.className = 'patient-info-value status-recovered';
+      }
+
+      console.log(`Recovered: ${lifeform.name} (${lifeform.designation})`);
     }
 
     function initMapCanvas() {
@@ -2531,6 +2840,9 @@
       });
 
       document.getElementById('btn-deploy')?.addEventListener('click', () => {
+        if (GameState.selectedAlert && GameState.selectedAlert.lifeform) {
+          loadLifeformIntoStasis(GameState.selectedAlert.lifeform);
+        }
         showScreen('stasis-chamber');
       });
 
