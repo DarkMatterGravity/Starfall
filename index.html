@@ -695,9 +695,7 @@
     /* ============================================
        JOURNEY LEGACY STYLES (All original styles)
        ============================================ */
-    #stasis-chamber {
-      background: transparent;
-    }
+    /* stasis-chamber has no background - Three.js provides it */
     /* Dying state - red flashing */
     #stasis-chamber.dying {
       animation: dyingFlash 0.5s ease-in-out infinite;
@@ -750,13 +748,11 @@
       50% { opacity: 0.5; }
     }
     #three-canvas {
-      position: absolute;
+      position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      z-index: 0;
-      background: #ff00ff; /* DEBUG: magenta to verify canvas visibility */
     }
     #tumor-size-menu {
       display: none;
@@ -2585,7 +2581,7 @@
     <!-- Tumor Size Menu -->
     <div id="tumor-size-menu">
       <label>Tumor Size (mm)</label>
-      <input type="number" id="tumor-size-input-menu" min="0" max="70" value="25" />
+      <input type="number" id="tumor-size-input" min="0" max="70" value="25" />
       <div class="hint">Tiny: 1mm &bull; Marble: 15mm &bull; Max: 70mm</div>
       <button id="tumor-size-ok">OK</button>
     </div>
