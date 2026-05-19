@@ -834,6 +834,16 @@
     #patient-info-panel ::-webkit-scrollbar-thumb:hover {
       background: rgba(95, 123, 122, 0.7);
     }
+    .lifeform-designation {
+      font-family: var(--sf-font-mono), 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: rgba(79, 209, 217, 0.7);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(79, 209, 217, 0.2);
+    }
     .patient-header-row {
       display: flex;
       align-items: center;
@@ -2033,9 +2043,9 @@
       <div id="med-toggles"></div>
     </div>
 
-    <!-- Tumor Creator Panel -->
+    <!-- Injury Marker Panel -->
     <div id="tumor-creator" class="draggable-panel">
-      <div class="tumor-creator-header drag-handle"><span class="drag-indicator">&#8942;&#8942;</span>CREATE TUMOR</div>
+      <div class="tumor-creator-header drag-handle"><span class="drag-indicator">&#8942;&#8942;</span>MARK INJURY</div>
       <div id="tumor-2d"></div>
       <div class="tumor-size-display"><span id="tumor-size-value">25</span> mm</div>
       <div class="tumor-drag-hint">Drag to body to place</div>
@@ -2078,52 +2088,53 @@
     <!-- Upload Panel -->
     <div id="upload-panel">
       <label id="upload-btn" for="report-upload">
-        <span id="upload-icon">&#128196;</span>
-        Upload Radiology Report
+        <span id="upload-icon">&#128225;</span>
+        Import Scan Data
       </label>
       <input type="file" id="report-upload" accept="image/*,.pdf" />
       <div id="upload-status"></div>
     </div>
 
-    <!-- Patient Info Panel -->
+    <!-- Lifeform Info Panel -->
     <div id="patient-info-panel" class="draggable-panel">
       <div class="drag-handle"><span class="drag-indicator">&#8942;&#8942;</span></div>
+      <div class="lifeform-designation" id="lifeform-designation">INDIGENOUS LIFEFORM 67-A</div>
       <div class="patient-header-row">
-        <span id="subject-name" contenteditable="true" spellcheck="false">Subject 1</span>
+        <span id="subject-name" contenteditable="true" spellcheck="false">Unidentified</span>
         <span id="subject-arrow">&#9660;</span>
       </div>
       <div id="subject-menu">
-        <div class="subject-menu-item create-new" id="create-subject-btn">+ New Patient</div>
+        <div class="subject-menu-item create-new" id="create-subject-btn">+ New Lifeform</div>
         <div id="subject-list"></div>
       </div>
       <div id="patient-info-details">
         <div class="patient-info-row">
-          <span class="patient-info-label">DOB</span>
-          <span class="patient-info-value" id="patient-dob">--</span>
+          <span class="patient-info-label">Age</span>
+          <span class="patient-info-value" id="patient-dob">Unknown</span>
         </div>
         <div class="patient-info-row">
-          <span class="patient-info-label">Exam Date</span>
-          <span class="patient-info-value" id="patient-exam-date">--</span>
+          <span class="patient-info-label">Status</span>
+          <span class="patient-info-value" id="patient-exam-date">Critical</span>
         </div>
-        <div class="patient-info-row" id="prior-exam-row" style="display: none;">
-          <span class="patient-info-label">Prior Exam</span>
-          <span class="patient-info-value" id="patient-prior-exam">--</span>
-        </div>
-        <div class="patient-info-row">
-          <span class="patient-info-label">Scan Type</span>
-          <span class="patient-info-value" id="patient-scan-type">--</span>
+        <div class="patient-info-row" id="prior-exam-row">
+          <span class="patient-info-label">Prior Scan</span>
+          <span class="patient-info-value" id="patient-prior-exam">First Contact</span>
         </div>
         <div class="patient-info-row">
-          <span class="patient-info-label">Hospital</span>
-          <span class="patient-info-value" id="patient-hospital">--</span>
+          <span class="patient-info-label">Injury</span>
+          <span class="patient-info-value" id="patient-scan-type">Crash Trauma</span>
         </div>
         <div class="patient-info-row">
-          <span class="patient-info-label">Physician</span>
+          <span class="patient-info-label">Origin</span>
+          <span class="patient-info-value" id="patient-hospital">Unknown Sector</span>
+        </div>
+        <div class="patient-info-row">
+          <span class="patient-info-label">Traits</span>
           <span class="patient-info-value" id="patient-physician">--</span>
         </div>
       </div>
-      <button id="add-report-btn">Add Report to Patient</button>
-      <button id="delete-patient-btn">Delete Patient</button>
+      <button id="add-report-btn">Add Scan Data</button>
+      <button id="delete-patient-btn">Release Specimen</button>
     </div>
 
     <!-- Spider Plot Panel -->
@@ -2290,23 +2301,23 @@
       <button id="tumor-size-ok">OK</button>
     </div>
 
-    <!-- Tumor Info Dialog -->
+    <!-- Injury Info Dialog -->
     <div id="tumor-info-dialog">
       <div class="tumor-info-header">
-        <span id="tumor-info-region">Brain</span>
+        <span id="tumor-info-region">Damage Site</span>
         <button id="tumor-info-close">&times;</button>
       </div>
       <div class="tumor-info-size"><span id="tumor-info-mm">25</span> mm</div>
-      <div class="tumor-info-pdl1">PD-L1: <span id="tumor-info-pdl1-value">--</span></div>
-      <div class="tumor-info-temp">Immune: <span id="tumor-info-temp-value">--</span></div>
-      <button id="tumor-info-delete">Surgically Remove</button>
+      <div class="tumor-info-pdl1">Severity: <span id="tumor-info-pdl1-value">--</span></div>
+      <div class="tumor-info-temp">Type: <span id="tumor-info-temp-value">--</span></div>
+      <button id="tumor-info-delete">Treat Injury</button>
     </div>
 
     <!-- Confirmation Modal -->
     <div id="confirm-modal" class="modal-overlay">
       <div class="modal-content">
-        <div class="modal-title">Delete Patient</div>
-        <div class="modal-message" id="confirm-message">Are you sure you want to delete this patient?</div>
+        <div class="modal-title">Release Specimen</div>
+        <div class="modal-message" id="confirm-message">Are you sure you want to release this lifeform from stasis?</div>
         <div class="modal-buttons">
           <button class="modal-btn modal-btn-cancel" id="confirm-cancel">Cancel</button>
           <button class="modal-btn modal-btn-confirm" id="confirm-delete">Delete</button>
