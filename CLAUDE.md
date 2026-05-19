@@ -397,8 +397,11 @@ Drag treatments onto injury sites to apply.
 - [ ] Treatment drag-and-drop functionality
 - [ ] Treatment effects (shrink injuries, halt growth)
 - [ ] Real-time injury growth (instead of simulated timeline)
-- [ ] Death mechanics (injury burden threshold → death)
-- [ ] Dying animations (panels flash red when critical)
+- [x] Treatment drag-and-drop functionality
+- [x] Treatment effects (shrink injuries, halt growth)
+- [x] Real-time injury growth (every 2 seconds)
+- [x] Death mechanics (250mm burden → 10s → death)
+- [x] Dying animations (red flashing panels)
 - [ ] Extraction mission (top-down drone gameplay)
 - [ ] Lifeform 3D models (replace human body placeholder)
 - [ ] Animation state machine with blending
@@ -416,6 +419,34 @@ Drag treatments onto injury sites to apply.
 - [ ] Planet surface images/meshes
 - [ ] Evolution paths
 - [ ] Deployment missions
+
+## Death Mechanics
+
+**Injury Burden Thresholds:**
+| Burden (mm) | Status | Effect |
+|-------------|--------|--------|
+| < 105 | Stable | Normal operation |
+| 105-150 | Serious | Warning status |
+| 150-250 | Critical | Red status indicator |
+| 250+ | Dying | 10 second countdown, red flashing |
+| 250+ for 10s | Dead | "SPECIMEN LOST", grayscale filter |
+
+**Injury Growth:**
+- Injuries grow every 2 seconds based on growth rate
+- Tumors: 1.5-3.0x growth rate (aggressive)
+- Wounds: 0.5-1.5x growth rate (slower)
+- Parasites: 2.0-4.0x growth rate (fast)
+- Tumors/parasites can spread to new organs
+
+**Treatment Effectiveness:**
+| Treatment | Tumors | Wounds | Parasites |
+|-----------|--------|--------|-----------|
+| Nanobots | 100% | 30% | 50% |
+| Bio-Foam | 30% | 100% | 30% |
+| Anti-Parasitic | 20% | 20% | 100% |
+| Stasis Field | 70% | 70% | 70% |
+
+*Effectiveness = percentage of injury size that gets removed*
 
 ## Git Repository
 
