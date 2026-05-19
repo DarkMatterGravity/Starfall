@@ -696,7 +696,7 @@
        JOURNEY LEGACY STYLES (All original styles)
        ============================================ */
     #stasis-chamber {
-      background: linear-gradient(to bottom, #8EA1A0 0%, #141A22 100%);
+      background: transparent;
     }
     /* Dying state - red flashing */
     #stasis-chamber.dying {
@@ -750,11 +750,13 @@
       50% { opacity: 0.5; }
     }
     #three-canvas {
-      position: fixed;
+      position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
+      z-index: 0;
+      background: #ff00ff; /* DEBUG: magenta to verify canvas visibility */
     }
     #tumor-size-menu {
       display: none;
