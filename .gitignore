@@ -17,3 +17,6 @@ nul
 
 # Claude local files
 .claude/
+
+# Deploy temp files
+.deploy-temp/
