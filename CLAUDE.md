@@ -450,31 +450,21 @@ Drag treatments onto injury sites to apply.
 
 ## Git Repository
 
-- **Repo:** https://github.com/DarkMatterGravity/Starfall (private, source)
-- **Public Repo:** https://github.com/DarkMatterGravity/Journey-app (encrypted deploy)
-- **Live Site:** https://darkmattergravity.github.io/Journey-app/
-- **Password:** `DrToppGear` (Staticrypt AES-256)
+- **Repo:** https://github.com/DarkMatterGravity/Starfall
+- **Live Site:** https://darkmattergravity.github.io/Starfall/
+- **Visibility:** Public (no password)
 - **Note:** No Git LFS - GitHub Pages doesn't serve LFS files correctly
 
 ## Deployment
 
-Uses `deploy.ps1` script to encrypt and push to public repo:
+Starfall deploys directly from GitHub Pages (master branch). Just push to deploy:
 
 ```bash
-# Commit to private repo first
 git add .
 git commit -m "Update message"
 git push origin master
-
-# Then deploy (encrypts with Staticrypt, pushes to Journey-app)
-powershell -File deploy.ps1
+# GitHub Pages auto-deploys from master branch
 ```
-
-The script:
-1. Copies files to `.deploy-temp/`
-2. Encrypts `index.html` with Staticrypt
-3. Force pushes to `Journey-app` repo
-4. GitHub Pages serves the encrypted site
 
 ## Origin
 
