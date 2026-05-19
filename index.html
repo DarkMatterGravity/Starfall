@@ -2946,6 +2946,12 @@
         } else if (screenId === 'stasis-chamber') {
           setTimeout(() => {
             window.dispatchEvent(new Event('resize'));
+            // Auto-start the simulation after a brief delay for injuries to load
+            setTimeout(() => {
+              if (window.ThreeBackground && window.ThreeBackground.startSimulation) {
+                window.ThreeBackground.startSimulation();
+              }
+            }, 300);
           }, 50);
         }
       }

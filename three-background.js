@@ -2452,7 +2452,14 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       if (humanBodyMaterial && humanBodyMaterial.outline) {
         humanBodyMaterial.outline.uniforms.uOutlineThickness.value = val;
       }
-    }
+    },
+    startSimulation: () => {
+      // Start the simulation automatically
+      if (typeof startSimulationInternal === 'function') {
+        startSimulationInternal();
+      }
+    },
+    isSimulationRunning: () => isPlaying
   };
 
   // ============================================
@@ -5664,7 +5671,25 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     }
   }
 
-  // Play/pause button
+  // Start simulation function (can be called externally via API)
+  function startSimulationInternal() {
+    if (isPlaying) return; // Already playing
+
+    isPlaying = true;
+    lastSimTime = performance.now() / 1000;
+
+    // Show spider plot
+    if (spiderPlot) {
+      spiderPlot.classList.add('visible');
+    }
+
+    // Reset if at end
+    if (currentMonth >= maxMonths) {
+      currentMonth = 0;
+    }
+  }
+
+  // Play/pause button (may not exist in new UI)
   if (playPauseBtn) {
     playPauseBtn.addEventListener('click', () => {
       isPlaying = !isPlaying;
