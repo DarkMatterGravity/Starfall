@@ -331,12 +331,18 @@
     }
 
     .map-breadcrumb .crumb {
-      cursor: pointer;
       transition: color 0.2s;
     }
 
-    .map-breadcrumb .crumb:hover:not(.current) {
+    .map-breadcrumb .crumb.clickable {
+      cursor: pointer;
+      text-decoration: underline;
+      text-decoration-color: transparent;
+    }
+
+    .map-breadcrumb .crumb.clickable:hover {
       color: var(--sf-primary);
+      text-decoration-color: var(--sf-primary);
     }
 
     .back-btn {
@@ -3505,14 +3511,15 @@
 
     // Map state for cinematic navigation
     const MapState = {
-      level: 'universe', // universe, galaxy, system, planet, region
+      level: 'universe', // universe, system, planet (3 levels only)
       isAnimating: false,
       animationFrame: null,
       stars: [],
       planets: [],
       pingPhase: 0,
       warpStars: [],
-      warpAnimationId: null
+      warpAnimationId: null,
+      selectedSystem: null // Track which system we're viewing
     };
 
     const GameState = {
@@ -3725,12 +3732,13 @@
       if (GameState.signalSpawnInterval) clearInterval(GameState.signalSpawnInterval);
       if (GameState.signalUpdateInterval) clearInterval(GameState.signalUpdateInterval);
 
-      // Generate initial batch of signals (2-4)
+      // Generate initial batch of signals (5-8 at universe level)
       GameState.signals = [];
-      const initialCount = Math.floor(Math.random() * 3) + 2;
+      const initialCount = Math.floor(Math.random() * 4) + 5;
       for (let i = 0; i < initialCount; i++) {
         GameState.signals.push(generateSignal());
       }
+      MapState.selectedSystem = null;
 
       // Select the first signal as active
       if (GameState.signals.length > 0) {
@@ -3971,6 +3979,21 @@
       }
     }
 
+    // Get signals visible at current map level
+    function getVisibleSignals() {
+      if (MapState.level === 'universe') {
+        // Universe: show all signals
+        return GameState.signals;
+      } else if (MapState.level === 'system') {
+        // System: show only signals in the selected system
+        return GameState.signals.filter(s => s.system === MapState.selectedSystem);
+      } else if (MapState.level === 'planet') {
+        // Planet: show only the active signal (about to deploy)
+        return GameState.signal ? [GameState.signal] : [];
+      }
+      return GameState.signals;
+    }
+
     // Render all signal notifications
     function renderSignalNotifications() {
       const container = document.getElementById('signals-container');
@@ -3978,7 +4001,8 @@
 
       container.innerHTML = '';
 
-      GameState.signals.forEach(signal => {
+      const visibleSignals = getVisibleSignals();
+      visibleSignals.forEach(signal => {
         const remaining = signal.expiresAt - Date.now();
         const progress = 1 - (remaining / signal.duration);
 
@@ -3990,12 +4014,16 @@
         const rarityInfo = RARITY_TIERS[signal.rarity] || RARITY_TIERS.common;
         const lifeformName = signal.lifeform ? signal.lifeform.name : 'UNKNOWN SIGNAL';
 
+        // Show different info based on level
+        const locationDisplay = MapState.level === 'universe' ? `${signal.system} / ${signal.planet}` :
+                               MapState.level === 'system' ? signal.planet : signal.planet;
+
         notif.innerHTML = `
           <div class="signal-header">
             <div class="signal-ping"></div>
             <span class="signal-type">${signal.type.toUpperCase()} - ${signal.severity.toUpperCase()}</span>
           </div>
-          <div class="signal-location">${signal.galaxy}</div>
+          <div class="signal-location">${locationDisplay}</div>
           <div class="signal-coords">${lifeformName}</div>
           ${!signal.isFalseSignal ? `<div class="signal-rarity rarity-${signal.rarity} rarity-glow-${signal.rarity}">${rarityInfo.label}</div>` : ''}
           <button class="signal-travel-btn">▶ TRAVEL THERE</button>
@@ -4015,15 +4043,22 @@
           }
         });
 
-        // Travel button click - zoom through all levels rapidly
+        // Travel button click - zoom through levels
         const travelBtn = notif.querySelector('.signal-travel-btn');
         if (travelBtn) {
           travelBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (MapState.level !== 'region') {
+            if (MapState.level === 'universe') {
+              // Select this signal and zoom to its system
+              GameState.signal = signal;
+              MapState.selectedSystem = signal.system;
               zoomToNextLevel();
-            } else {
-              // At region level - deploy or reveal false signal
+            } else if (MapState.level === 'system') {
+              // Select this signal and zoom to planet
+              GameState.signal = signal;
+              zoomToNextLevel();
+            } else if (MapState.level === 'planet') {
+              // At planet level - deploy or reveal false signal
               GameState.signals = GameState.signals.filter(s => s.id !== signal.id);
               if (GameState.signalSpawnInterval) clearInterval(GameState.signalSpawnInterval);
               if (GameState.signalUpdateInterval) clearInterval(GameState.signalUpdateInterval);
@@ -4059,9 +4094,15 @@
     function selectSignal(signal) {
       GameState.signal = signal;
 
-      // Reset to universe level when selecting new signal
-      if (MapState.level !== 'universe') {
+      // If in system view and signal is in different system, go back to universe
+      if (MapState.level === 'system' && signal.system !== MapState.selectedSystem) {
         MapState.level = 'universe';
+        MapState.selectedSystem = null;
+      }
+      // If in planet view, go back to universe
+      if (MapState.level === 'planet') {
+        MapState.level = 'universe';
+        MapState.selectedSystem = null;
       }
 
       // Just update selected class, don't re-render (avoids animation replay)
@@ -4086,52 +4127,57 @@
 
       const levelLabels = {
         universe: 'UNIVERSE VIEW',
-        galaxy: 'GALAXY VIEW',
         system: 'SYSTEM VIEW',
-        planet: 'PLANETARY VIEW',
-        region: 'SURFACE SCAN'
+        planet: 'PLANETARY VIEW'
       };
 
       if (levelIndicator) levelIndicator.textContent = levelLabels[MapState.level];
 
-      // Build breadcrumb
-      if (breadcrumb && signal) {
+      // Build breadcrumb with clickable navigation
+      if (breadcrumb) {
         const levels = ['universe'];
-        if (MapState.level !== 'universe') levels.push('galaxy');
-        if (['system', 'planet', 'region'].includes(MapState.level)) levels.push('system');
-        if (['planet', 'region'].includes(MapState.level)) levels.push('planet');
-        if (MapState.level === 'region') levels.push('region');
+        if (MapState.level === 'system' || MapState.level === 'planet') levels.push('system');
+        if (MapState.level === 'planet') levels.push('planet');
 
         const names = {
           universe: 'UNIVERSE',
-          galaxy: signal.galaxy.toUpperCase(),
-          system: signal.system.toUpperCase(),
-          planet: signal.planet.toUpperCase(),
-          region: signal.region.toUpperCase()
+          system: MapState.selectedSystem ? MapState.selectedSystem.toUpperCase() : 'SYSTEM',
+          planet: signal ? signal.planet.toUpperCase() : 'PLANET'
         };
 
         breadcrumb.innerHTML = levels.map((l, i) => {
           const isLast = i === levels.length - 1;
-          return `<span class="crumb${isLast ? ' current' : ''}" data-level="${l}">${names[l]}</span>`;
+          const clickable = !isLast ? ' clickable' : '';
+          return `<span class="crumb${isLast ? ' current' : ''}${clickable}" data-level="${l}">${names[l]}</span>`;
         }).join(' <span class="crumb-sep">›</span> ');
+
+        // Add click handlers to breadcrumbs for navigation
+        breadcrumb.querySelectorAll('.crumb.clickable').forEach(crumb => {
+          crumb.style.cursor = 'pointer';
+          crumb.addEventListener('click', () => {
+            const targetLevel = crumb.dataset.level;
+            if (targetLevel && targetLevel !== MapState.level) {
+              zoomToLevel(targetLevel);
+            }
+          });
+        });
       }
 
       // Update location text
-      if (location && signal) {
+      const visibleCount = getVisibleSignals().length;
+      if (location) {
         const locationText = {
-          universe: 'SCANNING FOR SIGNALS...',
-          galaxy: `${signal.galaxy.toUpperCase()} - SIGNAL DETECTED`,
-          system: `${signal.system.toUpperCase()} SYSTEM - SCANNING`,
-          planet: `${signal.planet.toUpperCase()} - SURFACE ANALYSIS`,
-          region: `${signal.region.toUpperCase()} - LIFEFORM LOCATED`
+          universe: `SCANNING... ${visibleCount} SIGNAL${visibleCount !== 1 ? 'S' : ''} DETECTED`,
+          system: signal ? `${signal.system.toUpperCase()} - ${visibleCount} SIGNAL${visibleCount !== 1 ? 'S' : ''}` : 'SYSTEM SCAN',
+          planet: signal ? `${signal.planet.toUpperCase()} - LIFEFORM LOCATED` : 'PLANETARY SCAN'
         };
         location.textContent = locationText[MapState.level];
       }
 
-      // Show deploy button only at region level
+      // Show deploy button only at planet level
       const deployBtn = document.getElementById('btn-deploy');
       if (deployBtn) {
-        deployBtn.style.display = MapState.level === 'region' ? 'block' : 'none';
+        deployBtn.style.display = MapState.level === 'planet' ? 'block' : 'none';
       }
 
       // Update stats
@@ -4158,22 +4204,16 @@
         ctx.fillStyle = '#0a0a0f';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Draw based on level
+        // Draw based on level (3 levels: universe, system, planet)
         switch (MapState.level) {
           case 'universe':
             drawUniverseView(ctx, canvas);
-            break;
-          case 'galaxy':
-            drawGalaxyView(ctx, canvas);
             break;
           case 'system':
             drawSystemView(ctx, canvas);
             break;
           case 'planet':
             drawPlanetView(ctx, canvas);
-            break;
-          case 'region':
-            drawRegionView(ctx, canvas);
             break;
         }
 
@@ -4519,54 +4559,54 @@
       }
     }
 
-    // Handle map clicks for drill-down
+    // Handle map clicks for drill-down (3 levels: universe, system, planet)
     function handleMapClick(e) {
       if (MapState.isAnimating) return;
 
       const canvas = document.getElementById('map-canvas');
       const rect = canvas.getBoundingClientRect();
-      // Use displayed size (rect.width/height) for consistent coordinates
       const x = (e.clientX - rect.left) / rect.width;
       const y = (e.clientY - rect.top) / rect.height;
 
       const signal = GameState.signal;
-      if (!signal) return;
-
-      // Check if click is near the signal ping
-      let targetCoords;
-      let hitRadius = 0.3; // Large radius for easier clicking
+      let hitRadius = 0.3;
 
       switch (MapState.level) {
         case 'universe':
-          targetCoords = signal.coords.universe;
-          break;
-        case 'galaxy':
-          targetCoords = signal.coords.galaxy;
-          break;
-        case 'system':
-          // For system, check if clicking near target planet
-          const targetPlanet = MapState.planets[signal.coords.system];
-          if (targetPlanet) {
-            const cx = 0.5;
-            const cy = 0.5;
-            const px = cx + Math.cos(targetPlanet.angle) * (targetPlanet.orbitRadius / rect.width);
-            const py = cy + Math.sin(targetPlanet.angle) * (targetPlanet.orbitRadius * 0.6 / rect.height);
-            targetCoords = { x: px, y: py };
-            hitRadius = 0.15;
+          // Click on any signal's system to drill down
+          if (signal) {
+            const targetCoords = signal.coords.universe;
+            const dist = Math.sqrt(Math.pow(x - targetCoords.x, 2) + Math.pow(y - targetCoords.y, 2));
+            if (dist < hitRadius) {
+              MapState.selectedSystem = signal.system;
+              zoomToNextLevel();
+            }
           }
           break;
-        case 'planet':
-          targetCoords = {
-            x: signal.coords.planet.x,
-            y: 0.3 + signal.coords.planet.y * 0.4
-          };
+
+        case 'system':
+          // Click on the planet to drill down
+          if (signal) {
+            const targetPlanet = MapState.planets[signal.coords.system];
+            if (targetPlanet) {
+              const cx = 0.5;
+              const cy = 0.5;
+              const px = cx + Math.cos(targetPlanet.angle) * (targetPlanet.orbitRadius / rect.width);
+              const py = cy + Math.sin(targetPlanet.angle) * (targetPlanet.orbitRadius * 0.6 / rect.height);
+              const dist = Math.sqrt(Math.pow(x - px, 2) + Math.pow(y - py, 2));
+              if (dist < 0.15) {
+                zoomToNextLevel();
+              }
+            }
+          }
           break;
-        case 'region':
-          // At region level, clicking deploys
-          // Remove this signal from the active list
+
+        case 'planet':
+          // At planet level, clicking deploys
+          if (!signal) return;
+
           GameState.signals = GameState.signals.filter(s => s.id !== signal.id);
 
-          // Clear intervals when leaving map
           if (GameState.signalSpawnInterval) {
             clearInterval(GameState.signalSpawnInterval);
             GameState.signalSpawnInterval = null;
@@ -4577,10 +4617,8 @@
           }
 
           if (signal.isFalseSignal) {
-            // False signal - show message and return to map
             showFalseSignalMessage();
           } else if (signal.lifeform) {
-            // Calculate decay factor based on timer progress
             const elapsed = Date.now() - signal.createdAt;
             const decayFactor = Math.min(elapsed / signal.duration, 1.0);
             signal.lifeform.decayFactor = decayFactor;
@@ -4593,17 +4631,10 @@
           }
           return;
       }
-
-      if (targetCoords) {
-        const dist = Math.sqrt(Math.pow(x - targetCoords.x, 2) + Math.pow(y - targetCoords.y, 2));
-        if (dist < hitRadius) {
-          zoomToNextLevel();
-        }
-      }
     }
 
     function zoomToNextLevel() {
-      const levels = ['universe', 'galaxy', 'system', 'planet', 'region'];
+      const levels = ['universe', 'system', 'planet'];
       const currentIndex = levels.indexOf(MapState.level);
 
       if (currentIndex < levels.length - 1 && !MapState.isAnimating) {
@@ -4618,17 +4649,9 @@
               focusX = signal.coords.universe.x;
               focusY = signal.coords.universe.y;
               break;
-            case 'galaxy':
-              focusX = signal.coords.galaxy.x;
-              focusY = signal.coords.galaxy.y;
-              break;
             case 'system':
               focusX = 0.5;
               focusY = 0.5;
-              break;
-            case 'planet':
-              focusX = signal.coords.planet.x;
-              focusY = signal.coords.planet.y * 0.4 + 0.3;
               break;
           }
         }
@@ -4644,7 +4667,7 @@
     }
 
     function zoomToPreviousLevel() {
-      const levels = ['universe', 'galaxy', 'system', 'planet', 'region'];
+      const levels = ['universe', 'system', 'planet'];
       const currentIndex = levels.indexOf(MapState.level);
 
       if (currentIndex > 0 && !MapState.isAnimating) {
@@ -4653,6 +4676,33 @@
         // Run seamless zoom out animation
         runSeamlessZoom(0.5, 0.5, false, () => {
           MapState.level = levels[currentIndex - 1];
+          // Clear selected system if going back to universe
+          if (MapState.level === 'universe') {
+            MapState.selectedSystem = null;
+          }
+          renderSignalNotifications();
+          updateMapUI();
+          MapState.isAnimating = false;
+        });
+      }
+    }
+
+    // Jump directly to a level (for breadcrumb navigation)
+    function zoomToLevel(targetLevel) {
+      const levels = ['universe', 'system', 'planet'];
+      const currentIndex = levels.indexOf(MapState.level);
+      const targetIndex = levels.indexOf(targetLevel);
+
+      if (targetIndex < currentIndex && !MapState.isAnimating) {
+        MapState.isAnimating = true;
+
+        // Zoom out to target level
+        runSeamlessZoom(0.5, 0.5, false, () => {
+          MapState.level = targetLevel;
+          // Clear selected system if going back to universe
+          if (targetLevel === 'universe') {
+            MapState.selectedSystem = null;
+          }
           renderSignalNotifications();
           updateMapUI();
           MapState.isAnimating = false;
@@ -4670,14 +4720,12 @@
       const startTime = performance.now();
       const startLevel = MapState.level;
 
-      // Store current content
+      // Store current content (3 levels: universe, system, planet)
       const originalDraw = () => {
         switch (startLevel) {
           case 'universe': drawUniverseView(ctx, canvas); break;
-          case 'galaxy': drawGalaxyView(ctx, canvas); break;
           case 'system': drawSystemView(ctx, canvas); break;
           case 'planet': drawPlanetView(ctx, canvas); break;
-          case 'region': drawRegionView(ctx, canvas); break;
         }
       };
 
