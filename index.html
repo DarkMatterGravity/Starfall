@@ -5229,8 +5229,11 @@
     const DEATH_BURDEN = 250; // Total mm for death
     const DEATH_DELAY = 10000; // 10 seconds at death burden before dying
     const SAVED_THRESHOLD = 10; // Total mm below which lifeform is "saved"
+    const UNSTABLE_BURDEN = 50; // Burden above which instability timer starts
+    const INSTABILITY_TIMEOUT = 120000; // 2 minutes of instability = death
 
     let criticalStartTime = null;
+    let instabilityStartTime = null; // Track how long burden has been high
     let isDying = false;
     let isLifeformDead = false;
     let isLifeformSaved = false;
@@ -5291,6 +5294,7 @@
       updateBurdenDisplay(totalBurden);
       checkDeathCondition(totalBurden);
       checkSavedCondition(totalBurden);
+      checkInstabilityTimeout(totalBurden);
     }
 
     // Calculate total injury burden
@@ -5445,6 +5449,7 @@
       isLifeformDead = false;
       isDying = false;
       criticalStartTime = null;
+      instabilityStartTime = null;
       isLifeformSaved = false;
       stopDyingAnimation();
       hideSavedOverlay();
@@ -5486,6 +5491,38 @@
       showSavedOverlay();
 
       console.log(`Lifeform ${GameState.currentLifeform?.name} has been saved!`);
+    }
+
+    // Check instability timeout - if burden stays high too long, lifeform dies
+    function checkInstabilityTimeout(burden) {
+      if (isLifeformDead || isLifeformSaved) return;
+
+      if (burden > UNSTABLE_BURDEN) {
+        // Start or continue instability timer
+        if (!instabilityStartTime) {
+          instabilityStartTime = Date.now();
+        } else {
+          const elapsed = Date.now() - instabilityStartTime;
+
+          // Update status to show urgency
+          const statusEl = document.getElementById('patient-exam-date');
+          if (statusEl && burden < DEATH_BURDEN) {
+            const remaining = Math.max(0, Math.ceil((INSTABILITY_TIMEOUT - elapsed) / 1000));
+            if (remaining <= 30) {
+              statusEl.textContent = `UNSTABLE - ${remaining}s`;
+              statusEl.className = 'patient-info-value status-critical';
+            }
+          }
+
+          // If unstable for too long, trigger death
+          if (elapsed >= INSTABILITY_TIMEOUT) {
+            triggerDeath();
+          }
+        }
+      } else {
+        // Burden dropped below threshold, reset timer
+        instabilityStartTime = null;
+      }
     }
 
     // Show saved overlay
