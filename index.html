@@ -3451,8 +3451,25 @@
           <div class="signal-timer${remaining < 20000 ? ' warning' : ''}${remaining < 10000 ? ' danger' : ''}" style="width: ${(1 - progress) * 100}%"></div>
         `;
 
-        // Click to select this signal
-        notif.addEventListener('click', () => selectSignal(signal));
+        // Click to select this signal, or zoom if already selected
+        notif.addEventListener('click', () => {
+          if (GameState.signal && GameState.signal.id === signal.id) {
+            // Already selected - zoom to next level
+            if (MapState.level !== 'region') {
+              zoomToNextLevel();
+            } else if (signal.lifeform) {
+              // At region level - deploy
+              GameState.signals = GameState.signals.filter(s => s.id !== signal.id);
+              if (GameState.signalSpawnInterval) clearInterval(GameState.signalSpawnInterval);
+              if (GameState.signalUpdateInterval) clearInterval(GameState.signalUpdateInterval);
+              loadLifeformIntoStasis(signal.lifeform);
+              showScreen('stasis-chamber');
+            }
+          } else {
+            // Select this signal
+            selectSignal(signal);
+          }
+        });
 
         container.appendChild(notif);
       });
@@ -3471,7 +3488,12 @@
         MapState.level = 'universe';
       }
 
-      renderSignalNotifications();
+      // Just update selected class, don't re-render (avoids animation replay)
+      document.querySelectorAll('.signal-notification').forEach(el => {
+        const isSelected = el.dataset.signalId === String(signal.id);
+        el.classList.toggle('selected', isSelected);
+      });
+
       updateMapUI();
     }
 
@@ -3936,7 +3958,7 @@
 
       // Check if click is near the signal ping
       let targetCoords;
-      let hitRadius = 0.2; // Increased for easier clicking
+      let hitRadius = 0.3; // Large radius for easier clicking
 
       switch (MapState.level) {
         case 'universe':
