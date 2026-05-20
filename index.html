@@ -1155,23 +1155,61 @@
     #stasis-chamber.dead {
       filter: grayscale(0.8) brightness(0.6);
     }
-    #stasis-chamber.dead::after {
-      content: 'SPECIMEN LOST';
+
+    /* Death overlay */
+    #death-overlay {
       position: fixed;
-      top: 18%;
-      left: 50%;
-      transform: translateX(-50%);
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(20, 0, 0, 0.75);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      animation: deathOverlayFadeIn 0.5s ease-out;
+    }
+    @keyframes deathOverlayFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .death-title {
       font-family: var(--sf-font-display, 'Orbitron', sans-serif);
-      font-size: 42px;
+      font-size: 48px;
       color: #ff4444;
       text-shadow: 0 0 30px rgba(255, 0, 0, 0.8), 0 0 60px rgba(255, 0, 0, 0.5);
-      z-index: 1000;
       letter-spacing: 8px;
+      margin-bottom: 20px;
       animation: specimenLostPulse 1s ease-in-out infinite;
     }
+    .death-subtitle {
+      font-family: var(--sf-font-display);
+      font-size: 14px;
+      color: rgba(255, 100, 100, 0.7);
+      letter-spacing: 3px;
+      margin-bottom: 50px;
+    }
+    .death-btn {
+      padding: 15px 40px;
+      background: transparent;
+      border: 2px solid #ff4444;
+      color: #ff4444;
+      font-family: var(--sf-font-display);
+      font-size: 14px;
+      letter-spacing: 3px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .death-btn:hover {
+      background: rgba(255, 68, 68, 0.2);
+      box-shadow: 0 0 20px rgba(255, 68, 68, 0.4);
+      transform: translateY(-2px);
+    }
     @keyframes specimenLostPulse {
-      0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
-      50% { opacity: 0.8; transform: translateX(-50%) scale(1.02); }
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.02); }
     }
     /* Status colors */
     .patient-info-value.status-dead {
@@ -5356,7 +5394,37 @@
         statusEl.className = 'patient-info-value status-dead';
       }
 
+      // Show death overlay
+      showDeathOverlay();
+
       console.log(`Lifeform ${GameState.currentLifeform?.name} has died.`);
+    }
+
+    // Show death overlay with return button
+    function showDeathOverlay() {
+      hideDeathOverlay();
+
+      const lifeform = GameState.currentLifeform;
+      const overlay = document.createElement('div');
+      overlay.id = 'death-overlay';
+      overlay.innerHTML = `
+        <div class="death-title">SPECIMEN LOST</div>
+        <div class="death-subtitle">${lifeform?.name || 'Unknown'} could not be saved</div>
+        <button class="death-btn" id="btn-return-map">RETURN TO MAP</button>
+      `;
+
+      document.getElementById('stasis-chamber').appendChild(overlay);
+
+      document.getElementById('btn-return-map')?.addEventListener('click', () => {
+        hideDeathOverlay();
+        showScreen('universe-map');
+      });
+    }
+
+    // Hide death overlay
+    function hideDeathOverlay() {
+      const overlay = document.getElementById('death-overlay');
+      if (overlay) overlay.remove();
     }
 
     // Spread injury (create new one nearby)
@@ -5390,6 +5458,7 @@
       isLifeformSaved = false;
       stopDyingAnimation();
       hideSavedOverlay();
+      hideDeathOverlay();
       const stasisChamber = document.getElementById('stasis-chamber');
       if (stasisChamber) {
         stasisChamber.classList.remove('dead');
