@@ -869,6 +869,50 @@
       background: linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, var(--sf-bg-panel) 50%);
     }
 
+    .collection-card-avatar {
+      position: relative;
+      width: 100%;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 15px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .collection-card-avatar .avatar-icon {
+      font-size: 60px;
+      position: relative;
+      z-index: 2;
+      filter: grayscale(0.3);
+    }
+    .collection-card-avatar .avatar-glow {
+      position: absolute;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      filter: blur(20px);
+      z-index: 1;
+    }
+    .rarity-bg-common { background: linear-gradient(180deg, rgba(156, 163, 175, 0.1) 0%, transparent 100%); }
+    .rarity-bg-common .avatar-glow { background: rgba(156, 163, 175, 0.3); }
+    .rarity-bg-uncommon { background: linear-gradient(180deg, rgba(34, 197, 94, 0.15) 0%, transparent 100%); }
+    .rarity-bg-uncommon .avatar-glow { background: rgba(34, 197, 94, 0.4); }
+    .rarity-bg-rare { background: linear-gradient(180deg, rgba(59, 130, 246, 0.15) 0%, transparent 100%); }
+    .rarity-bg-rare .avatar-glow { background: rgba(59, 130, 246, 0.4); }
+    .rarity-bg-epic { background: linear-gradient(180deg, rgba(168, 85, 247, 0.2) 0%, transparent 100%); }
+    .rarity-bg-epic .avatar-glow { background: rgba(168, 85, 247, 0.5); animation: epicGlow 2s ease-in-out infinite; }
+    .rarity-bg-legendary { background: linear-gradient(180deg, rgba(245, 158, 11, 0.25) 0%, transparent 100%); }
+    .rarity-bg-legendary .avatar-glow { background: rgba(245, 158, 11, 0.6); animation: legendaryAvatarGlow 1.5s ease-in-out infinite; }
+    @keyframes epicGlow {
+      0%, 100% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.2); opacity: 0.8; }
+    }
+    @keyframes legendaryAvatarGlow {
+      0%, 100% { transform: scale(1); opacity: 0.6; }
+      50% { transform: scale(1.4); opacity: 1; }
+    }
+
     .collection-card-header {
       display: flex;
       justify-content: space-between;
@@ -1137,6 +1181,115 @@
     @keyframes deadPulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }
+    }
+
+    /* Saved state */
+    #stasis-chamber.saved {
+      animation: savedGlow 2s ease-in-out infinite;
+    }
+    @keyframes savedGlow {
+      0%, 100% { filter: brightness(1) saturate(1); }
+      50% { filter: brightness(1.1) saturate(1.2); }
+    }
+    .patient-info-value.status-saved {
+      color: #22c55e;
+      animation: savedPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes savedPulse {
+      0%, 100% { opacity: 1; text-shadow: 0 0 5px rgba(34, 197, 94, 0.5); }
+      50% { opacity: 0.9; text-shadow: 0 0 15px rgba(34, 197, 94, 0.8); }
+    }
+
+    /* Saved overlay */
+    #saved-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(10, 15, 20, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      animation: overlayFadeIn 0.5s ease-out;
+    }
+    @keyframes overlayFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .saved-content {
+      text-align: center;
+      padding: 50px 80px;
+      border: 2px solid rgba(34, 197, 94, 0.5);
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(10, 15, 20, 0.9) 50%);
+      animation: savedContentGlow 2s ease-in-out infinite;
+    }
+    @keyframes savedContentGlow {
+      0%, 100% { box-shadow: 0 0 30px rgba(34, 197, 94, 0.2); }
+      50% { box-shadow: 0 0 50px rgba(34, 197, 94, 0.4); }
+    }
+    .saved-icon {
+      font-size: 60px;
+      color: #22c55e;
+      margin-bottom: 15px;
+      text-shadow: 0 0 30px rgba(34, 197, 94, 0.8);
+    }
+    .saved-title {
+      font-family: var(--sf-font-display);
+      font-size: 28px;
+      letter-spacing: 6px;
+      color: #22c55e;
+      margin-bottom: 20px;
+      text-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+    }
+    .saved-name {
+      font-family: var(--sf-font-display);
+      font-size: 32px;
+      letter-spacing: 2px;
+      margin-bottom: 15px;
+    }
+    .saved-rarity {
+      margin-bottom: 30px;
+    }
+    .saved-buttons {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+    }
+    .saved-btn {
+      padding: 15px 35px;
+      font-family: var(--sf-font-display);
+      font-size: 14px;
+      letter-spacing: 3px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .saved-btn .btn-icon {
+      font-size: 18px;
+    }
+    .collect-btn {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.3) 0%, rgba(34, 197, 94, 0.1) 100%);
+      border: 2px solid #22c55e;
+      color: #22c55e;
+    }
+    .collect-btn:hover {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.5) 0%, rgba(34, 197, 94, 0.2) 100%);
+      box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+      transform: translateY(-2px);
+    }
+    .release-btn {
+      background: transparent;
+      border: 1px solid var(--sf-border);
+      color: var(--sf-text-dim);
+    }
+    .release-btn:hover {
+      border-color: var(--sf-text);
+      color: var(--sf-text);
+      transform: translateY(-2px);
     }
     #three-canvas {
       position: fixed;
@@ -3723,7 +3876,14 @@
         const rarityInfo = RARITY_TIERS[rarity] || RARITY_TIERS.common;
         const recoveredDate = lifeform.recoveredDate ? new Date(lifeform.recoveredDate).toLocaleDateString() : 'Unknown';
 
+        // Generate avatar based on lifeform properties
+        const avatarIcon = generateLifeformAvatar(lifeform);
+
         card.innerHTML = `
+          <div class="collection-card-avatar rarity-bg-${rarity}">
+            <div class="avatar-icon">${avatarIcon}</div>
+            <div class="avatar-glow"></div>
+          </div>
           <div class="collection-card-header">
             <div>
               <div class="collection-card-name rarity-${rarity} rarity-glow-${rarity}">${lifeform.name}</div>
@@ -3743,6 +3903,25 @@
 
         grid.appendChild(card);
       });
+    }
+
+    // Generate a visual avatar for a lifeform based on its properties
+    function generateLifeformAvatar(lifeform) {
+      // Different silhouettes based on alert type (injury source)
+      const silhouettes = {
+        crash: ['&#128125;', '&#129302;', '&#128126;', '&#129430;'], // Alien faces
+        battle: ['&#9876;', '&#128737;', '&#129404;', '&#128128;'],  // Combat icons
+        injury: ['&#129440;', '&#128029;', '&#129413;', '&#128030;'] // Creature icons
+      };
+
+      const type = lifeform.alertType || 'injury';
+      const icons = silhouettes[type] || silhouettes.injury;
+
+      // Use designation number to pick consistent icon
+      const designationNum = parseInt(lifeform.designation?.match(/\d+/)?.[0] || '0');
+      const iconIndex = designationNum % icons.length;
+
+      return icons[iconIndex];
     }
 
     // ============================================
@@ -5026,10 +5205,12 @@
     const CRITICAL_BURDEN = 150; // Total mm of injuries for critical state
     const DEATH_BURDEN = 250; // Total mm for death
     const DEATH_DELAY = 10000; // 10 seconds at death burden before dying
+    const SAVED_THRESHOLD = 10; // Total mm below which lifeform is "saved"
 
     let criticalStartTime = null;
     let isDying = false;
     let isLifeformDead = false;
+    let isLifeformSaved = false;
 
     // Update injury growth
     function updateInjuryGrowth() {
@@ -5081,6 +5262,7 @@
       const totalBurden = calculateTotalBurden();
       updateBurdenDisplay(totalBurden);
       checkDeathCondition(totalBurden);
+      checkSavedCondition(totalBurden);
     }
 
     // Calculate total injury burden
@@ -5205,11 +5387,130 @@
       isLifeformDead = false;
       isDying = false;
       criticalStartTime = null;
+      isLifeformSaved = false;
       stopDyingAnimation();
+      hideSavedOverlay();
       const stasisChamber = document.getElementById('stasis-chamber');
       if (stasisChamber) {
         stasisChamber.classList.remove('dead');
+        stasisChamber.classList.remove('saved');
       }
+    }
+
+    // Check if lifeform is saved (all injuries treated)
+    function checkSavedCondition(burden) {
+      if (isLifeformDead || isLifeformSaved) return;
+
+      // Saved when burden is below threshold (injuries mostly/fully treated)
+      if (burden <= SAVED_THRESHOLD) {
+        triggerSaved();
+      }
+    }
+
+    // Trigger saved state
+    function triggerSaved() {
+      isLifeformSaved = true;
+
+      const stasisChamber = document.getElementById('stasis-chamber');
+      if (stasisChamber) {
+        stasisChamber.classList.add('saved');
+      }
+
+      // Update status
+      const statusEl = document.getElementById('patient-exam-date');
+      if (statusEl) {
+        statusEl.textContent = 'STABILIZED';
+        statusEl.className = 'patient-info-value status-saved';
+      }
+
+      // Show saved overlay with buttons
+      showSavedOverlay();
+
+      console.log(`Lifeform ${GameState.currentLifeform?.name} has been saved!`);
+    }
+
+    // Show saved overlay
+    function showSavedOverlay() {
+      // Remove existing overlay if any
+      hideSavedOverlay();
+
+      const lifeform = GameState.currentLifeform;
+      if (!lifeform) return;
+
+      const rarity = lifeform.rarity || 'common';
+      const rarityInfo = RARITY_TIERS[rarity] || RARITY_TIERS.common;
+
+      const overlay = document.createElement('div');
+      overlay.id = 'saved-overlay';
+      overlay.innerHTML = `
+        <div class="saved-content">
+          <div class="saved-icon">&#10003;</div>
+          <div class="saved-title">LIFEFORM STABILIZED</div>
+          <div class="saved-name rarity-${rarity} rarity-glow-${rarity}">${lifeform.name}</div>
+          <div class="saved-rarity">
+            <span class="rarity-badge ${rarity}">${rarityInfo.label}</span>
+          </div>
+          <div class="saved-buttons">
+            <button class="saved-btn collect-btn" id="btn-collect">
+              <span class="btn-icon">&#128230;</span>
+              COLLECT
+            </button>
+            <button class="saved-btn release-btn" id="btn-release">
+              <span class="btn-icon">&#128275;</span>
+              RELEASE
+            </button>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('stasis-chamber').appendChild(overlay);
+
+      // Add button handlers
+      document.getElementById('btn-collect')?.addEventListener('click', () => {
+        collectLifeform();
+      });
+
+      document.getElementById('btn-release')?.addEventListener('click', () => {
+        releaseLifeform();
+      });
+    }
+
+    // Hide saved overlay
+    function hideSavedOverlay() {
+      const overlay = document.getElementById('saved-overlay');
+      if (overlay) overlay.remove();
+    }
+
+    // Collect lifeform to archive
+    function collectLifeform() {
+      if (!GameState.currentLifeform) return;
+
+      const lifeform = GameState.currentLifeform;
+      lifeform.recovered = true;
+      lifeform.recoveredDate = new Date().toISOString();
+
+      // Add to collection if not already there
+      const exists = GameState.collection.find(lf => lf.id === lifeform.id && lf.designation === lifeform.designation);
+      if (!exists) {
+        GameState.collection.push(lifeform);
+        saveCollection(GameState.collection);
+      }
+
+      console.log(`Collected: ${lifeform.name} (${lifeform.designation}) - ${lifeform.rarity}`);
+
+      // Return to map
+      hideSavedOverlay();
+      showScreen('universe-map');
+    }
+
+    // Release lifeform (don't add to collection)
+    function releaseLifeform() {
+      const lifeform = GameState.currentLifeform;
+      console.log(`Released: ${lifeform?.name} back into the wild.`);
+
+      // Return to map without saving
+      hideSavedOverlay();
+      showScreen('universe-map');
     }
 
     // Start injury growth loop
