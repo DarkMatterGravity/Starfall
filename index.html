@@ -373,23 +373,27 @@
       height: 100%;
     }
 
-    /* Signal notification (top right corner) */
+    /* Signal notification base styles (overridden in signals-container context) */
     .signal-notification {
-      position: fixed;
-      top: 80px;
-      right: 24px;
       background: var(--sf-bg-panel);
       border: 1px solid var(--sf-alert);
-      padding: 16px 20px;
-      z-index: 100;
+      padding: 12px 16px;
       cursor: pointer;
-      transition: all 0.3s ease;
-      min-width: 280px;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
     }
 
     .signal-notification:hover {
       background: rgba(232, 90, 60, 0.15);
       border-color: var(--sf-alert);
+    }
+
+    .signal-notification.selected {
+      border-color: var(--sf-primary);
+      border-width: 2px;
+      background: rgba(79, 209, 217, 0.1);
+      box-shadow: 0 0 15px rgba(79, 209, 217, 0.3);
     }
 
     .signal-notification.hidden {
@@ -445,21 +449,38 @@
     .signal-notification.injury .signal-type { color: var(--sf-success); }
     .signal-notification.injury { border-color: var(--sf-success); }
 
-    /* Zoom transition overlay */
+    /* Warp zoom transition overlay */
     .zoom-overlay {
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
       bottom: 0;
-      background: var(--sf-bg-dark);
+      background: radial-gradient(ellipse at center, rgba(10, 15, 25, 0.95) 0%, rgba(5, 8, 15, 1) 100%);
       z-index: 200;
       pointer-events: none;
       opacity: 0;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.15s ease-out;
     }
 
     .zoom-overlay.active {
+      opacity: 1;
+    }
+
+    /* Warp star field canvas */
+    .warp-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 202;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.1s ease;
+    }
+
+    .warp-canvas.active {
       opacity: 1;
     }
 
@@ -484,6 +505,60 @@
       background: white;
       border-radius: 50%;
     }
+
+    /* Multiple signals container */
+    .signals-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 100;
+      max-height: calc(100vh - 150px);
+      overflow-y: auto;
+    }
+
+    .signal-notification {
+      position: relative;
+      width: 280px;
+      animation: signalSlideIn 0.3s ease-out;
+    }
+
+    .signal-notification.expiring {
+      animation: signalPulse 0.5s ease-in-out infinite;
+    }
+
+    .signal-notification.expired {
+      animation: signalFadeOut 0.5s ease-out forwards;
+    }
+
+    @keyframes signalSlideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes signalPulse {
+      0%, 100% { opacity: 1; border-color: var(--sf-danger); }
+      50% { opacity: 0.5; }
+    }
+
+    @keyframes signalFadeOut {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(100%); opacity: 0; }
+    }
+
+    .signal-timer {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: var(--sf-primary);
+      transition: width 0.1s linear;
+    }
+
+    .signal-timer.warning { background: var(--sf-warning); }
+    .signal-timer.danger { background: var(--sf-danger); }
 
     /* Level indicator */
     .level-indicator {
@@ -2330,21 +2405,15 @@
       <div class="planet-surface" id="planet-surface"></div>
     </div>
 
-    <!-- Single signal notification (top right) -->
-    <div class="signal-notification hidden" id="signal-notification">
-      <div class="signal-header">
-        <div class="signal-ping"></div>
-        <span class="signal-type" id="signal-type">DISTRESS SIGNAL</span>
-      </div>
-      <div class="signal-location" id="signal-location">Unknown Sector</div>
-      <div class="signal-coords" id="signal-coords">Coordinates locked</div>
-    </div>
+    <!-- Multiple signals container (top right) -->
+    <div class="signals-container" id="signals-container"></div>
 
     <!-- Level indicator -->
     <div class="level-indicator" id="level-indicator">UNIVERSE VIEW</div>
 
-    <!-- Zoom transition elements -->
+    <!-- Warp zoom transition elements -->
     <div class="zoom-overlay" id="zoom-overlay"></div>
+    <canvas class="warp-canvas" id="warp-canvas"></canvas>
     <div class="star-field" id="star-field"></div>
 
     <div class="map-footer">
@@ -2999,10 +3068,13 @@
       }
     }
 
-    // Generate a single alert with full location hierarchy
+    // Signal ID counter
+    let signalIdCounter = 0;
+
+    // Generate a single alert with full location hierarchy and expiration
     function generateSignal() {
       const types = ['crash', 'crash', 'battle', 'injury'];
-      const severities = ['critical', 'high', 'moderate'];
+      const severities = ['critical', 'high', 'moderate', 'low'];
       const type = types[Math.floor(Math.random() * types.length)];
       const severity = severities[Math.floor(Math.random() * severities.length)];
 
@@ -3026,8 +3098,13 @@
       lifeform.location = lifeform.origin.full;
       lifeform.region = region;
 
+      // Expiration time: 30-90 seconds based on severity
+      const expirationTimes = { critical: 30, high: 45, moderate: 60, low: 90 };
+      const duration = (expirationTimes[severity] || 60) * 1000;
+
+      signalIdCounter++;
       return {
-        id: 1,
+        id: signalIdCounter,
         type,
         severity,
         galaxy,
@@ -3035,7 +3112,10 @@
         planet,
         region,
         coords,
-        lifeform
+        lifeform,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + duration,
+        duration: duration
       };
     }
 
@@ -3046,16 +3126,21 @@
       animationFrame: null,
       stars: [],
       planets: [],
-      pingPhase: 0
+      pingPhase: 0,
+      warpStars: [],
+      warpAnimationId: null
     };
 
     const GameState = {
       currentScreen: 'main-menu',
       mapLevel: 'universe',
-      signal: null, // single active signal
+      signal: null, // currently selected/tracked signal
+      signals: [], // all active signals
       currentLifeform: null,
       missionDay: Math.floor(Math.random() * 1000) + 1,
-      collection: loadCollection()
+      collection: loadCollection(),
+      signalSpawnInterval: null,
+      signalUpdateInterval: null
     };
 
     function showScreen(screenId) {
@@ -3088,9 +3173,23 @@
     // CINEMATIC MAP SYSTEM
     // ============================================
     function initMapScreen() {
-      // Generate signal if none exists
-      if (!GameState.signal) {
-        GameState.signal = generateSignal();
+      // Initialize warp canvas
+      initWarpCanvas();
+
+      // Clear existing signals and intervals
+      if (GameState.signalSpawnInterval) clearInterval(GameState.signalSpawnInterval);
+      if (GameState.signalUpdateInterval) clearInterval(GameState.signalUpdateInterval);
+
+      // Generate initial batch of signals (2-4)
+      GameState.signals = [];
+      const initialCount = Math.floor(Math.random() * 3) + 2;
+      for (let i = 0; i < initialCount; i++) {
+        GameState.signals.push(generateSignal());
+      }
+
+      // Select the first signal as active
+      if (GameState.signals.length > 0) {
+        GameState.signal = GameState.signals[0];
       }
 
       // Reset to universe level
@@ -3123,46 +3222,262 @@
         });
       }
 
-      updateSignalNotification();
+      // Start signal spawning (new signal every 15-30 seconds)
+      GameState.signalSpawnInterval = setInterval(() => {
+        if (GameState.signals.length < 6) { // Max 6 signals at once
+          const newSignal = generateSignal();
+          GameState.signals.push(newSignal);
+          renderSignalNotifications();
+        }
+      }, (15 + Math.random() * 15) * 1000);
+
+      // Start signal update/expiration check (every 100ms)
+      GameState.signalUpdateInterval = setInterval(updateSignalTimers, 100);
+
+      renderSignalNotifications();
       updateMapUI();
       startMapAnimation();
     }
 
+    // Initialize warp effect canvas
+    function initWarpCanvas() {
+      const canvas = document.getElementById('warp-canvas');
+      if (!canvas) return;
+
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      // Generate warp stars
+      MapState.warpStars = [];
+      for (let i = 0; i < 200; i++) {
+        MapState.warpStars.push({
+          x: (Math.random() - 0.5) * canvas.width * 2,
+          y: (Math.random() - 0.5) * canvas.height * 2,
+          z: Math.random() * 1500 + 500,
+          size: Math.random() * 2 + 1
+        });
+      }
+
+      window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      });
+    }
+
+    // Run warp animation
+    function runWarpEffect(duration, onComplete) {
+      const canvas = document.getElementById('warp-canvas');
+      const overlay = document.getElementById('zoom-overlay');
+      if (!canvas) { onComplete(); return; }
+
+      const ctx = canvas.getContext('2d');
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const startTime = performance.now();
+
+      // Show warp elements
+      overlay.classList.add('active');
+      canvas.classList.add('active');
+
+      // Reset warp stars
+      MapState.warpStars.forEach(star => {
+        star.x = (Math.random() - 0.5) * canvas.width * 2;
+        star.y = (Math.random() - 0.5) * canvas.height * 2;
+        star.z = Math.random() * 1500 + 500;
+      });
+
+      function animateWarp(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Ease in-out cubic
+        const eased = progress < 0.5
+          ? 4 * progress * progress * progress
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+        // Clear canvas
+        ctx.fillStyle = `rgba(5, 8, 15, ${0.3 + eased * 0.3})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Speed ramps up then down
+        const speedCurve = Math.sin(progress * Math.PI);
+        const speed = 30 + speedCurve * 150;
+
+        // Draw warp stars
+        MapState.warpStars.forEach(star => {
+          // Move star toward camera
+          star.z -= speed;
+
+          // Reset if past camera
+          if (star.z <= 0) {
+            star.x = (Math.random() - 0.5) * canvas.width * 2;
+            star.y = (Math.random() - 0.5) * canvas.height * 2;
+            star.z = 1500 + Math.random() * 500;
+          }
+
+          // Project to 2D
+          const scale = 500 / star.z;
+          const screenX = centerX + star.x * scale;
+          const screenY = centerY + star.y * scale;
+
+          // Previous position for streak
+          const prevZ = star.z + speed;
+          const prevScale = 500 / prevZ;
+          const prevX = centerX + star.x * prevScale;
+          const prevY = centerY + star.y * prevScale;
+
+          // Draw streak
+          const brightness = Math.min(1, (1500 - star.z) / 1000);
+          const streakLength = speedCurve * 0.8 + 0.2;
+
+          ctx.beginPath();
+          ctx.moveTo(prevX, prevY);
+          ctx.lineTo(screenX, screenY);
+          ctx.strokeStyle = `rgba(200, 220, 255, ${brightness * streakLength})`;
+          ctx.lineWidth = star.size * scale * streakLength;
+          ctx.stroke();
+
+          // Draw star point
+          ctx.beginPath();
+          ctx.arc(screenX, screenY, star.size * scale * 0.5, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+          ctx.fill();
+        });
+
+        // Add center glow
+        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 200 * (1 + speedCurve));
+        gradient.addColorStop(0, `rgba(100, 150, 255, ${0.3 * speedCurve})`);
+        gradient.addColorStop(1, 'rgba(100, 150, 255, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (progress < 1) {
+          MapState.warpAnimationId = requestAnimationFrame(animateWarp);
+        } else {
+          // Fade out
+          canvas.classList.remove('active');
+          overlay.classList.remove('active');
+          if (onComplete) onComplete();
+        }
+      }
+
+      MapState.warpAnimationId = requestAnimationFrame(animateWarp);
+    }
+
+    // Update signal timers and handle expirations
+    function updateSignalTimers() {
+      const now = Date.now();
+      let hasChanges = false;
+
+      GameState.signals.forEach(signal => {
+        const remaining = signal.expiresAt - now;
+        const progress = 1 - (remaining / signal.duration);
+
+        // Update timer bar
+        const timerEl = document.querySelector(`[data-signal-id="${signal.id}"] .signal-timer`);
+        if (timerEl) {
+          timerEl.style.width = `${(1 - progress) * 100}%`;
+
+          // Add warning classes
+          if (remaining < 10000) {
+            timerEl.classList.add('danger');
+            timerEl.classList.remove('warning');
+          } else if (remaining < 20000) {
+            timerEl.classList.add('warning');
+          }
+        }
+
+        // Add expiring class
+        const notifEl = document.querySelector(`[data-signal-id="${signal.id}"]`);
+        if (notifEl && remaining < 10000) {
+          notifEl.classList.add('expiring');
+        }
+      });
+
+      // Remove expired signals
+      const expiredSignals = GameState.signals.filter(s => s.expiresAt <= now);
+      expiredSignals.forEach(signal => {
+        const notifEl = document.querySelector(`[data-signal-id="${signal.id}"]`);
+        if (notifEl) {
+          notifEl.classList.add('expired');
+          setTimeout(() => notifEl.remove(), 500);
+        }
+      });
+
+      if (expiredSignals.length > 0) {
+        GameState.signals = GameState.signals.filter(s => s.expiresAt > now);
+
+        // If active signal expired, select next one
+        if (GameState.signal && !GameState.signals.includes(GameState.signal)) {
+          GameState.signal = GameState.signals[0] || null;
+          if (!GameState.signal) {
+            // Generate new signal if all expired
+            const newSignal = generateSignal();
+            GameState.signals.push(newSignal);
+            GameState.signal = newSignal;
+          }
+          renderSignalNotifications();
+          updateMapUI();
+        }
+
+        // Update active signals count
+        const activeEl = document.getElementById('stat-active');
+        if (activeEl) activeEl.textContent = GameState.signals.length;
+      }
+    }
+
+    // Render all signal notifications
+    function renderSignalNotifications() {
+      const container = document.getElementById('signals-container');
+      if (!container) return;
+
+      container.innerHTML = '';
+
+      GameState.signals.forEach(signal => {
+        const remaining = signal.expiresAt - Date.now();
+        const progress = 1 - (remaining / signal.duration);
+
+        const notif = document.createElement('div');
+        notif.className = `signal-notification ${signal.type}${signal === GameState.signal ? ' selected' : ''}`;
+        notif.dataset.signalId = signal.id;
+
+        notif.innerHTML = `
+          <div class="signal-header">
+            <div class="signal-ping"></div>
+            <span class="signal-type">${signal.type.toUpperCase()} - ${signal.severity.toUpperCase()}</span>
+          </div>
+          <div class="signal-location">${signal.galaxy}</div>
+          <div class="signal-coords">${signal.lifeform.name}</div>
+          <div class="signal-timer${remaining < 20000 ? ' warning' : ''}${remaining < 10000 ? ' danger' : ''}" style="width: ${(1 - progress) * 100}%"></div>
+        `;
+
+        // Click to select this signal
+        notif.addEventListener('click', () => selectSignal(signal));
+
+        container.appendChild(notif);
+      });
+
+      // Update stat
+      const activeEl = document.getElementById('stat-active');
+      if (activeEl) activeEl.textContent = GameState.signals.length;
+    }
+
+    // Select a signal to track
+    function selectSignal(signal) {
+      GameState.signal = signal;
+
+      // Reset to universe level when selecting new signal
+      if (MapState.level !== 'universe') {
+        MapState.level = 'universe';
+      }
+
+      renderSignalNotifications();
+      updateMapUI();
+    }
+
     function updateSignalNotification() {
-      const signal = GameState.signal;
-      if (!signal) return;
-
-      const notification = document.getElementById('signal-notification');
-      const typeEl = document.getElementById('signal-type');
-      const locationEl = document.getElementById('signal-location');
-      const coordsEl = document.getElementById('signal-coords');
-
-      if (!notification) return;
-
-      // Update notification content based on map level
-      notification.className = `signal-notification ${signal.type}`;
-      typeEl.textContent = `${signal.type.toUpperCase()} SIGNAL DETECTED`;
-
-      const levelNames = {
-        universe: signal.galaxy,
-        galaxy: `${signal.system} System`,
-        system: signal.planet,
-        planet: signal.region,
-        region: signal.lifeform.name
-      };
-
-      locationEl.textContent = levelNames[MapState.level] || signal.galaxy;
-
-      const coordLabels = {
-        universe: 'Click ping to investigate',
-        galaxy: 'Signal source narrowed',
-        system: 'Planetary scan required',
-        planet: 'Surface coordinates locked',
-        region: 'Lifeform located'
-      };
-
-      coordsEl.textContent = coordLabels[MapState.level];
-      notification.classList.remove('hidden');
+      // Deprecated - now using renderSignalNotifications()
+      renderSignalNotifications();
     }
 
     function updateMapUI() {
@@ -3651,6 +3966,19 @@
         case 'region':
           // At region level, clicking deploys
           if (signal.lifeform) {
+            // Remove this signal from the active list
+            GameState.signals = GameState.signals.filter(s => s.id !== signal.id);
+
+            // Clear intervals when leaving map
+            if (GameState.signalSpawnInterval) {
+              clearInterval(GameState.signalSpawnInterval);
+              GameState.signalSpawnInterval = null;
+            }
+            if (GameState.signalUpdateInterval) {
+              clearInterval(GameState.signalUpdateInterval);
+              GameState.signalUpdateInterval = null;
+            }
+
             loadLifeformIntoStasis(signal.lifeform);
             showScreen('stasis-chamber');
           }
@@ -3669,26 +3997,16 @@
       const levels = ['universe', 'galaxy', 'system', 'planet', 'region'];
       const currentIndex = levels.indexOf(MapState.level);
 
-      if (currentIndex < levels.length - 1) {
+      if (currentIndex < levels.length - 1 && !MapState.isAnimating) {
         MapState.isAnimating = true;
 
-        // Show zoom overlay briefly
-        const overlay = document.getElementById('zoom-overlay');
-        if (overlay) {
-          overlay.classList.add('active');
-          setTimeout(() => {
-            MapState.level = levels[currentIndex + 1];
-            updateSignalNotification();
-            updateMapUI();
-            overlay.classList.remove('active');
-            MapState.isAnimating = false;
-          }, 300);
-        } else {
+        // Run warp effect then change level
+        runWarpEffect(800, () => {
           MapState.level = levels[currentIndex + 1];
-          updateSignalNotification();
+          renderSignalNotifications();
           updateMapUI();
           MapState.isAnimating = false;
-        }
+        });
       }
     }
 
@@ -3696,24 +4014,16 @@
       const levels = ['universe', 'galaxy', 'system', 'planet', 'region'];
       const currentIndex = levels.indexOf(MapState.level);
 
-      if (currentIndex > 0) {
+      if (currentIndex > 0 && !MapState.isAnimating) {
         MapState.isAnimating = true;
-        const overlay = document.getElementById('zoom-overlay');
-        if (overlay) {
-          overlay.classList.add('active');
-          setTimeout(() => {
-            MapState.level = levels[currentIndex - 1];
-            updateSignalNotification();
-            updateMapUI();
-            overlay.classList.remove('active');
-            MapState.isAnimating = false;
-          }, 300);
-        } else {
+
+        // Run warp effect (shorter for zoom out)
+        runWarpEffect(600, () => {
           MapState.level = levels[currentIndex - 1];
-          updateSignalNotification();
+          renderSignalNotifications();
           updateMapUI();
           MapState.isAnimating = false;
-        }
+        });
       }
     }
 
