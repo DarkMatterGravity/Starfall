@@ -97,6 +97,27 @@
       opacity: 0.3;
     }
 
+    /* Film grain/noise effect */
+    .sf-noise {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 998;
+      opacity: 0.06;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      animation: noiseShift 0.15s steps(3) infinite;
+    }
+
+    @keyframes noiseShift {
+      0% { transform: translate(0, 0); }
+      33% { transform: translate(-2px, 1px); }
+      66% { transform: translate(1px, -1px); }
+      100% { transform: translate(-1px, 2px); }
+    }
+
     /* Vignette effect */
     .sf-vignette {
       position: absolute;
@@ -2647,6 +2668,7 @@
     <div class="sf-grid-overlay"></div>
     <div class="sf-vignette"></div>
     <div class="sf-scanlines"></div>
+    <div class="sf-noise"></div>
 
     <div class="menu-content bracket-frame">
       <h1 class="game-title">STARFALL</h1>
@@ -2679,6 +2701,7 @@
     <div class="sf-grid-overlay"></div>
     <div class="sf-vignette"></div>
     <div class="sf-scanlines"></div>
+    <div class="sf-noise"></div>
 
     <div class="map-header">
       <button class="back-btn" id="map-back-btn">
@@ -2735,6 +2758,7 @@
     <div class="sf-grid-overlay"></div>
     <div class="sf-vignette"></div>
     <div class="sf-scanlines"></div>
+    <div class="sf-noise"></div>
 
     <div class="collection-header">
       <div>
@@ -4749,8 +4773,8 @@
           ? 4 * progress * progress * progress
           : 1 - Math.pow(-2 * progress + 2, 3) / 2;
 
-        // Clear canvas
-        ctx.fillStyle = '#0a0a15';
+        // Clear canvas (same color as map background)
+        ctx.fillStyle = '#0a0a0f';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         const centerX = focusX * canvas.width;
