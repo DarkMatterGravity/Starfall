@@ -517,6 +517,13 @@
       z-index: 100;
       max-height: calc(100vh - 150px);
       overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* IE/Edge */
+    }
+
+    .signals-container::-webkit-scrollbar {
+      display: none; /* Chrome/Safari */
     }
 
     .signal-notification {
@@ -559,6 +566,59 @@
 
     .signal-timer.warning { background: var(--sf-warning); }
     .signal-timer.danger { background: var(--sf-danger); }
+
+    /* Travel button on selected signal */
+    .signal-travel-btn {
+      display: none;
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px 16px;
+      background: linear-gradient(135deg, rgba(79, 209, 217, 0.2) 0%, rgba(79, 209, 217, 0.1) 100%);
+      border: 1px solid var(--sf-primary);
+      color: var(--sf-primary);
+      font-family: var(--sf-font-display);
+      font-size: 11px;
+      letter-spacing: 3px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+    }
+
+    .signal-travel-btn:hover {
+      background: linear-gradient(135deg, rgba(79, 209, 217, 0.4) 0%, rgba(79, 209, 217, 0.2) 100%);
+      box-shadow: 0 0 20px rgba(79, 209, 217, 0.4);
+      transform: scale(1.02);
+    }
+
+    .signal-notification.selected .signal-travel-btn {
+      display: block;
+      animation: btnFadeIn 0.3s ease-out;
+    }
+
+    @keyframes btnFadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Map canvas zoom scaling */
+    .map-container {
+      perspective: 1000px;
+    }
+
+    #map-canvas {
+      transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+      transform-origin: center center;
+    }
+
+    #map-canvas.zooming-in {
+      transform: scale(4) translateZ(100px);
+      opacity: 0;
+    }
+
+    #map-canvas.zooming-out {
+      transform: scale(0.2);
+      opacity: 0;
+    }
 
     /* Level indicator */
     .level-indicator {
@@ -3448,13 +3508,28 @@
           </div>
           <div class="signal-location">${signal.galaxy}</div>
           <div class="signal-coords">${signal.lifeform.name}</div>
+          <button class="signal-travel-btn">▶ TRAVEL THERE</button>
           <div class="signal-timer${remaining < 20000 ? ' warning' : ''}${remaining < 10000 ? ' danger' : ''}" style="width: ${(1 - progress) * 100}%"></div>
         `;
 
-        // Click to select this signal, or zoom if already selected
-        notif.addEventListener('click', () => {
+        // Click notification body to select
+        notif.addEventListener('click', (e) => {
+          // Don't trigger if clicking the travel button
+          if (e.target.classList.contains('signal-travel-btn')) return;
+
           if (GameState.signal && GameState.signal.id === signal.id) {
-            // Already selected - zoom to next level
+            // Already selected - do nothing (use travel button)
+          } else {
+            // Select this signal
+            selectSignal(signal);
+          }
+        });
+
+        // Travel button click - zoom through all levels rapidly
+        const travelBtn = notif.querySelector('.signal-travel-btn');
+        if (travelBtn) {
+          travelBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             if (MapState.level !== 'region') {
               zoomToNextLevel();
             } else if (signal.lifeform) {
@@ -3465,11 +3540,8 @@
               loadLifeformIntoStasis(signal.lifeform);
               showScreen('stasis-chamber');
             }
-          } else {
-            // Select this signal
-            selectSignal(signal);
-          }
-        });
+          });
+        }
 
         container.appendChild(notif);
       });
@@ -4022,12 +4094,43 @@
       if (currentIndex < levels.length - 1 && !MapState.isAnimating) {
         MapState.isAnimating = true;
 
-        // Run warp effect then change level
-        runWarpEffect(800, () => {
+        const canvas = document.getElementById('map-canvas');
+
+        // Scale current scene up and out
+        if (canvas) {
+          canvas.classList.add('zooming-in');
+        }
+
+        // Run warp effect (slower - 1.5 seconds)
+        runWarpEffect(1500, () => {
           MapState.level = levels[currentIndex + 1];
+
+          // Remove zoom class and prepare for scale-in
+          if (canvas) {
+            canvas.classList.remove('zooming-in');
+            canvas.style.transform = 'scale(0.3)';
+            canvas.style.opacity = '0';
+
+            // Force reflow
+            canvas.offsetHeight;
+
+            // Animate scale up
+            canvas.style.transition = 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease';
+            canvas.style.transform = 'scale(1)';
+            canvas.style.opacity = '1';
+          }
+
           renderSignalNotifications();
           updateMapUI();
-          MapState.isAnimating = false;
+
+          // Clear animation state after transition
+          setTimeout(() => {
+            MapState.isAnimating = false;
+            if (canvas) {
+              canvas.style.transition = '';
+              canvas.style.transform = '';
+            }
+          }, 800);
         });
       }
     }
@@ -4039,12 +4142,43 @@
       if (currentIndex > 0 && !MapState.isAnimating) {
         MapState.isAnimating = true;
 
-        // Run warp effect (shorter for zoom out)
-        runWarpEffect(600, () => {
+        const canvas = document.getElementById('map-canvas');
+
+        // Scale current scene down and out
+        if (canvas) {
+          canvas.classList.add('zooming-out');
+        }
+
+        // Run warp effect (1 second for zoom out)
+        runWarpEffect(1000, () => {
           MapState.level = levels[currentIndex - 1];
+
+          // Remove zoom class and prepare for scale-in from large
+          if (canvas) {
+            canvas.classList.remove('zooming-out');
+            canvas.style.transform = 'scale(3)';
+            canvas.style.opacity = '0';
+
+            // Force reflow
+            canvas.offsetHeight;
+
+            // Animate scale down
+            canvas.style.transition = 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease';
+            canvas.style.transform = 'scale(1)';
+            canvas.style.opacity = '1';
+          }
+
           renderSignalNotifications();
           updateMapUI();
-          MapState.isAnimating = false;
+
+          // Clear animation state after transition
+          setTimeout(() => {
+            MapState.isAnimating = false;
+            if (canvas) {
+              canvas.style.transition = '';
+              canvas.style.transform = '';
+            }
+          }, 800);
         });
       }
     }
