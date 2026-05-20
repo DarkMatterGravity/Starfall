@@ -2249,6 +2249,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
   const metastases = [];
   let lastSimTime = 0;
   const activeMetNotifications = []; // For NEW MET labels
+  let onTimelineEndCallback = null; // Callback when timeline reaches maxMonths
 
   // ============================================
   // ANIMATION
@@ -2470,7 +2471,12 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         startSimulationInternal();
       }
     },
-    isSimulationRunning: () => isPlaying
+    isSimulationRunning: () => isPlaying,
+    setOnTimelineEnd: (callback) => {
+      onTimelineEndCallback = callback;
+    },
+    getCurrentMonth: () => currentMonth,
+    getMaxMonths: () => maxMonths
   };
 
   // ============================================
@@ -5619,6 +5625,11 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         isPlaying = false;
         if (playPauseBtn) playPauseBtn.textContent = '▶';
         clearMetNotifications();
+
+        // Trigger timeline end callback for final state determination
+        if (onTimelineEndCallback) {
+          onTimelineEndCallback();
+        }
       }
     } catch (err) {
       console.error('Simulation error:', err);

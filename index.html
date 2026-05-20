@@ -3751,8 +3751,14 @@
             window.dispatchEvent(new Event('resize'));
             // Auto-start the simulation after a brief delay for injuries to load
             setTimeout(() => {
-              if (window.ThreeBackground && window.ThreeBackground.startSimulation) {
-                window.ThreeBackground.startSimulation();
+              if (window.ThreeBackground) {
+                // Register timeline end callback for final state determination
+                if (window.ThreeBackground.setOnTimelineEnd) {
+                  window.ThreeBackground.setOnTimelineEnd(handleTimelineEnd);
+                }
+                if (window.ThreeBackground.startSimulation) {
+                  window.ThreeBackground.startSimulation();
+                }
               }
             }, 300);
           }, 50);
@@ -4876,8 +4882,21 @@
               focusY = signal.coords.universe.y;
               break;
             case 'system':
-              focusX = 0.5;
-              focusY = 0.5;
+              // Calculate planet's current orbital position
+              const planetIndex = signal.coords.system;
+              const planet = MapState.planets[planetIndex];
+              if (planet) {
+                // Planet position relative to center (same formula as drawSystemView)
+                const canvas = document.getElementById('map-canvas');
+                if (canvas) {
+                  const cx = canvas.width / 2;
+                  const cy = canvas.height / 2;
+                  const px = cx + Math.cos(planet.angle) * planet.orbitRadius;
+                  const py = cy + Math.sin(planet.angle) * planet.orbitRadius * 0.6;
+                  focusX = px / canvas.width;
+                  focusY = py / canvas.height;
+                }
+              }
               break;
           }
         }
@@ -5522,6 +5541,34 @@
       } else {
         // Burden dropped below threshold, reset timer
         instabilityStartTime = null;
+      }
+    }
+
+    // Handle timeline end - final state determination when graph reaches max
+    function handleTimelineEnd() {
+      if (isLifeformDead || isLifeformSaved) return;
+
+      // Calculate current burden
+      const injuries = window.ThreeBackground?.getDroppedTumors() || [];
+      let totalBurden = 0;
+      injuries.forEach(injury => {
+        totalBurden += injury.userData?.sizeMM || 25;
+      });
+
+      console.log(`Timeline ended. Final burden: ${totalBurden.toFixed(1)}mm`);
+
+      // Final state determination:
+      // If burden is below saved threshold, they're saved
+      // If burden is above unstable threshold, they die (couldn't stabilize in time)
+      // If in between, they're saved but in rough shape
+      if (totalBurden <= SAVED_THRESHOLD) {
+        triggerSaved();
+      } else if (totalBurden > UNSTABLE_BURDEN) {
+        // Failed to stabilize within the timeline - death
+        triggerDeath();
+      } else {
+        // In the gray zone - count as saved but barely
+        triggerSaved();
       }
     }
 
