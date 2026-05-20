@@ -1837,16 +1837,20 @@
       scrollbar-color: rgba(95, 123, 122, 0.5) rgba(0, 0, 0, 0.2);
     }
     .plot-header {
-      font-family: system-ui, sans-serif;
-      font-size: 18px;
-      font-weight: 600;
       display: flex;
       justify-content: center;
+      padding: 8px 0;
+      margin-bottom: 8px;
+      border-bottom: 1px solid rgba(95, 123, 122, 0.3);
+    }
+    .plot-title {
+      font-family: var(--sf-font-display, 'Orbitron', sans-serif);
+      font-size: 14px;
+      letter-spacing: 4px;
+      color: var(--sf-primary, #4fd1d9);
     }
     .plot-controls {
-      display: flex;
-      align-items: center;
-      gap: 24px;
+      display: none; /* Hidden - simplified to just vitals */
     }
     #plot-type-select {
       background: rgba(20, 26, 34, 0.95);
@@ -3116,29 +3120,11 @@
       <button id="delete-patient-btn">Release Specimen</button>
     </div>
 
-    <!-- Spider Plot Panel -->
+    <!-- Vitals Panel (Spider Plot) -->
     <div id="spider-plot" class="draggable-panel">
       <div class="drag-handle"><span class="drag-indicator">&#8942;&#8942;</span></div>
       <div class="plot-header">
-        <div class="plot-controls">
-          <select id="plot-type-select" title="Select graph type">
-            <option value="spider">Spider Plot</option>
-            <option value="waterfall">Waterfall Plot</option>
-            <option value="pfs">Progression-Free Survival</option>
-            <option value="swimmer">Swimmer Plot</option>
-            <option value="sld">Total Tumor Burden (SLD)</option>
-            <option value="bestResponse">Best Overall Response</option>
-            <option value="responseDonut">Response Categories</option>
-            <option value="dor">Duration of Response</option>
-            <option value="heatmap">Tumor Heatmap</option>
-            <option value="growthRate">Growth Rate</option>
-            <option value="targetNonTarget">Target vs Non-Target</option>
-          </select>
-          <div class="plot-scale-control">
-            <span class="scale-label">Size:</span>
-            <button id="plot-scale-btn" title="Toggle 2x size">1x</button>
-          </div>
-        </div>
+        <div class="plot-title">VITALS</div>
       </div>
       <div id="tumor-burden-display">
         <div class="burden-row">
@@ -3157,7 +3143,6 @@
         <div class="y-axis">
           <span>70</span><span>56</span><span>42</span><span>28</span><span>14</span><span>0</span>
         </div>
-        <div class="y-label">Diameter (mm)</div>
         <canvas id="plot-canvas" width="800" height="500"></canvas>
         <div class="x-axis">
           <span>0</span><span>3</span><span>6</span><span>9</span><span>12</span><span>15</span><span>18</span>
@@ -5252,10 +5237,15 @@
 
     // Update injury growth
     function updateInjuryGrowth() {
-      if (!window.ThreeBackground || !GameState.currentLifeform || isLifeformDead) return;
+      if (!window.ThreeBackground || !GameState.currentLifeform || isLifeformDead || isLifeformSaved) return;
 
       const injuries = window.ThreeBackground.getDroppedTumors();
-      if (!injuries || injuries.length === 0) return;
+
+      // If no injuries, check if saved (burden is 0)
+      if (!injuries || injuries.length === 0) {
+        checkSavedCondition(0);
+        return;
+      }
 
       const now = Date.now();
 
