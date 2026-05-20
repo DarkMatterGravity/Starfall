@@ -483,3 +483,82 @@ Concept documents located at:
 3. **Oblivion UI style** - Cold, minimal, data-driven interface
 4. **CreatureBox art style** - For lifeforms: painterly, exaggerated, colorful
 5. **Terminology matters** - Never "aliens", always clinical then personal names
+
+## Recent Implementations (Latest Session)
+
+### Simplified Navigation (3 Levels)
+- **Universe** → **System** → **Planet** (reduced from 5 levels)
+- Clickable breadcrumbs for navigation back
+- Infinite canvas zoom effect between levels (two-layer crossfade)
+
+### Signal/Alert System
+- 5-8 signals spawn at universe level
+- Signals filter by level (universe: all, system: that system only, planet: selected signal)
+- Each signal has expiration timer affecting lifeform condition
+- ~15% are false signals (no lifeform, show "FALSE TRANSMISSION" message)
+
+### Rarity System (RARITY_TIERS constant)
+```javascript
+const RARITY_TIERS = {
+  common:    { weight: 55, label: 'COMMON',    color: '#9ca3af', traitBonus: 0 },
+  uncommon:  { weight: 25, label: 'UNCOMMON',  color: '#22c55e', traitBonus: 1 },
+  rare:      { weight: 12, label: 'RARE',      color: '#3b82f6', traitBonus: 2 },
+  epic:      { weight: 6,  label: 'EPIC',      color: '#a855f7', traitBonus: 3 },
+  legendary: { weight: 2,  label: 'LEGENDARY', color: '#f59e0b', traitBonus: 4 }
+};
+```
+- Higher rarity = bonus traits, visual glow effects
+- Rarity badges displayed on signals and in stasis chamber
+
+### Timer Decay → Condition System
+- `decayFactor` calculated from signal timer progress (0-1)
+- Condition: pristine (<30%), good (<50%), fair (<75%), poor (>=75%)
+- Higher decay = more injuries, larger sizes, faster growth rates
+
+### Saved State System
+- `SAVED_THRESHOLD = 10` mm total burden
+- When all injuries treated (burden ≤ 10mm), triggers saved overlay
+- Green glow effect, "LIFEFORM STABILIZED" message
+- Two buttons: **COLLECT** (add to archive) or **RELEASE** (let go)
+
+### Death State System
+- `DEATH_BURDEN = 250` mm, `DEATH_DELAY = 10000` ms
+- Red overlay with "SPECIMEN LOST" and lifeform name
+- **RETURN TO MAP** button to go back to universe
+
+### Collection Archive
+- Access from main menu "Collection Archive" button
+- Cards with procedural avatars based on lifeform type:
+  - Crash: alien face icons
+  - Battle: combat icons
+  - Injury: creature icons
+- Rarity-colored backgrounds and animated glows (epic/legendary pulse)
+- Sorted by rarity (legendary first), then recovery date
+
+### Visual Effects
+- `sf-scanlines` and `sf-noise` on all screens (CSS-based)
+- Stasis chamber has unique glowing/breathing effect (Three.js shader)
+- Consistent map background color `#0a0a0f` across all levels
+
+### Vitals Panel (Simplified)
+- Renamed from "Spider Plot" to "VITALS"
+- Removed graph type dropdown (was 11 chart types)
+- Removed "Diameter (mm)" Y-axis label
+- Just shows injury tracking graph
+
+### Key State Variables
+```javascript
+let isLifeformDead = false;
+let isLifeformSaved = false;
+let isDying = false;
+let criticalStartTime = null;
+```
+
+### Key Functions
+- `generateSignal()` - creates signal with rarity, false signal chance, coords
+- `checkSavedCondition(burden)` - triggers saved when burden ≤ threshold
+- `checkDeathCondition(burden)` - triggers death sequence
+- `showSavedOverlay()` / `showDeathOverlay()` - UI overlays
+- `collectLifeform()` / `releaseLifeform()` - collection actions
+- `getVisibleSignals()` - filters signals by current map level
+- `zoomToLevel(targetLevel)` - breadcrumb navigation
