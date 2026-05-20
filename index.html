@@ -728,15 +728,20 @@
     #stasis-chamber.dead::after {
       content: 'SPECIMEN LOST';
       position: fixed;
-      top: 50%;
+      top: 18%;
       left: 50%;
-      transform: translate(-50%, -50%);
+      transform: translateX(-50%);
       font-family: var(--sf-font-display, 'Orbitron', sans-serif);
-      font-size: 48px;
+      font-size: 42px;
       color: #ff4444;
-      text-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+      text-shadow: 0 0 30px rgba(255, 0, 0, 0.8), 0 0 60px rgba(255, 0, 0, 0.5);
       z-index: 1000;
       letter-spacing: 8px;
+      animation: specimenLostPulse 1s ease-in-out infinite;
+    }
+    @keyframes specimenLostPulse {
+      0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
+      50% { opacity: 0.8; transform: translateX(-50%) scale(1.02); }
     }
     /* Status colors */
     .patient-info-value.status-dead {
@@ -1709,13 +1714,12 @@
       font-style: italic;
     }
     #medication-panel {
-      display: none; /* Hidden - replaced by treatments panel */
       position: fixed;
-      top: 30px;
+      top: 60px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 100;
-      font-family: system-ui, sans-serif;
+      font-family: var(--sf-font-mono);
     }
     #med-toggles {
       display: flex;
@@ -1772,6 +1776,80 @@
       color: rgba(255, 255, 255, 0.4);
       margin-left: 6px;
     }
+    .med-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .med-formula {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.35);
+      font-family: var(--sf-font-mono);
+      letter-spacing: 0.5px;
+    }
+    .med-toggle.active .med-formula {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    /* Treatment Notification */
+    .treatment-notification {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      background: rgba(15, 20, 28, 0.95);
+      border: 2px solid #5F7B7A;
+      border-radius: 12px;
+      padding: 20px 30px;
+      z-index: 2000;
+      opacity: 0;
+      pointer-events: none;
+      animation: notificationPop 2s ease-out forwards;
+      text-align: center;
+      min-width: 280px;
+    }
+    .treatment-notification.high-effect {
+      border-color: #4CAF50;
+      box-shadow: 0 0 30px rgba(76, 175, 80, 0.4);
+    }
+    .treatment-notification.med-effect {
+      border-color: #FFAA33;
+      box-shadow: 0 0 30px rgba(255, 170, 51, 0.4);
+    }
+    .treatment-notification.low-effect {
+      border-color: #FF4444;
+      box-shadow: 0 0 30px rgba(255, 68, 68, 0.4);
+    }
+    .treatment-notification .notif-title {
+      font-family: var(--sf-font-display, 'Orbitron', sans-serif);
+      font-size: 18px;
+      color: #fff;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+    }
+    .treatment-notification .notif-effect {
+      font-family: var(--sf-font-mono);
+      font-size: 28px;
+      font-weight: bold;
+      margin: 5px 0;
+    }
+    .treatment-notification.high-effect .notif-effect { color: #4CAF50; }
+    .treatment-notification.med-effect .notif-effect { color: #FFAA33; }
+    .treatment-notification.low-effect .notif-effect { color: #FF4444; }
+    .treatment-notification .notif-desc {
+      font-family: var(--sf-font-mono);
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.6);
+      margin-top: 8px;
+    }
+    @keyframes notificationPop {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+      15% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+      25% { transform: translate(-50%, -50%) scale(1); }
+      75% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -55%) scale(0.95); }
+    }
+
     #tumor-creator {
       position: fixed;
       top: 22%;
@@ -2861,6 +2939,7 @@
     };
 
     // Generate injuries for a lifeform based on their alert type
+    // Starfall: injuries appear anywhere on body (alien lifeforms)
     function generateInjuries(lifeform) {
       const alertType = lifeform.alertType || 'injury';
       const severity = lifeform.severity || 'moderate';
@@ -2875,10 +2954,8 @@
       }[severity] || 3;
 
       const injuries = [];
-      const organs = ['Brain', 'Lungs (Left)', 'Lungs (Right)', 'Liver', 'Stomach'];
 
       for (let i = 0; i < injuryCount; i++) {
-        const organ = organs[Math.floor(Math.random() * organs.length)];
         const type = injuryConfig.types[Math.floor(Math.random() * injuryConfig.types.length)];
         const size = Math.floor(Math.random() * 30) + 10; // 10-40mm
 
@@ -2886,7 +2963,7 @@
           id: i + 1,
           type: type,
           category: alertType,
-          organ: organ,
+          organ: 'Body', // createInjury will place randomly and determine region
           sizeMM: size,
           color: injuryConfig.color,
           growthRate: injuryConfig.growthRate.min + Math.random() * (injuryConfig.growthRate.max - injuryConfig.growthRate.min),
@@ -4114,6 +4191,56 @@
         }
       }
 
+      // Show floating treatment notification
+      function showTreatmentNotification(treatmentType, effect, injuryType) {
+        const treatmentNames = {
+          nanobots: 'NANOBOTS',
+          biofoam: 'BIO-FOAM',
+          antiparasitic: 'ANTI-PARASITIC',
+          stasis: 'STASIS FIELD'
+        };
+
+        const injuryNames = {
+          'Radiation Burn': 'RADIATION BURN',
+          'Hull Breach Trauma': 'HULL BREACH',
+          'Blaster Wound': 'BLASTER WOUND',
+          'Shrapnel Damage': 'SHRAPNEL',
+          'Parasitic Growth': 'PARASITIC GROWTH',
+          'Infection Site': 'INFECTION'
+        };
+
+        // Remove existing notification
+        const existing = document.querySelector('.treatment-notification');
+        if (existing) existing.remove();
+
+        // Create notification element
+        const notif = document.createElement('div');
+        notif.className = 'treatment-notification';
+
+        // Add effect level class
+        if (effect >= 0.7) {
+          notif.classList.add('high-effect');
+        } else if (effect >= 0.4) {
+          notif.classList.add('med-effect');
+        } else {
+          notif.classList.add('low-effect');
+        }
+
+        const effectPct = Math.round(effect * 100);
+        const effectLabel = effect >= 0.7 ? 'HIGHLY EFFECTIVE' : (effect >= 0.4 ? 'PARTIALLY EFFECTIVE' : 'LOW EFFECTIVENESS');
+
+        notif.innerHTML = `
+          <div class="notif-title">${treatmentNames[treatmentType] || treatmentType.toUpperCase()} APPLIED</div>
+          <div class="notif-effect">${effectPct}% ${effectLabel}</div>
+          <div class="notif-desc">vs ${injuryNames[injuryType] || injuryType}</div>
+        `;
+
+        document.body.appendChild(notif);
+
+        // Auto-remove after animation
+        setTimeout(() => notif.remove(), 2000);
+      }
+
       // Apply treatment effect to an injury
       function applyTreatmentToInjury(injury, treatmentType) {
         const category = injury.userData.injuryCategory || 'injury';
@@ -4158,15 +4285,23 @@
           console.log(`${treatmentType} applied to ${injury.userData.injuryType}: -${shrinkAmount.toFixed(1)}mm (${(effect * 100).toFixed(0)}% effective)`);
         }
 
-        // Visual feedback - flash the injury
+        // Visual feedback - flash the injury green
         const mesh = injury.children.find(c => c.name === 'injuryMesh');
         if (mesh) {
           const originalColor = mesh.material.color.getHex();
           mesh.material.color.setHex(0x00ff00); // Flash green
           setTimeout(() => {
             mesh.material.color.setHex(originalColor);
-          }, 200);
+          }, 300);
         }
+
+        // Toggle on the treatment in the top medication panel
+        if (typeof window.toggleTreatment === 'function') {
+          window.toggleTreatment(treatmentType, true);
+        }
+
+        // Show floating notification
+        showTreatmentNotification(treatmentType, effect, injury.userData.injuryType);
 
         // Check if injury is "cured" (very small)
         if (injury.userData.sizeMM <= 2) {

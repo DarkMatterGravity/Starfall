@@ -395,8 +395,8 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
         console.log('Human body loaded with outline');
 
-        // Load organ meshes after body is ready
-        loadOrganMeshes();
+        // Organ meshes disabled for Starfall (alien lifeforms don't need human anatomy)
+        // loadOrganMeshes();
       },
       (progress) => {
         if (progress.total > 0) {
@@ -1168,18 +1168,22 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     // Convert to body's local space
     const localPoint = humanBodyMesh.worldToLocal(insidePoint.clone());
 
-    // Detect anatomical region
-    let region = getRegionAtPosition(localPoint);
+    // Detect general body area (Starfall - no organ snapping)
+    let regionName;
+    if (localPoint.y > 80) regionName = 'Head';
+    else if (localPoint.y > 60) regionName = 'Upper Torso';
+    else if (localPoint.y > 35) regionName = 'Lower Torso';
+    else if (localPoint.y > 15) regionName = 'Upper Limbs';
+    else regionName = 'Lower Limbs';
 
-    // If dropped outside any organ, snap to nearest organ
-    const organRegions = ['Brain', 'Lungs (Left)', 'Lungs (Right)', 'Liver', 'Stomach'];
-    if (!organRegions.includes(region.name)) {
-      console.log('  Tumor outside organs, snapping to nearest...');
-      region = getNearestOrgan(localPoint);
+    if (Math.abs(localPoint.x) > 3) {
+      regionName += localPoint.x > 0 ? ' (Left)' : ' (Right)';
     }
 
-    // Reposition tumor inside organ mesh
-    let finalPosition = getPositionInsideOrgan(localPoint, region.name);
+    const region = { name: regionName };
+
+    // Use the drop point directly (no organ repositioning)
+    let finalPosition = localPoint.clone();
 
     // Create 3D tumor geometry
     const tumorGeo = createLumpySphere(
@@ -2332,34 +2336,36 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     }
   });
 
-  // Create an injury at a specific organ with given properties
+  // Create an injury anywhere on the body surface (Starfall - alien lifeforms)
   function createInjury(injuryData) {
     if (!humanBodyMesh) return null;
 
     const { organ, sizeMM, color, type, id, growthRate, canSpread, spreadChance, category } = injuryData;
 
-    // Map organ names
-    let targetRegion = organ;
-    if (organ === 'Lungs') {
-      targetRegion = Math.random() < 0.5 ? 'Lungs (Left)' : 'Lungs (Right)';
+    // For Starfall: place injuries anywhere on the body surface
+    // Generate random position within body bounds
+    // Body Y range: ~0 (feet) to ~105 (top of head) in local coords
+    // Body X range: ~-10 to ~10 (side to side)
+    // Body Z range: ~-5 to ~5 (front to back)
+
+    const randomY = 10 + Math.random() * 85;  // Anywhere from legs to head
+    const randomX = (Math.random() - 0.5) * 14; // Side to side
+    const randomZ = 2 + Math.random() * 3;      // On the front surface
+
+    // Determine general body area from Y position for labeling
+    let targetRegion;
+    if (randomY > 80) targetRegion = 'Head';
+    else if (randomY > 60) targetRegion = 'Upper Torso';
+    else if (randomY > 35) targetRegion = 'Lower Torso';
+    else if (randomY > 15) targetRegion = 'Upper Limbs';
+    else targetRegion = 'Lower Limbs';
+
+    // Add left/right based on X position
+    if (Math.abs(randomX) > 3) {
+      targetRegion += randomX > 0 ? ' (Left)' : ' (Right)';
     }
 
-    // Use mesh-aware positioning
-    const organRegions = ['Brain', 'Lungs (Left)', 'Lungs (Right)', 'Liver', 'Stomach'];
-    let pos;
-
-    if (organRegions.includes(targetRegion)) {
-      const basePos = getRegionPosition(targetRegion);
-      const randomDropPoint = new THREE.Vector3(
-        basePos.x + (Math.random() - 0.5) * 0.08,
-        basePos.y + (Math.random() - 0.5) * 0.08,
-        basePos.z
-      );
-      const organPos = getPositionInsideOrgan(randomDropPoint, targetRegion);
-      pos = { x: organPos.x, y: organPos.y, z: organPos.z };
-    } else {
-      pos = getRegionPosition(targetRegion);
-    }
+    const pos = { x: randomX, y: randomY, z: randomZ };
 
     // Create injury geometry (lumpy sphere)
     const injuryGeo = createLumpySphere(
@@ -2559,176 +2565,87 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
   const MAX_TUMOR_SIZE = 70; // Visual cap in mm
 
   // ============================================
-  // MEDICATION SYSTEM
+  // TREATMENT SYSTEM (Starfall: Extraction Protocol)
   // ============================================
 
-  // Active medications state (populated dynamically by updateMedicationPanel)
+  // Active treatments state (populated dynamically by updateMedicationPanel)
 
-  // Real medication database with tumor type indications
+  // Starfall treatment database - sci-fi injury treatments
   const MEDICATION_DATABASE = {
-    // Immunotherapy - PD-1/PD-L1 inhibitors (broad use)
-    pembrolizumab: {
-      name: 'Pembrolizumab',
-      brandName: 'Keytruda',
-      type: 'ICI',
-      shortType: 'ICI',
-      indications: ['Lungs (Left)', 'Lungs (Right)', 'Brain', 'Liver', 'Stomach', 'Breast (Left)', 'Breast (Right)', 'Other'],
-      haltChance: 0.30,
-      shrinkChance: 0.15,
-      shrinkRate: 0.03,
-      metReduction: 0.35,
-      color: '#6BCB77'  // Green
-    },
-    nivolumab: {
-      name: 'Nivolumab',
-      brandName: 'Opdivo',
-      type: 'ICI',
-      shortType: 'ICI',
-      indications: ['Lungs (Left)', 'Lungs (Right)', 'Brain', 'Liver', 'Stomach', 'Other'],
-      haltChance: 0.28,
-      shrinkChance: 0.12,
-      shrinkRate: 0.03,
-      metReduction: 0.30,
-      color: '#77CB6B'  // Light green
-    },
-    // Targeted therapy - EGFR/TKI (lung focused)
-    osimertinib: {
-      name: 'Osimertinib',
-      brandName: 'Tagrisso',
-      type: 'TKI',
-      shortType: 'TKI',
-      indications: ['Lungs (Left)', 'Lungs (Right)', 'Brain'],
-      haltChance: 0.35,
-      shrinkChance: 0.20,
-      shrinkRate: 0.04,
-      metReduction: 0.25,
-      color: '#6BC8CB'  // Cyan
-    },
-    // Anti-angiogenic (broad use)
-    bevacizumab: {
-      name: 'Bevacizumab',
-      brandName: 'Avastin',
-      type: 'Anti-VEGF',
-      shortType: 'VEGF',
-      indications: ['Lungs (Left)', 'Lungs (Right)', 'Brain', 'Liver', 'Other'],
-      haltChance: 0.22,
-      shrinkChance: 0.10,
-      shrinkRate: 0.02,
-      metReduction: 0.40,
-      color: '#CB6B9A'  // Pink
-    },
-    // Liver specific
-    sorafenib: {
-      name: 'Sorafenib',
-      brandName: 'Nexavar',
-      type: 'Multi-TKI',
-      shortType: 'TKI',
-      indications: ['Liver'],
-      haltChance: 0.30,
-      shrinkChance: 0.12,
-      shrinkRate: 0.03,
-      metReduction: 0.25,
-      color: '#CB8B6B'  // Orange
-    },
-    lenvatinib: {
-      name: 'Lenvatinib',
-      brandName: 'Lenvima',
-      type: 'Multi-TKI',
-      shortType: 'TKI',
-      indications: ['Liver', 'Stomach'],
-      haltChance: 0.32,
-      shrinkChance: 0.14,
-      shrinkRate: 0.035,
-      metReduction: 0.28,
-      color: '#CBAB6B'  // Gold
-    },
-    // Breast specific
-    trastuzumab: {
-      name: 'Trastuzumab',
-      brandName: 'Herceptin',
-      type: 'HER2',
-      shortType: 'HER2',
-      indications: ['Breast (Left)', 'Breast (Right)', 'Stomach'],
-      haltChance: 0.35,
-      shrinkChance: 0.18,
-      shrinkRate: 0.04,
-      metReduction: 0.30,
-      color: '#CB6BCB'  // Purple
-    },
-    palbociclib: {
-      name: 'Palbociclib',
-      brandName: 'Ibrance',
-      type: 'CDK4/6',
-      shortType: 'CDK',
-      indications: ['Breast (Left)', 'Breast (Right)'],
-      haltChance: 0.38,
-      shrinkChance: 0.15,
-      shrinkRate: 0.03,
-      metReduction: 0.20,
-      color: '#9B6BCB'  // Violet
-    },
-    // Brain specific
-    temozolomide: {
-      name: 'Temozolomide',
-      brandName: 'Temodar',
-      type: 'Alkylating',
-      shortType: 'CTX',
-      indications: ['Brain'],
+    // Nanobots - best for radiation/crash damage
+    nanobots: {
+      name: 'Nanobots',
+      brandName: 'NB-7 Repair Swarm',
+      type: 'NANO',
+      shortType: 'NANO',
+      formula: 'Fe₃O₄-Si nanoparticles',
+      indications: ['crash', 'battle', 'injury'],
+      effectiveness: { crash: 1.0, battle: 0.3, injury: 0.5 },
       haltChance: 0.40,
-      shrinkChance: 0.12,
-      shrinkRate: 0.035,
-      metReduction: 0.15,
-      color: '#6B8BCB'  // Blue
+      shrinkChance: 0.30,
+      shrinkRate: 0.04,
+      metReduction: 0.35,
+      color: '#FF4444'  // Red - matches crash injuries
     },
-    // Stomach specific
-    ramucirumab: {
-      name: 'Ramucirumab',
-      brandName: 'Cyramza',
-      type: 'Anti-VEGFR2',
-      shortType: 'VEGF',
-      indications: ['Stomach', 'Liver'],
-      haltChance: 0.25,
-      shrinkChance: 0.10,
-      shrinkRate: 0.025,
-      metReduction: 0.30,
-      color: '#6BCBA0'  // Teal
+    // Bio-Foam - best for battle/combat wounds
+    biofoam: {
+      name: 'Bio-Foam',
+      brandName: 'BF-12 Trauma Seal',
+      type: 'BIO',
+      shortType: 'BIO',
+      formula: 'C₆H₁₀O₅ polymer gel',
+      indications: ['crash', 'battle', 'injury'],
+      effectiveness: { crash: 0.3, battle: 1.0, injury: 0.3 },
+      haltChance: 0.35,
+      shrinkChance: 0.25,
+      shrinkRate: 0.035,
+      metReduction: 0.25,
+      color: '#FFAA33'  // Orange - matches battle injuries
+    },
+    // Anti-Parasitic - best for parasitic/infection injuries
+    antiparasitic: {
+      name: 'Anti-Parasitic',
+      brandName: 'AP-9 Purifier',
+      type: 'ANTI',
+      shortType: 'ANTI',
+      formula: 'C₂₂H₂₃NO₇ compound',
+      indications: ['crash', 'battle', 'injury'],
+      effectiveness: { crash: 0.2, battle: 0.2, injury: 1.0 },
+      haltChance: 0.45,
+      shrinkChance: 0.35,
+      shrinkRate: 0.045,
+      metReduction: 0.40,
+      color: '#44AAFF'  // Blue - matches parasitic injuries
+    },
+    // Stasis - broad spectrum, halts all growth
+    stasis: {
+      name: 'Stasis',
+      brandName: 'ST-4 Cryo Field',
+      type: 'CRYO',
+      shortType: 'CRYO',
+      formula: 'Quantum entropy lock',
+      indications: ['crash', 'battle', 'injury'],
+      effectiveness: { crash: 0.7, battle: 0.7, injury: 0.7 },
+      haltChance: 0.90,
+      shrinkChance: 0.05,
+      shrinkRate: 0.01,
+      metReduction: 0.60,
+      color: '#88DDFF'  // Light cyan - universal
     }
   };
 
-  // Get relevant medications for patient's tumor types
+  // Backward compatibility - old medication entries map to new treatments
+  const LEGACY_MED_MAP = {
+    pembrolizumab: 'nanobots',
+    nivolumab: 'biofoam',
+    osimertinib: 'antiparasitic',
+    bevacizumab: 'stasis'
+  };
+
+  // Get all treatments for Starfall (always show all 4)
   function getRelevantMedications() {
-    const tumorRegions = new Set();
-    droppedTumors.forEach(tumor => {
-      if (tumor.userData.region) {
-        tumorRegions.add(tumor.userData.region);
-      }
-    });
-
-    // Score medications by relevance
-    const medScores = {};
-    for (const [medId, med] of Object.entries(MEDICATION_DATABASE)) {
-      let score = 0;
-      let matchedIndications = 0;
-      for (const region of tumorRegions) {
-        if (med.indications.includes(region)) {
-          score += 10;
-          matchedIndications++;
-        }
-      }
-      // Bonus for matching multiple tumor types
-      if (matchedIndications > 1) score += matchedIndications * 2;
-      // Small score for broad-spectrum drugs even if no match
-      if (med.indications.includes('Other')) score += 1;
-
-      medScores[medId] = { score, matchedIndications, med };
-    }
-
-    // Sort by score and return top medications
-    const sorted = Object.entries(medScores)
-      .filter(([id, data]) => data.score > 0)
-      .sort((a, b) => b[1].score - a[1].score);
-
-    return sorted.slice(0, 4).map(([id, data]) => ({ id, ...data.med }));
+    // In Starfall, always return all 4 treatments
+    return Object.entries(MEDICATION_DATABASE).map(([id, med]) => ({ id, ...med }));
   }
 
   // Current active medications (dynamic)
@@ -2944,26 +2861,22 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     get: (target, prop) => getMedicationColor(prop)
   });
 
-  // Update medication UI based on patient's tumors
+  // Update medication UI based on patient's injuries
   function updateMedicationPanel() {
     const medPanel = document.getElementById('med-toggles');
     if (!medPanel) return;
 
     const relevantMeds = getRelevantMedications();
 
-    // If no tumors, show default broad-spectrum drugs
-    if (relevantMeds.length === 0) {
-      currentMedicationIds = ['pembrolizumab', 'bevacizumab', 'nivolumab'];
-    } else {
-      currentMedicationIds = relevantMeds.map(m => m.id);
-    }
+    // Always show all 4 Starfall treatments
+    currentMedicationIds = relevantMeds.map(m => m.id);
 
     // Reset active medications for new set
     const oldActive = { ...activeMedications };
     activeMedications = {};
     medicationStartTimes = {};
 
-    // Build HTML for medication toggles
+    // Build HTML for medication toggles with formula
     medPanel.innerHTML = currentMedicationIds.map(medId => {
       const med = MEDICATION_DATABASE[medId];
       const wasActive = oldActive[medId];
@@ -2973,7 +2886,10 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       return `
         <div class="med-toggle ${wasActive ? 'active' : ''}" data-med="${medId}" style="--med-color: ${med.color}">
           <span class="med-dot"></span>
-          <span class="med-name">${med.brandName || med.name}</span>
+          <span class="med-info">
+            <span class="med-name">${med.brandName || med.name}</span>
+            <span class="med-formula">${med.formula || ''}</span>
+          </span>
           <span class="med-type">${med.shortType}</span>
         </div>
       `;
@@ -2982,6 +2898,35 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     // Re-attach event listeners
     attachMedicationListeners();
   }
+
+  // API to toggle a treatment on/off programmatically
+  function toggleTreatment(treatmentId, forceOn = null) {
+    const toggle = document.querySelector(`.med-toggle[data-med="${treatmentId}"]`);
+    if (!toggle) return;
+
+    if (forceOn === null) {
+      // Toggle
+      activeMedications[treatmentId] = !activeMedications[treatmentId];
+    } else {
+      activeMedications[treatmentId] = forceOn;
+    }
+
+    toggle.classList.toggle('active', activeMedications[treatmentId]);
+
+    if (activeMedications[treatmentId]) {
+      medicationStartTimes[treatmentId] = currentMonth;
+      // Update tumor responses
+      droppedTumors.forEach(tumor => determineTumorResponse(tumor));
+    } else {
+      delete medicationStartTimes[treatmentId];
+    }
+
+    const med = MEDICATION_DATABASE[treatmentId];
+    console.log(`${med?.name || treatmentId}: ${activeMedications[treatmentId] ? 'ON' : 'OFF'}`);
+  }
+
+  // Expose toggle function globally
+  window.toggleTreatment = toggleTreatment;
 
   // Attach click listeners to medication toggles
   function attachMedicationListeners() {
@@ -3086,19 +3031,24 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
   function createMetastasis() {
     if (!humanBodyMesh || droppedTumors.length === 0) return;
 
-    // Pick a random region for the met
-    const regions = ['Brain', 'Lungs (Left)', 'Lungs (Right)', 'Liver', 'Stomach'];
-    const randomRegion = regions[Math.floor(Math.random() * regions.length)];
+    // Pick a random position anywhere on the body (Starfall - alien lifeforms)
+    const randomY = 10 + Math.random() * 85;  // Anywhere from legs to head
+    const randomX = (Math.random() - 0.5) * 14; // Side to side
+    const randomZ = 2 + Math.random() * 3;      // On the front surface
 
-    // Use mesh-aware positioning for all organs
-    const basePos = getRegionPosition(randomRegion);
-    const randomDropPoint = new THREE.Vector3(
-      basePos.x + (Math.random() - 0.5) * 0.08,
-      basePos.y + (Math.random() - 0.5) * 0.08,
-      basePos.z
-    );
-    const organPos = getPositionInsideOrgan(randomDropPoint, randomRegion);
-    const pos = { x: organPos.x, y: organPos.y, z: organPos.z };
+    // Determine general body area from Y position
+    let randomRegion;
+    if (randomY > 80) randomRegion = 'Head';
+    else if (randomY > 60) randomRegion = 'Upper Torso';
+    else if (randomY > 35) randomRegion = 'Lower Torso';
+    else if (randomY > 15) randomRegion = 'Upper Limbs';
+    else randomRegion = 'Lower Limbs';
+
+    if (Math.abs(randomX) > 3) {
+      randomRegion += randomX > 0 ? ' (Left)' : ' (Right)';
+    }
+
+    const pos = { x: randomX, y: randomY, z: randomZ };
 
     // Create small tumor
     const tumorGeo = createLumpySphere(
