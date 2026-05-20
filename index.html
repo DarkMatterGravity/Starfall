@@ -171,8 +171,8 @@
 
     .menu-btn {
       position: relative;
-      padding: 16px 40px;
-      width: 320px;
+      padding: 16px 50px;
+      width: 400px;
       background: transparent;
       border: 1px solid var(--sf-border);
       color: var(--sf-primary);
@@ -4094,43 +4094,36 @@
       if (currentIndex < levels.length - 1 && !MapState.isAnimating) {
         MapState.isAnimating = true;
 
-        const canvas = document.getElementById('map-canvas');
-
-        // Scale current scene up and out
-        if (canvas) {
-          canvas.classList.add('zooming-in');
+        // Get the target coordinates for zoom focus
+        const signal = GameState.signal;
+        let focusX = 0.5, focusY = 0.5;
+        if (signal) {
+          switch (MapState.level) {
+            case 'universe':
+              focusX = signal.coords.universe.x;
+              focusY = signal.coords.universe.y;
+              break;
+            case 'galaxy':
+              focusX = signal.coords.galaxy.x;
+              focusY = signal.coords.galaxy.y;
+              break;
+            case 'system':
+              focusX = 0.5;
+              focusY = 0.5;
+              break;
+            case 'planet':
+              focusX = signal.coords.planet.x;
+              focusY = signal.coords.planet.y * 0.4 + 0.3;
+              break;
+          }
         }
 
-        // Run warp effect (slower - 1.5 seconds)
-        runWarpEffect(1500, () => {
+        // Run seamless zoom animation
+        runSeamlessZoom(focusX, focusY, true, () => {
           MapState.level = levels[currentIndex + 1];
-
-          // Remove zoom class and prepare for scale-in
-          if (canvas) {
-            canvas.classList.remove('zooming-in');
-            canvas.style.transform = 'scale(0.3)';
-            canvas.style.opacity = '0';
-
-            // Force reflow
-            canvas.offsetHeight;
-
-            // Animate scale up
-            canvas.style.transition = 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease';
-            canvas.style.transform = 'scale(1)';
-            canvas.style.opacity = '1';
-          }
-
           renderSignalNotifications();
           updateMapUI();
-
-          // Clear animation state after transition
-          setTimeout(() => {
-            MapState.isAnimating = false;
-            if (canvas) {
-              canvas.style.transition = '';
-              canvas.style.transform = '';
-            }
-          }, 800);
+          MapState.isAnimating = false;
         });
       }
     }
@@ -4142,45 +4135,121 @@
       if (currentIndex > 0 && !MapState.isAnimating) {
         MapState.isAnimating = true;
 
-        const canvas = document.getElementById('map-canvas');
-
-        // Scale current scene down and out
-        if (canvas) {
-          canvas.classList.add('zooming-out');
-        }
-
-        // Run warp effect (1 second for zoom out)
-        runWarpEffect(1000, () => {
+        // Run seamless zoom out animation
+        runSeamlessZoom(0.5, 0.5, false, () => {
           MapState.level = levels[currentIndex - 1];
-
-          // Remove zoom class and prepare for scale-in from large
-          if (canvas) {
-            canvas.classList.remove('zooming-out');
-            canvas.style.transform = 'scale(3)';
-            canvas.style.opacity = '0';
-
-            // Force reflow
-            canvas.offsetHeight;
-
-            // Animate scale down
-            canvas.style.transition = 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease';
-            canvas.style.transform = 'scale(1)';
-            canvas.style.opacity = '1';
-          }
-
           renderSignalNotifications();
           updateMapUI();
-
-          // Clear animation state after transition
-          setTimeout(() => {
-            MapState.isAnimating = false;
-            if (canvas) {
-              canvas.style.transition = '';
-              canvas.style.transform = '';
-            }
-          }, 800);
+          MapState.isAnimating = false;
         });
       }
+    }
+
+    // Seamless infinite zoom effect
+    function runSeamlessZoom(focusX, focusY, zoomIn, onComplete) {
+      const canvas = document.getElementById('map-canvas');
+      const ctx = canvas?.getContext('2d');
+      if (!canvas || !ctx) { onComplete(); return; }
+
+      const duration = 1200; // 1.2 seconds
+      const startTime = performance.now();
+      const startLevel = MapState.level;
+
+      // Store current content
+      const originalDraw = () => {
+        switch (startLevel) {
+          case 'universe': drawUniverseView(ctx, canvas); break;
+          case 'galaxy': drawGalaxyView(ctx, canvas); break;
+          case 'system': drawSystemView(ctx, canvas); break;
+          case 'planet': drawPlanetView(ctx, canvas); break;
+          case 'region': drawRegionView(ctx, canvas); break;
+        }
+      };
+
+      // Temporarily stop regular animation
+      if (MapState.animationFrame) {
+        cancelAnimationFrame(MapState.animationFrame);
+      }
+
+      function animateZoom(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Smooth ease-in-out
+        const eased = progress < 0.5
+          ? 4 * progress * progress * progress
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+        // Calculate zoom scale
+        const maxScale = zoomIn ? 8 : 0.125;
+        const scale = zoomIn
+          ? 1 + (maxScale - 1) * eased
+          : 1 + (maxScale - 1) * eased;
+
+        // Clear and save context
+        ctx.fillStyle = '#0a0a15';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+
+        // Transform to zoom into focus point
+        const centerX = focusX * canvas.width;
+        const centerY = focusY * canvas.height;
+
+        ctx.translate(centerX, centerY);
+        ctx.scale(scale, scale);
+        ctx.translate(-centerX, -centerY);
+
+        // Draw current level content (it zooms)
+        originalDraw();
+
+        ctx.restore();
+
+        // Add subtle radial blur/glow at high speeds
+        if (eased > 0.2 && eased < 0.8) {
+          const blurIntensity = Math.sin((eased - 0.2) / 0.6 * Math.PI) * 0.3;
+          const gradient = ctx.createRadialGradient(
+            centerX, centerY, 0,
+            centerX, centerY, canvas.width * 0.7
+          );
+          gradient.addColorStop(0, `rgba(79, 209, 217, ${blurIntensity * 0.1})`);
+          gradient.addColorStop(0.5, `rgba(79, 209, 217, ${blurIntensity * 0.05})`);
+          gradient.addColorStop(1, 'rgba(79, 209, 217, 0)');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Add speed lines at peak zoom
+        if (eased > 0.3 && eased < 0.7) {
+          const lineIntensity = Math.sin((eased - 0.3) / 0.4 * Math.PI);
+          ctx.strokeStyle = `rgba(255, 255, 255, ${lineIntensity * 0.15})`;
+          ctx.lineWidth = 1;
+          for (let i = 0; i < 20; i++) {
+            const angle = (i / 20) * Math.PI * 2;
+            const innerR = 50;
+            const outerR = 150 + lineIntensity * 200;
+            ctx.beginPath();
+            ctx.moveTo(
+              centerX + Math.cos(angle) * innerR,
+              centerY + Math.sin(angle) * innerR
+            );
+            ctx.lineTo(
+              centerX + Math.cos(angle) * outerR,
+              centerY + Math.sin(angle) * outerR
+            );
+            ctx.stroke();
+          }
+        }
+
+        if (progress < 1) {
+          requestAnimationFrame(animateZoom);
+        } else {
+          // Restart normal animation loop
+          startMapAnimation();
+          onComplete();
+        }
+      }
+
+      requestAnimationFrame(animateZoom);
     }
 
     // Load lifeform data into stasis chamber panel
