@@ -6952,6 +6952,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      console.log('DOMContentLoaded fired');
       updateSystemTime();
 
       // Periodic care update loop (every 60 seconds)
@@ -6976,8 +6977,13 @@
       updateCareBadge();
 
       // Main menu buttons
-      document.getElementById('btn-start-mission')?.addEventListener('click', () => showScreen('universe-map'));
-      document.getElementById('btn-collection')?.addEventListener('click', () => showScreen('collection-archive'));
+      console.log('Setting up button handlers');
+      const btnStart = document.getElementById('btn-start-mission');
+      const btnCollection = document.getElementById('btn-collection');
+      console.log('btn-start-mission:', btnStart);
+      console.log('btn-collection:', btnCollection);
+      btnStart?.addEventListener('click', () => { console.log('Begin Mission clicked'); showScreen('universe-map'); });
+      btnCollection?.addEventListener('click', () => { console.log('Collection clicked'); showScreen('collection-archive'); });
       document.getElementById('collection-back-btn')?.addEventListener('click', () => showScreen('main-menu'));
       document.getElementById('btn-stasis-direct')?.addEventListener('click', () => {
         // Generate a signal/lifeform if none exists
