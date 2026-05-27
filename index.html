@@ -5254,45 +5254,58 @@
 
       // Build a prompt based on planet characteristics
       const terrainTypes = [
-        'rocky desert canyon',
-        'frozen ice plains with crevasses',
-        'volcanic lava fields',
-        'dense alien jungle canopy',
-        'crystalline mineral formations',
-        'toxic swamp marshlands',
-        'ancient ruins overgrown',
-        'metallic asteroid surface',
-        'bioluminescent fungal forest',
-        'sandstorm eroded mesas'
+        'alien planet surface satellite view rocky terrain',
+        'frozen alien world ice formations from above',
+        'volcanic planet lava flows aerial view',
+        'alien jungle planet dense canopy satellite',
+        'crystal caves alien planet top down view',
+        'swamp planet toxic marshland aerial',
+        'ancient alien ruins overgrown satellite view',
+        'asteroid surface metallic craters top down',
+        'glowing mushroom forest alien world aerial',
+        'desert planet sandstone mesas satellite view'
       ];
 
       const terrainType = terrainTypes[Math.floor(Math.random() * terrainTypes.length)];
-      const planetName = signal.planet || 'alien world';
 
-      const prompt = `${terrainType} on alien planet, topographic satellite scan view, teal and green color palette, dark moody atmosphere, sci-fi scanner display, no text, ${planetName}`;
+      // Simpler, more reliable prompt
+      const prompt = `${terrainType}, teal green color scheme, dark atmosphere, topographic map style, no text no labels`;
 
       ScannerState.terrainLoading = true;
       ScannerState.terrainLoaded = false;
 
       // Create image element
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+
+      // Timeout fallback - if image doesn't load in 15 seconds, give up
+      const timeout = setTimeout(() => {
+        if (ScannerState.terrainLoading) {
+          console.warn('Terrain image timeout, using procedural fallback');
+          ScannerState.terrainLoading = false;
+          ScannerState.terrainLoaded = false;
+        }
+      }, 15000);
 
       img.onload = () => {
+        clearTimeout(timeout);
         ScannerState.terrainImage = img;
         ScannerState.terrainLoaded = true;
         ScannerState.terrainLoading = false;
-        console.log('Terrain image loaded:', prompt);
+        console.log('Terrain image loaded successfully');
       };
 
-      img.onerror = () => {
-        console.warn('Failed to load terrain image, using procedural fallback');
+      img.onerror = (e) => {
+        clearTimeout(timeout);
+        console.warn('Failed to load terrain image:', e);
         ScannerState.terrainLoading = false;
         ScannerState.terrainLoaded = false;
       };
 
       // Pollinations.ai URL - generates image from prompt
-      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=600&seed=${Date.now()}&nologo=true`;
+      // Using unique seed to avoid caching issues
+      const seed = Math.floor(Math.random() * 1000000);
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=600&seed=${seed}&nologo=true`;
+      console.log('Loading terrain:', imageUrl);
       img.src = imageUrl;
     }
 
