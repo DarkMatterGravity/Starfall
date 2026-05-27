@@ -5628,11 +5628,15 @@
         case 'planet':
           if (!signal) return;
 
+          // Scale click coordinates to canvas internal resolution
+          const scaleX = canvas.width / rect.width;
+          const scaleY = canvas.height / rect.height;
+          const clickX = (e.clientX - rect.left) * scaleX;
+          const clickY = (e.clientY - rect.top) * scaleY;
+
           // Check if SCAN button was clicked
           if (ScannerState.scanButtonBounds) {
             const btn = ScannerState.scanButtonBounds;
-            const clickX = e.clientX - rect.left;
-            const clickY = e.clientY - rect.top;
             if (clickX >= btn.x && clickX <= btn.x + btn.w &&
                 clickY >= btn.y && clickY <= btn.y + btn.h) {
               startPlanetScan();
@@ -5651,8 +5655,6 @@
           const mapH = canvas.height - margin * 2;
           const signalScreenX = margin + ScannerState.signalX * mapW;
           const signalScreenY = margin + ScannerState.signalY * mapH;
-          const clickX = e.clientX - rect.left;
-          const clickY = e.clientY - rect.top;
           const distToSignal = Math.sqrt(
             Math.pow(clickX - signalScreenX, 2) +
             Math.pow(clickY - signalScreenY, 2)
