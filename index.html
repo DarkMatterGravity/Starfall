@@ -1350,6 +1350,32 @@
       transform: translateX(-50%) scale(1.05);
     }
 
+    /* Scan button overlay - centered over map */
+    #btn-scan-overlay {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      padding: 20px 50px;
+      font-family: var(--sf-font-display);
+      font-size: 18px;
+      letter-spacing: 4px;
+      border: 2px solid var(--sf-primary);
+      color: var(--sf-primary);
+      background: rgba(10, 10, 15, 0.9);
+      text-transform: uppercase;
+      cursor: pointer;
+      z-index: 100;
+      animation: scanButtonPulse 2s ease-in-out infinite;
+      transition: all 0.2s ease;
+    }
+
+    #btn-scan-overlay:hover {
+      background: rgba(79, 209, 217, 0.25);
+      box-shadow: 0 0 40px rgba(79, 209, 217, 0.5);
+      transform: translate(-50%, -50%) scale(1.05);
+    }
+
     /* ============================================
        STASIS CHAMBER SCREEN - Starfall Header
        ============================================ */
@@ -3181,6 +3207,8 @@
     <div class="map-container">
       <canvas id="map-canvas"></canvas>
       <div class="planet-surface" id="planet-surface"></div>
+      <!-- Scan button centered over map -->
+      <button id="btn-scan-overlay" style="display:none;">INITIATE SCAN</button>
       <!-- Extract button positioned over the signal -->
       <button id="btn-extract-overlay" style="display:none;">EXTRACT SPECIMEN</button>
     </div>
@@ -5266,7 +5294,7 @@
           <div class="signal-location">${locationDisplay}</div>
           <div class="signal-coords">${lifeformName}</div>
           ${!signal.isFalseSignal ? `<div class="signal-rarity rarity-${signal.rarity} rarity-glow-${signal.rarity}">${rarityInfo.label}</div>` : ''}
-          <button class="signal-travel-btn">▶ TRAVEL THERE</button>
+          <button class="signal-travel-btn" ${MapState.level === 'planet' ? 'style="display:none;"' : ''}>▶ TRAVEL THERE</button>
           <div class="signal-timer${remaining < 20000 ? ' warning' : ''}${remaining < 10000 ? ' danger' : ''}" style="width: ${(1 - progress) * 100}%"></div>
         `;
 
@@ -5432,12 +5460,18 @@
         deployBtn.style.display = 'none';
       }
 
+      // Hide the old scan button in footer
       if (scanBtn) {
+        scanBtn.style.display = 'none';
+      }
+
+      // Show scan overlay button centered on map
+      const scanBtnOverlay = document.getElementById('btn-scan-overlay');
+      if (scanBtnOverlay) {
         if (MapState.level === 'planet' && !ScannerState.scanning && !ScannerState.scanComplete && !ScannerState.signalFound) {
-          scanBtn.style.display = 'block';
-          scanBtn.textContent = 'INITIATE SCAN';
+          scanBtnOverlay.style.display = 'block';
         } else {
-          scanBtn.style.display = 'none';
+          scanBtnOverlay.style.display = 'none';
         }
       }
 
@@ -7369,6 +7403,14 @@
 
       // Scan button - initiates planetary surface scan
       document.getElementById('btn-scan')?.addEventListener('click', () => {
+        if (MapState.level === 'planet' && !ScannerState.scanning && !ScannerState.scanComplete) {
+          startPlanetScan();
+          updateMapUI();
+        }
+      });
+
+      // Scan button overlay (centered on map)
+      document.getElementById('btn-scan-overlay')?.addEventListener('click', () => {
         if (MapState.level === 'planet' && !ScannerState.scanning && !ScannerState.scanComplete) {
           startPlanetScan();
           updateMapUI();
