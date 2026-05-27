@@ -4197,8 +4197,207 @@
       lastStrengthUpdate: 0,
       interference: [],
       scanStartTime: 0,
-      revealPhase: 0
+      revealPhase: 0,
+      terrainCanvas: null,   // Offscreen WebGL canvas for terrain
+      terrainGL: null,       // WebGL context
+      terrainProgram: null,  // Shader program
+      terrainSeed: 0,        // Random seed for this terrain
+      terrainReady: false    // Whether terrain has been rendered
     };
+
+    // ============================================
+    // WEBGL TERRAIN SHADER SYSTEM
+    // ============================================
+
+    const TerrainShader = {
+      vertexSource: `
+        attribute vec2 position;
+        varying vec2 vUv;
+        void main() {
+          vUv = position * 0.5 + 0.5;
+          gl_Position = vec4(position, 0.0, 1.0);
+        }
+      `,
+
+      fragmentSource: `
+        precision mediump float;
+        varying vec2 vUv;
+        uniform float seed;
+        uniform float time;
+
+        // Simplex-like noise
+        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+
+        float snoise(vec2 v) {
+          const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+                              -0.577350269189626, 0.024390243902439);
+          vec2 i  = floor(v + dot(v, C.yy));
+          vec2 x0 = v - i + dot(i, C.xx);
+          vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+          vec4 x12 = x0.xyxy + C.xxzz;
+          x12.xy -= i1;
+          i = mod289(i);
+          vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+          vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+          m = m*m; m = m*m;
+          vec3 x = 2.0 * fract(p * C.www) - 1.0;
+          vec3 h = abs(x) - 0.5;
+          vec3 ox = floor(x + 0.5);
+          vec3 a0 = x - ox;
+          m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+          vec3 g;
+          g.x = a0.x * x0.x + h.x * x0.y;
+          g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+          return 130.0 * dot(m, g);
+        }
+
+        float fbm(vec2 p) {
+          float f = 0.0;
+          f += 0.5000 * snoise(p); p *= 2.02;
+          f += 0.2500 * snoise(p); p *= 2.03;
+          f += 0.1250 * snoise(p); p *= 2.01;
+          f += 0.0625 * snoise(p);
+          return f / 0.9375;
+        }
+
+        void main() {
+          vec2 uv = vUv;
+          vec2 p = uv * 8.0 + seed;
+
+          // Base terrain height
+          float height = fbm(p) * 0.5 + 0.5;
+
+          // Ridge noise for terrain features
+          float ridge = 1.0 - abs(snoise(p * 0.5 + seed * 0.1));
+          ridge = pow(ridge, 2.0);
+          height = mix(height, ridge, 0.3);
+
+          // Dark monochrome base (0.02 to 0.15 range - very dark)
+          float brightness = 0.02 + height * 0.13;
+          vec3 color = vec3(brightness);
+
+          // Slight cool tint
+          color.b += 0.01;
+
+          // Contour lines - subtle elevation bands
+          float contour = fract(height * 8.0);
+          if (contour < 0.08 || contour > 0.92) {
+            color += 0.03;
+          }
+
+          // Lava veins - rare, in low elevation cracks
+          float lavaPattern = snoise(p * 3.0 + seed * 0.5);
+          float lavaMask = smoothstep(0.25, 0.22, height) * smoothstep(0.7, 0.75, lavaPattern);
+          vec3 lavaColor = vec3(0.4, 0.08, 0.02); // Deep red/orange
+          color = mix(color, lavaColor, lavaMask * 0.8);
+
+          // Water veins - in certain low areas
+          float waterPattern = snoise(p * 2.5 - seed * 0.3);
+          float waterMask = smoothstep(0.18, 0.15, height) * smoothstep(0.6, 0.65, waterPattern);
+          vec3 waterColor = vec3(0.02, 0.08, 0.12); // Dark blue
+          color = mix(color, waterColor, waterMask * 0.7);
+
+          // Film grain
+          float grain = snoise(uv * 400.0 + time) * 0.015;
+          color += grain;
+
+          // Horizontal scan lines (subtle banding)
+          float scanline = sin(uv.y * 800.0) * 0.008;
+          color += scanline;
+
+          // Occasional horizontal glitch
+          float glitchLine = step(0.997, snoise(vec2(uv.y * 50.0 + seed, seed)));
+          color += glitchLine * 0.05;
+
+          // Edge vignette (darker at edges)
+          float vignette = 1.0 - length((uv - 0.5) * 1.2);
+          vignette = smoothstep(0.0, 0.7, vignette);
+          color *= 0.7 + vignette * 0.3;
+
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `
+    };
+
+    function initTerrainShader() {
+      // Create offscreen canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = 800;
+      canvas.height = 500;
+      ScannerState.terrainCanvas = canvas;
+
+      const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
+      if (!gl) {
+        console.warn('WebGL not available for terrain');
+        return false;
+      }
+      ScannerState.terrainGL = gl;
+
+      // Compile shaders
+      const vertShader = gl.createShader(gl.VERTEX_SHADER);
+      gl.shaderSource(vertShader, TerrainShader.vertexSource);
+      gl.compileShader(vertShader);
+
+      const fragShader = gl.createShader(gl.FRAGMENT_SHADER);
+      gl.shaderSource(fragShader, TerrainShader.fragmentSource);
+      gl.compileShader(fragShader);
+
+      if (!gl.getShaderParameter(fragShader, gl.COMPILE_STATUS)) {
+        console.error('Fragment shader error:', gl.getShaderInfoLog(fragShader));
+        return false;
+      }
+
+      // Link program
+      const program = gl.createProgram();
+      gl.attachShader(program, vertShader);
+      gl.attachShader(program, fragShader);
+      gl.linkProgram(program);
+
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error('Shader program error:', gl.getProgramInfoLog(program));
+        return false;
+      }
+
+      ScannerState.terrainProgram = program;
+
+      // Create fullscreen quad
+      const vertices = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+      const posAttr = gl.getAttribLocation(program, 'position');
+      gl.enableVertexAttribArray(posAttr);
+      gl.vertexAttribPointer(posAttr, 2, gl.FLOAT, false, 0, 0);
+
+      return true;
+    }
+
+    function renderTerrain() {
+      const gl = ScannerState.terrainGL;
+      const program = ScannerState.terrainProgram;
+
+      if (!gl || !program) {
+        if (!initTerrainShader()) return false;
+      }
+
+      gl.useProgram(ScannerState.terrainProgram);
+      gl.viewport(0, 0, ScannerState.terrainCanvas.width, ScannerState.terrainCanvas.height);
+
+      // Set uniforms
+      const seedLoc = gl.getUniformLocation(ScannerState.terrainProgram, 'seed');
+      const timeLoc = gl.getUniformLocation(ScannerState.terrainProgram, 'time');
+      gl.uniform1f(seedLoc, ScannerState.terrainSeed);
+      gl.uniform1f(timeLoc, Date.now() * 0.001);
+
+      // Draw
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+      ScannerState.terrainReady = true;
+      return true;
+    }
 
     const GameState = {
       currentScreen: 'main-menu',
@@ -5379,10 +5578,8 @@
       });
     }
 
-    // Initialize planetary terrain scanner with random terrain type
+    // Initialize planetary terrain scanner
     function initPlanetScanner() {
-      const size = ScannerState.gridSize;
-      ScannerState.terrain = [];
       ScannerState.signalFound = false;
       ScannerState.scanning = false;
       ScannerState.scanProgress = 0;
@@ -5392,101 +5589,9 @@
       ScannerState.interference = [];
       ScannerState.revealPhase = 0;
 
-      // Select random terrain type
-      const typeKeys = Object.keys(TERRAIN_TYPES);
-      ScannerState.terrainType = typeKeys[Math.floor(Math.random() * typeKeys.length)];
-      const terrainConfig = TERRAIN_TYPES[ScannerState.terrainType];
-
-      // Generate procedural heightmap with terrain-specific features
-      const seed = Date.now();
-      for (let y = 0; y < size; y++) {
-        ScannerState.terrain[y] = [];
-        for (let x = 0; x < size; x++) {
-          let height = 0;
-
-          // Base terrain noise
-          height += noise2D(x * 0.04, y * 0.04, seed) * 0.4;
-          height += noise2D(x * 0.08, y * 0.08, seed + 100) * 0.25;
-          height += noise2D(x * 0.16, y * 0.16, seed + 200) * 0.15;
-          height += noise2D(x * 0.32, y * 0.32, seed + 300) * 0.1;
-
-          // Apply terrain-specific features
-          switch (terrainConfig.features) {
-            case 'ridges':
-              // Sharp ridge patterns
-              const ridge = Math.abs(noise2D(x * 0.03, y * 0.08, seed + 400));
-              if (ridge < 0.12) height += 0.4;
-              break;
-
-            case 'cracks':
-              // Ice crack patterns
-              const crack1 = Math.abs(noise2D(x * 0.02, y * 0.1, seed + 400));
-              const crack2 = Math.abs(noise2D(x * 0.08, y * 0.02, seed + 500));
-              if (crack1 < 0.08 || crack2 < 0.08) height -= 0.5;
-              break;
-
-            case 'lava':
-              // Lava flow channels
-              const flow = noise2D(x * 0.02, y * 0.06, seed + 400);
-              if (Math.abs(flow) < 0.15) height = -0.3; // Lava rivers
-              break;
-
-            case 'organic':
-              // Organic blob patterns for jungle
-              const blob = noise2D(x * 0.06, y * 0.06, seed + 400);
-              height += blob * 0.3;
-              break;
-
-            case 'crystals':
-              // Sharp crystalline spikes
-              const crystal = noise2D(x * 0.1, y * 0.1, seed + 400);
-              if (crystal > 0.5) height += (crystal - 0.5) * 2;
-              break;
-
-            case 'pools':
-              // Pools and bogs
-              const pool = noise2D(x * 0.05, y * 0.05, seed + 400);
-              if (pool < -0.2) height = 0.1; // Flat pool areas
-              break;
-
-            case 'grid':
-              // Geometric ruins grid
-              const gridX = Math.sin(x * 0.15) * 0.15;
-              const gridY = Math.sin(y * 0.15) * 0.15;
-              height += (gridX + gridY);
-              break;
-
-            case 'craters':
-              // Impact craters
-              for (let c = 0; c < 5; c++) {
-                const cx = noise2D(c * 100, 0, seed) * size;
-                const cy = noise2D(0, c * 100, seed) * size;
-                const dist = Math.sqrt(Math.pow(x - cx, 2) + Math.pow(y - cy, 2));
-                const craterSize = 8 + noise2D(c, c, seed) * 12;
-                if (dist < craterSize) {
-                  height -= (1 - dist / craterSize) * 0.5;
-                } else if (dist < craterSize * 1.3) {
-                  height += 0.2; // Crater rim
-                }
-              }
-              break;
-
-            case 'glow':
-              // Bioluminescent spots
-              const glow = noise2D(x * 0.08, y * 0.08, seed + 400);
-              if (glow > 0.4) height += (glow - 0.4) * 1.5;
-              break;
-
-            case 'dunes':
-              // Sand dune waves
-              const dune = Math.sin(x * 0.08 + noise2D(x * 0.02, y * 0.02, seed + 400) * 3);
-              height += dune * 0.25;
-              break;
-          }
-
-          ScannerState.terrain[y][x] = Math.max(0, Math.min(1, (height + 0.6) / 1.2));
-        }
-      }
+      // Generate new terrain seed for WebGL shader
+      ScannerState.terrainSeed = Math.random() * 1000;
+      ScannerState.terrainReady = false;
 
       // Place signal at random location with padding from edges
       const signal = GameState.signal;
@@ -5548,16 +5653,24 @@
       ctx.fillStyle = '#080c12';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Simple dark background with subtle noise (like other screens)
-      ctx.fillStyle = '#0a0a0f';
-      ctx.fillRect(mapX, mapY, mapW, mapH);
+      // Initialize terrain seed if needed
+      if (!ScannerState.terrainSeed) {
+        ScannerState.terrainSeed = Math.random() * 1000;
+        ScannerState.terrainReady = false;
+      }
 
-      // Subtle noise dots
-      ctx.fillStyle = 'rgba(79, 209, 217, 0.03)';
-      for (let i = 0; i < 150; i++) {
-        const nx = mapX + Math.random() * mapW;
-        const ny = mapY + Math.random() * mapH;
-        ctx.fillRect(nx, ny, 1, 1);
+      // Render WebGL terrain
+      if (!ScannerState.terrainReady) {
+        renderTerrain();
+      }
+
+      // Draw terrain canvas onto map area
+      if (ScannerState.terrainCanvas && ScannerState.terrainReady) {
+        ctx.drawImage(ScannerState.terrainCanvas, mapX, mapY, mapW, mapH);
+      } else {
+        // Fallback: simple dark background
+        ctx.fillStyle = '#0a0a0f';
+        ctx.fillRect(mapX, mapY, mapW, mapH);
       }
 
       // Grid overlay
