@@ -4023,20 +4023,17 @@
       selectedSystem: null // Track which system we're viewing
     };
 
-    // LIDAR terrain scanner state for planet view
+    // Planetary terrain scanner state
     const ScannerState = {
       terrain: [],        // 2D heightmap array
-      revealed: [],       // 2D array of revealed cells (fog of war)
-      gridSize: 80,       // Number of cells in each dimension
-      cursorX: 0,         // Scanner cursor position (0-1)
-      cursorY: 0,
-      scanRadius: 0.08,   // Radius of scanner reveal (0-1)
-      signalFound: false, // Has the scanner found the signal?
+      gridSize: 120,      // Resolution of terrain
+      signalFound: false, // Has the scan found the signal?
       signalX: 0,         // Signal position (0-1)
       signalY: 0,
       initialized: false,
-      sweepAngle: 0,      // Radar sweep angle
-      interference: []    // Random interference blips
+      scanning: false,    // Is scan animation running?
+      scanProgress: 0,    // 0-1 scan sweep progress
+      scanComplete: false // Has a scan been completed?
     };
 
     const GameState = {
@@ -4917,9 +4914,13 @@
       if (location) {
         let planetText = 'PLANETARY SCAN';
         if (signal) {
-          planetText = ScannerState.signalFound
-            ? `${signal.planet.toUpperCase()} - SIGNAL LOCKED`
-            : `${signal.planet.toUpperCase()} - TERRAIN SCAN ACTIVE`;
+          if (ScannerState.signalFound) {
+            planetText = `${signal.planet.toUpperCase()} - SIGNAL DETECTED`;
+          } else if (ScannerState.scanning) {
+            planetText = `${signal.planet.toUpperCase()} - SCANNING...`;
+          } else {
+            planetText = `${signal.planet.toUpperCase()} - AWAITING SCAN`;
+          }
         }
         const locationText = {
           universe: `SCANNING... ${visibleCount} SIGNAL${visibleCount !== 1 ? 'S' : ''} DETECTED`,
@@ -5203,56 +5204,46 @@
       });
     }
 
-    // Initialize LIDAR terrain scanner for planet view
+    // Initialize planetary terrain scanner
     function initPlanetScanner() {
       const size = ScannerState.gridSize;
       ScannerState.terrain = [];
-      ScannerState.revealed = [];
       ScannerState.signalFound = false;
-      ScannerState.sweepAngle = 0;
-      ScannerState.interference = [];
+      ScannerState.scanning = false;
+      ScannerState.scanProgress = 0;
+      ScannerState.scanComplete = false;
 
       // Generate procedural heightmap using layered noise
       const seed = Date.now();
       for (let y = 0; y < size; y++) {
         ScannerState.terrain[y] = [];
-        ScannerState.revealed[y] = [];
         for (let x = 0; x < size; x++) {
-          // Multi-octave noise for terrain
           let height = 0;
-          height += noise2D(x * 0.05, y * 0.05, seed) * 0.5;
-          height += noise2D(x * 0.1, y * 0.1, seed + 100) * 0.3;
-          height += noise2D(x * 0.2, y * 0.2, seed + 200) * 0.2;
-          // Add some craters/depressions
-          const craterNoise = noise2D(x * 0.03, y * 0.03, seed + 300);
-          if (craterNoise > 0.6) {
-            height -= (craterNoise - 0.6) * 2;
+          height += noise2D(x * 0.04, y * 0.04, seed) * 0.5;
+          height += noise2D(x * 0.08, y * 0.08, seed + 100) * 0.3;
+          height += noise2D(x * 0.15, y * 0.15, seed + 200) * 0.15;
+          height += noise2D(x * 0.3, y * 0.3, seed + 300) * 0.05;
+          // Add crater-like depressions
+          const craterNoise = noise2D(x * 0.025, y * 0.025, seed + 400);
+          if (craterNoise > 0.5) {
+            height -= (craterNoise - 0.5) * 1.5;
           }
-          ScannerState.terrain[y][x] = Math.max(0, Math.min(1, (height + 1) / 2));
-          ScannerState.revealed[y][x] = 0; // 0 = hidden, 1 = fully revealed
+          // Add ridges/channels
+          const ridgeNoise = Math.abs(noise2D(x * 0.02, y * 0.06, seed + 500));
+          if (ridgeNoise < 0.15) {
+            height -= 0.3 - ridgeNoise * 2;
+          }
+          ScannerState.terrain[y][x] = Math.max(0, Math.min(1, (height + 0.8) / 1.6));
         }
       }
 
-      // Place signal at random location with some padding from edges
+      // Place signal at random location with padding from edges
       const signal = GameState.signal;
       if (signal) {
-        ScannerState.signalX = 0.2 + Math.random() * 0.6;
-        ScannerState.signalY = 0.2 + Math.random() * 0.6;
+        ScannerState.signalX = 0.15 + Math.random() * 0.7;
+        ScannerState.signalY = 0.15 + Math.random() * 0.7;
       }
 
-      // Generate random interference blips
-      for (let i = 0; i < 15; i++) {
-        ScannerState.interference.push({
-          x: Math.random(),
-          y: Math.random(),
-          size: 0.01 + Math.random() * 0.02,
-          speed: 0.5 + Math.random() * 1.5,
-          phase: Math.random() * Math.PI * 2
-        });
-      }
-
-      ScannerState.cursorX = 0.5;
-      ScannerState.cursorY = 0.5;
       ScannerState.initialized = true;
     }
 
@@ -5260,6 +5251,13 @@
     function noise2D(x, y, seed) {
       const n = Math.sin(x * 12.9898 + y * 78.233 + seed) * 43758.5453;
       return (n - Math.floor(n)) * 2 - 1;
+    }
+
+    // Start the scan animation
+    function startPlanetScan() {
+      if (ScannerState.scanning || ScannerState.scanComplete) return;
+      ScannerState.scanning = true;
+      ScannerState.scanProgress = 0;
     }
 
     function drawPlanetView(ctx, canvas) {
@@ -5270,252 +5268,250 @@
 
       const signal = GameState.signal;
       const size = ScannerState.gridSize;
-      const cellW = canvas.width / size;
-      const cellH = canvas.height / size;
       const time = Date.now() * 0.001;
 
-      // Update sweep angle for radar effect
-      ScannerState.sweepAngle += 0.02;
+      // Map area with margins
+      const margin = 60;
+      const mapX = margin;
+      const mapY = margin;
+      const mapW = canvas.width - margin * 2;
+      const mapH = canvas.height - margin * 2;
 
-      // Draw dark background
-      ctx.fillStyle = '#050810';
+      // Dark background
+      ctx.fillStyle = '#080c12';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw circular scan area boundary
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2;
-      const scanAreaRadius = Math.min(canvas.width, canvas.height) * 0.45;
+      // Draw terrain as topographic satellite view
+      const cellW = mapW / size;
+      const cellH = mapH / size;
 
-      // Outer ring
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, scanAreaRadius, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(79, 209, 217, 0.3)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const height = ScannerState.terrain[y][x];
+          const screenX = mapX + x * cellW;
+          const screenY = mapY + y * cellH;
 
-      // Inner concentric rings
-      for (let r = 0.25; r < 1; r += 0.25) {
+          // Teal/green topographic coloring like the reference
+          let r, g, b;
+          if (height < 0.25) {
+            // Deep valleys - dark teal
+            const t = height / 0.25;
+            r = 15 + t * 10;
+            g = 40 + t * 30;
+            b = 50 + t * 20;
+          } else if (height < 0.45) {
+            // Low areas - teal
+            const t = (height - 0.25) / 0.2;
+            r = 25 + t * 15;
+            g = 70 + t * 40;
+            b = 70 + t * 20;
+          } else if (height < 0.65) {
+            // Mid elevation - green-teal
+            const t = (height - 0.45) / 0.2;
+            r = 40 + t * 20;
+            g = 110 + t * 30;
+            b = 90 - t * 10;
+          } else {
+            // High areas - lighter teal/gray
+            const t = (height - 0.65) / 0.35;
+            r = 60 + t * 40;
+            g = 140 + t * 30;
+            b = 80 + t * 30;
+          }
+
+          // Add subtle noise variation
+          const noise = (Math.random() - 0.5) * 8;
+          r = Math.max(0, Math.min(255, r + noise));
+          g = Math.max(0, Math.min(255, g + noise));
+          b = Math.max(0, Math.min(255, b + noise));
+
+          ctx.fillStyle = `rgb(${Math.floor(r)}, ${Math.floor(g)}, ${Math.floor(b)})`;
+          ctx.fillRect(screenX, screenY, cellW + 1, cellH + 1);
+        }
+      }
+
+      // Grid overlay
+      const gridCols = 14;
+      const gridRows = 7;
+      const gridCellW = mapW / gridCols;
+      const gridCellH = mapH / gridRows;
+
+      ctx.strokeStyle = 'rgba(79, 209, 217, 0.2)';
+      ctx.lineWidth = 1;
+
+      // Vertical lines
+      for (let i = 0; i <= gridCols; i++) {
+        const x = mapX + i * gridCellW;
         ctx.beginPath();
-        ctx.arc(centerX, centerY, scanAreaRadius * r, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(79, 209, 217, 0.1)';
-        ctx.lineWidth = 1;
+        ctx.moveTo(x, mapY);
+        ctx.lineTo(x, mapY + mapH);
         ctx.stroke();
       }
 
-      // Crosshairs
-      ctx.strokeStyle = 'rgba(79, 209, 217, 0.15)';
-      ctx.beginPath();
-      ctx.moveTo(centerX - scanAreaRadius, centerY);
-      ctx.lineTo(centerX + scanAreaRadius, centerY);
-      ctx.moveTo(centerX, centerY - scanAreaRadius);
-      ctx.lineTo(centerX, centerY + scanAreaRadius);
-      ctx.stroke();
-
-      // Draw LIDAR terrain points
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          const px = (x + 0.5) / size;
-          const py = (y + 0.5) / size;
-
-          // Check if within circular scan area
-          const dx = px - 0.5;
-          const dy = py - 0.5;
-          const distFromCenter = Math.sqrt(dx * dx + dy * dy);
-          if (distFromCenter > 0.45) continue;
-
-          const reveal = ScannerState.revealed[y][x];
-          if (reveal < 0.05) continue; // Don't draw unrevealed cells
-
-          const height = ScannerState.terrain[y][x];
-          const screenX = px * canvas.width;
-          const screenY = py * canvas.height;
-
-          // Color based on height (LIDAR style: green/yellow/red gradient)
-          let r, g, b;
-          if (height < 0.3) {
-            // Low = dark green/blue (valleys)
-            r = 20;
-            g = 80 + height * 150;
-            b = 100 + height * 50;
-          } else if (height < 0.6) {
-            // Mid = green/yellow
-            const t = (height - 0.3) / 0.3;
-            r = 30 + t * 180;
-            g = 150 + t * 50;
-            b = 50 - t * 30;
-          } else {
-            // High = orange/red (peaks)
-            const t = (height - 0.6) / 0.4;
-            r = 200 + t * 55;
-            g = 180 - t * 120;
-            b = 20;
-          }
-
-          // Apply reveal fade and add some noise
-          const alpha = reveal * (0.6 + Math.random() * 0.2);
-          const pointSize = 2 + height * 3;
-
-          ctx.beginPath();
-          ctx.arc(screenX, screenY, pointSize, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-          ctx.fill();
-        }
+      // Horizontal lines
+      for (let i = 0; i <= gridRows; i++) {
+        const y = mapY + i * gridCellH;
+        ctx.beginPath();
+        ctx.moveTo(mapX, y);
+        ctx.lineTo(mapX + mapW, y);
+        ctx.stroke();
       }
 
-      // Draw radar sweep
-      const sweepGradient = ctx.createConicalGradient
-        ? ctx.createConicalGradient(ScannerState.sweepAngle, centerX, centerY)
-        : null;
+      // Grid labels
+      ctx.font = '10px "Share Tech Mono", monospace';
+      ctx.fillStyle = 'rgba(79, 209, 217, 0.5)';
 
-      // Fallback sweep line
-      ctx.save();
-      ctx.translate(centerX, centerY);
-      ctx.rotate(ScannerState.sweepAngle);
-      const sweepGrad = ctx.createLinearGradient(0, 0, scanAreaRadius, 0);
-      sweepGrad.addColorStop(0, 'rgba(79, 209, 217, 0)');
-      sweepGrad.addColorStop(0.5, 'rgba(79, 209, 217, 0.15)');
-      sweepGrad.addColorStop(1, 'rgba(79, 209, 217, 0.3)');
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.arc(0, 0, scanAreaRadius, -0.15, 0.15);
-      ctx.closePath();
-      ctx.fillStyle = sweepGrad;
-      ctx.fill();
-      ctx.restore();
-
-      // Draw interference blips
-      ScannerState.interference.forEach(blip => {
-        const bx = blip.x * canvas.width;
-        const by = blip.y * canvas.height;
-        const pulse = Math.sin(time * blip.speed + blip.phase);
-        if (pulse > 0.5) {
-          ctx.beginPath();
-          ctx.arc(bx, by, blip.size * canvas.width * pulse, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(79, 209, 217, ${(pulse - 0.5) * 0.4})`;
-          ctx.fill();
-        }
-      });
-
-      // Update revealed areas based on cursor position
-      const cursorGridX = Math.floor(ScannerState.cursorX * size);
-      const cursorGridY = Math.floor(ScannerState.cursorY * size);
-      const revealRadius = Math.floor(ScannerState.scanRadius * size);
-
-      for (let dy = -revealRadius; dy <= revealRadius; dy++) {
-        for (let dx = -revealRadius; dx <= revealRadius; dx++) {
-          const gx = cursorGridX + dx;
-          const gy = cursorGridY + dy;
-          if (gx >= 0 && gx < size && gy >= 0 && gy < size) {
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist <= revealRadius) {
-              const revealAmount = 1 - (dist / revealRadius) * 0.5;
-              ScannerState.revealed[gy][gx] = Math.min(1, ScannerState.revealed[gy][gx] + revealAmount * 0.1);
-            }
-          }
-        }
+      // Column numbers
+      for (let i = 0; i < gridCols; i++) {
+        ctx.textAlign = 'center';
+        ctx.fillText((i + 1).toString(), mapX + (i + 0.5) * gridCellW, mapY + mapH + 15);
       }
 
-      // Check if scanner is near the signal
-      if (signal && !ScannerState.signalFound) {
-        const distToSignal = Math.sqrt(
-          Math.pow(ScannerState.cursorX - ScannerState.signalX, 2) +
-          Math.pow(ScannerState.cursorY - ScannerState.signalY, 2)
-        );
-        if (distToSignal < ScannerState.scanRadius * 1.2) {
+      // Row letters
+      const rowLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+      for (let i = 0; i < gridRows; i++) {
+        ctx.textAlign = 'right';
+        ctx.fillText(rowLabels[i], mapX - 8, mapY + (i + 0.5) * gridCellH + 4);
+      }
+
+      // Scan line animation
+      if (ScannerState.scanning) {
+        ScannerState.scanProgress += 0.012;
+
+        if (ScannerState.scanProgress >= 1) {
+          ScannerState.scanning = false;
+          ScannerState.scanComplete = true;
           ScannerState.signalFound = true;
         }
+
+        // Draw scan line
+        const scanY = mapY + ScannerState.scanProgress * mapH;
+
+        // Glow above scan line
+        const glowGrad = ctx.createLinearGradient(0, scanY - 60, 0, scanY);
+        glowGrad.addColorStop(0, 'rgba(79, 209, 217, 0)');
+        glowGrad.addColorStop(1, 'rgba(79, 209, 217, 0.3)');
+        ctx.fillStyle = glowGrad;
+        ctx.fillRect(mapX, scanY - 60, mapW, 60);
+
+        // Bright scan line
+        ctx.strokeStyle = 'rgba(79, 209, 217, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(mapX, scanY);
+        ctx.lineTo(mapX + mapW, scanY);
+        ctx.stroke();
+
+        // Scan percentage
+        ctx.font = '12px "Share Tech Mono", monospace';
+        ctx.fillStyle = 'rgba(79, 209, 217, 0.9)';
+        ctx.textAlign = 'right';
+        ctx.fillText(`SCANNING: ${Math.floor(ScannerState.scanProgress * 100)}%`, canvas.width - 20, 30);
       }
 
-      // Draw signal if found
-      if (signal && ScannerState.signalFound) {
-        const sx = ScannerState.signalX * canvas.width;
-        const sy = ScannerState.signalY * canvas.height;
+      // Draw signal marker if found
+      if (ScannerState.signalFound && signal) {
+        const sx = mapX + ScannerState.signalX * mapW;
+        const sy = mapY + ScannerState.signalY * mapH;
         const color = getSignalColor(signal.type);
 
-        drawTargetBox(ctx, sx, sy, 60, color);
-        drawPing(ctx, sx, sy, color, 20);
+        // Pulsing highlight area
+        const pulse = Math.sin(time * 3) * 0.3 + 0.7;
+        ctx.fillStyle = `rgba(232, 90, 60, ${0.15 * pulse})`;
+        ctx.fillRect(sx - 30, sy - 30, 60, 60);
+
+        // Target brackets
+        drawTargetBox(ctx, sx, sy, 50, color);
+
+        // Ping effect
+        drawPing(ctx, sx, sy, color, 18);
 
         // Label
-        ctx.font = '12px "Orbitron", sans-serif';
+        ctx.font = '11px "Orbitron", sans-serif';
         ctx.fillStyle = color;
         ctx.textAlign = 'center';
-        ctx.fillText('SIGNAL LOCKED', sx, sy - 45);
+        ctx.fillText('DISTRESS SIGNAL', sx, sy - 35);
+
+        // Grid coordinate
+        const gridCol = Math.floor(ScannerState.signalX * gridCols) + 1;
+        const gridRow = rowLabels[Math.floor(ScannerState.signalY * gridRows)] || 'A';
         ctx.font = '10px "Share Tech Mono", monospace';
         ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-        ctx.fillText('CLICK TO EXTRACT', sx, sy + 55);
+        ctx.fillText(`SECTOR ${gridRow}-${gridCol}`, sx, sy + 40);
       }
 
-      // Draw scanner cursor
-      const cursorScreenX = ScannerState.cursorX * canvas.width;
-      const cursorScreenY = ScannerState.cursorY * canvas.height;
-      const cursorRadius = ScannerState.scanRadius * Math.min(canvas.width, canvas.height);
+      // Dark vignette edges
+      const vignetteGrad = ctx.createRadialGradient(
+        canvas.width / 2, canvas.height / 2, Math.min(mapW, mapH) * 0.4,
+        canvas.width / 2, canvas.height / 2, Math.max(canvas.width, canvas.height) * 0.7
+      );
+      vignetteGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      vignetteGrad.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
+      ctx.fillStyle = vignetteGrad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Scanner circle
-      ctx.beginPath();
-      ctx.arc(cursorScreenX, cursorScreenY, cursorRadius, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(79, 209, 217, 0.8)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Inner scanning animation
-      const scanPulse = (time * 2) % 1;
-      ctx.beginPath();
-      ctx.arc(cursorScreenX, cursorScreenY, cursorRadius * scanPulse, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(79, 209, 217, ${0.5 * (1 - scanPulse)})`;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      // Crosshair in cursor
-      const chSize = 8;
-      ctx.strokeStyle = 'rgba(79, 209, 217, 0.9)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(cursorScreenX - chSize, cursorScreenY);
-      ctx.lineTo(cursorScreenX - 3, cursorScreenY);
-      ctx.moveTo(cursorScreenX + 3, cursorScreenY);
-      ctx.lineTo(cursorScreenX + chSize, cursorScreenY);
-      ctx.moveTo(cursorScreenX, cursorScreenY - chSize);
-      ctx.lineTo(cursorScreenX, cursorScreenY - 3);
-      ctx.moveTo(cursorScreenX, cursorScreenY + 3);
-      ctx.lineTo(cursorScreenX, cursorScreenY + chSize);
-      ctx.stroke();
-
-      // UI overlay - scan status
-      ctx.font = '14px "Orbitron", sans-serif';
-      ctx.textAlign = 'left';
+      // Top-left header
+      ctx.font = '16px "Orbitron", sans-serif';
       ctx.fillStyle = 'rgba(79, 209, 217, 0.9)';
-      ctx.fillText('TERRAIN SCAN ACTIVE', 20, 30);
+      ctx.textAlign = 'left';
+      ctx.fillText('PLANETARY SURVEY', 20, 30);
 
-      ctx.font = '11px "Share Tech Mono", monospace';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      ctx.fillText(`COORDINATES: ${(ScannerState.cursorX * 360 - 180).toFixed(1)}° / ${(ScannerState.cursorY * 180 - 90).toFixed(1)}°`, 20, 50);
-
-      // Scan progress (how much terrain revealed)
-      let totalRevealed = 0;
-      let totalCells = 0;
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          const dx = (x + 0.5) / size - 0.5;
-          const dy = (y + 0.5) / size - 0.5;
-          if (Math.sqrt(dx * dx + dy * dy) <= 0.45) {
-            totalCells++;
-            totalRevealed += ScannerState.revealed[y][x];
-          }
-        }
+      if (signal) {
+        ctx.font = '11px "Share Tech Mono", monospace';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fillText(signal.planet.toUpperCase(), 20, 48);
       }
-      const scanPercent = Math.floor((totalRevealed / totalCells) * 100);
-      ctx.fillText(`SCAN COVERAGE: ${scanPercent}%`, 20, 68);
 
-      // Signal status
-      ctx.fillStyle = ScannerState.signalFound ? 'rgba(79, 217, 127, 0.9)' : 'rgba(232, 90, 60, 0.7)';
-      ctx.fillText(ScannerState.signalFound ? '◉ SIGNAL ACQUIRED' : '○ SCANNING FOR SIGNAL...', 20, 88);
+      // Top-right info
+      ctx.textAlign = 'right';
+      ctx.font = '12px "Orbitron", sans-serif';
+      ctx.fillStyle = 'rgba(79, 209, 217, 0.7)';
+      ctx.fillText(`MISSION DAY ${GameState.missionDay}`, canvas.width - 20, 30);
 
-      // Instructions
-      if (!ScannerState.signalFound) {
-        ctx.font = '10px "Share Tech Mono", monospace';
+      // Status indicator
+      ctx.font = '11px "Share Tech Mono", monospace';
+      if (ScannerState.signalFound) {
+        ctx.fillStyle = 'rgba(232, 90, 60, 0.9)';
+        ctx.fillText('◉ SIGNAL DETECTED', canvas.width - 20, 48);
+      } else if (!ScannerState.scanning) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.fillText('○ AWAITING SCAN', canvas.width - 20, 48);
+      }
+
+      // Draw SCAN button if not scanned yet
+      if (!ScannerState.scanComplete && !ScannerState.scanning) {
+        const btnW = 140;
+        const btnH = 45;
+        const btnX = canvas.width / 2 - btnW / 2;
+        const btnY = canvas.height - margin - btnH - 20;
+
+        // Button background
+        ctx.fillStyle = 'rgba(79, 209, 217, 0.15)';
+        ctx.fillRect(btnX, btnY, btnW, btnH);
+
+        // Button border
+        ctx.strokeStyle = 'rgba(79, 209, 217, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(btnX, btnY, btnW, btnH);
+
+        // Button text
+        ctx.font = '14px "Orbitron", sans-serif';
+        ctx.fillStyle = 'rgba(79, 209, 217, 0.95)';
         ctx.textAlign = 'center';
-        ctx.fillText('MOVE CURSOR TO SCAN TERRAIN', canvas.width / 2, canvas.height - 20);
+        ctx.fillText('INITIATE SCAN', canvas.width / 2, btnY + btnH / 2 + 5);
+
+        // Store button bounds for click detection
+        ScannerState.scanButtonBounds = { x: btnX, y: btnY, w: btnW, h: btnH };
+      } else {
+        ScannerState.scanButtonBounds = null;
+      }
+
+      // Instructions at bottom
+      if (ScannerState.signalFound) {
+        ctx.font = '10px "Share Tech Mono", monospace';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.textAlign = 'center';
+        ctx.fillText('CLICK SIGNAL TO BEGIN EXTRACTION', canvas.width / 2, canvas.height - 15);
       }
     }
 
@@ -5630,21 +5626,39 @@
           break;
 
         case 'planet':
-          // At planet level, must find signal first via scanner
           if (!signal) return;
 
-          // Only allow extraction if signal has been found by scanner
-          if (!ScannerState.signalFound) {
-            return; // Haven't found the signal yet
+          // Check if SCAN button was clicked
+          if (ScannerState.scanButtonBounds) {
+            const btn = ScannerState.scanButtonBounds;
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+            if (clickX >= btn.x && clickX <= btn.x + btn.w &&
+                clickY >= btn.y && clickY <= btn.y + btn.h) {
+              startPlanetScan();
+              return;
+            }
           }
 
-          // Check if clicked near the signal location
+          // Only allow extraction if signal has been found
+          if (!ScannerState.signalFound) {
+            return;
+          }
+
+          // Check if clicked on the signal (use pixel coordinates with margin offset)
+          const margin = 60;
+          const mapW = canvas.width - margin * 2;
+          const mapH = canvas.height - margin * 2;
+          const signalScreenX = margin + ScannerState.signalX * mapW;
+          const signalScreenY = margin + ScannerState.signalY * mapH;
+          const clickX = e.clientX - rect.left;
+          const clickY = e.clientY - rect.top;
           const distToSignal = Math.sqrt(
-            Math.pow(x - ScannerState.signalX, 2) +
-            Math.pow(y - ScannerState.signalY, 2)
+            Math.pow(clickX - signalScreenX, 2) +
+            Math.pow(clickY - signalScreenY, 2)
           );
 
-          if (distToSignal > 0.1) {
+          if (distToSignal > 40) {
             return; // Didn't click on the signal
           }
 
@@ -6584,16 +6598,6 @@
 
       // Map canvas click handler for drill-down
       document.getElementById('map-canvas')?.addEventListener('click', handleMapClick);
-
-      // Map canvas mousemove handler for scanner cursor
-      document.getElementById('map-canvas')?.addEventListener('mousemove', (e) => {
-        if (MapState.level === 'planet') {
-          const canvas = e.target;
-          const rect = canvas.getBoundingClientRect();
-          ScannerState.cursorX = (e.clientX - rect.left) / rect.width;
-          ScannerState.cursorY = (e.clientY - rect.top) / rect.height;
-        }
-      });
 
       // Signal notification click - zoom to next level
       document.getElementById('signal-notification')?.addEventListener('click', () => {
