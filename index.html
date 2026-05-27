@@ -5692,6 +5692,167 @@
       ScannerState.initialized = true;
     }
 
+    // Extraction animation state
+    let extractionState = {
+      active: false,
+      startTime: 0,
+      signal: null,
+      phase: 0 // 0: beam down, 1: capture, 2: beam up, 3: complete
+    };
+
+    // Start extraction sequence with animation
+    function startExtraction(signal) {
+      if (extractionState.active) return;
+
+      extractionState.active = true;
+      extractionState.startTime = Date.now();
+      extractionState.signal = signal;
+      extractionState.phase = 0;
+
+      // Clean up signal tracking
+      GameState.signals = GameState.signals.filter(s => s.id !== signal.id);
+
+      if (GameState.signalSpawnInterval) {
+        clearInterval(GameState.signalSpawnInterval);
+        GameState.signalSpawnInterval = null;
+      }
+      if (GameState.signalUpdateInterval) {
+        clearInterval(GameState.signalUpdateInterval);
+        GameState.signalUpdateInterval = null;
+      }
+    }
+
+    // Draw extraction animation overlay
+    function drawExtractionAnimation(ctx, canvas) {
+      if (!extractionState.active) return false;
+
+      const elapsed = Date.now() - extractionState.startTime;
+      const duration = 2500; // 2.5 second animation
+      const progress = Math.min(elapsed / duration, 1.0);
+
+      const margin = 60;
+      const mapW = canvas.width - margin * 2;
+      const mapH = canvas.height - margin * 2;
+      const signalX = margin + ScannerState.signalX * mapW;
+      const signalY = margin + ScannerState.signalY * mapH;
+
+      // Darken the background
+      ctx.fillStyle = `rgba(0, 0, 0, ${0.3 + progress * 0.4})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Extraction beam from top
+      const beamWidth = 60 + Math.sin(elapsed * 0.02) * 10;
+      const beamGradient = ctx.createLinearGradient(signalX, 0, signalX, signalY);
+      beamGradient.addColorStop(0, `rgba(79, 209, 217, ${0.1 + progress * 0.3})`);
+      beamGradient.addColorStop(0.5, `rgba(79, 209, 217, ${0.3 + progress * 0.4})`);
+      beamGradient.addColorStop(1, `rgba(255, 255, 255, ${0.5 + progress * 0.3})`);
+
+      ctx.fillStyle = beamGradient;
+      ctx.beginPath();
+      ctx.moveTo(signalX - beamWidth * 0.3, 0);
+      ctx.lineTo(signalX + beamWidth * 0.3, 0);
+      ctx.lineTo(signalX + beamWidth * 0.5, signalY);
+      ctx.lineTo(signalX - beamWidth * 0.5, signalY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Scanning rings at signal location
+      const numRings = 3;
+      for (let i = 0; i < numRings; i++) {
+        const ringProgress = (progress * 3 + i * 0.3) % 1;
+        const ringRadius = 20 + ringProgress * 80;
+        const ringAlpha = (1 - ringProgress) * 0.6;
+
+        ctx.strokeStyle = `rgba(79, 209, 217, ${ringAlpha})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(signalX, signalY, ringRadius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Central glow
+      const glowRadius = 30 + Math.sin(elapsed * 0.01) * 10;
+      const glowGradient = ctx.createRadialGradient(signalX, signalY, 0, signalX, signalY, glowRadius);
+      glowGradient.addColorStop(0, `rgba(255, 255, 255, ${0.8})`);
+      glowGradient.addColorStop(0.3, `rgba(79, 209, 217, ${0.6})`);
+      glowGradient.addColorStop(1, 'rgba(79, 209, 217, 0)');
+      ctx.fillStyle = glowGradient;
+      ctx.beginPath();
+      ctx.arc(signalX, signalY, glowRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Status text
+      ctx.font = '14px "Orbitron", sans-serif';
+      ctx.fillStyle = `rgba(79, 209, 217, ${0.7 + Math.sin(elapsed * 0.01) * 0.3})`;
+      ctx.textAlign = 'center';
+
+      const statusTexts = ['LOCKING COORDINATES...', 'INITIATING EXTRACTION...', 'SPECIMEN ACQUIRED'];
+      const textIndex = Math.min(Math.floor(progress * 3), 2);
+      ctx.fillText(statusTexts[textIndex], canvas.width / 2, canvas.height - 80);
+
+      // Progress bar
+      const barWidth = 200;
+      const barHeight = 4;
+      const barX = (canvas.width - barWidth) / 2;
+      const barY = canvas.height - 60;
+
+      ctx.fillStyle = 'rgba(79, 209, 217, 0.3)';
+      ctx.fillRect(barX, barY, barWidth, barHeight);
+      ctx.fillStyle = 'rgba(79, 209, 217, 0.9)';
+      ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+
+      // Particle effects rising up
+      if (progress > 0.3) {
+        const particleCount = 15;
+        for (let i = 0; i < particleCount; i++) {
+          const particleProgress = ((progress - 0.3) * 2 + i * 0.1) % 1;
+          const px = signalX + (Math.sin(i * 1.5 + elapsed * 0.005) * 30);
+          const py = signalY - particleProgress * signalY;
+          const particleAlpha = (1 - particleProgress) * 0.8;
+          const particleSize = 2 + Math.sin(i + elapsed * 0.01) * 1;
+
+          ctx.fillStyle = `rgba(79, 209, 217, ${particleAlpha})`;
+          ctx.beginPath();
+          ctx.arc(px, py, particleSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Check if animation complete
+      if (progress >= 1.0) {
+        completeExtraction();
+        return false;
+      }
+
+      return true; // Animation still running
+    }
+
+    // Complete extraction and transition to stasis
+    function completeExtraction() {
+      const signal = extractionState.signal;
+      extractionState.active = false;
+      extractionState.signal = null;
+
+      // Reset scanner state for next planet
+      ScannerState.initialized = false;
+
+      if (!signal) return;
+
+      if (signal.isFalseSignal) {
+        showFalseSignalMessage();
+      } else if (signal.lifeform) {
+        const elapsed = Date.now() - signal.createdAt;
+        const decayFactor = Math.min(elapsed / signal.duration, 1.0);
+        signal.lifeform.decayFactor = decayFactor;
+        signal.lifeform.condition = decayFactor < 0.3 ? 'pristine' :
+                                   decayFactor < 0.5 ? 'good' :
+                                   decayFactor < 0.75 ? 'fair' : 'poor';
+
+        loadLifeformIntoStasis(signal.lifeform);
+        showScreen('stasis-chamber');
+      }
+    }
+
     // Simple 2D noise function
     function noise2D(x, y, seed) {
       const n = Math.sin(x * 12.9898 + y * 78.233 + seed) * 43758.5453;
@@ -6051,6 +6212,9 @@
         ctx.textAlign = 'center';
         ctx.fillText('⚠ SIGNAL DEGRADING - SCAN NOW ⚠', canvas.width / 2, canvas.height - 20);
       }
+
+      // Draw extraction animation if active
+      drawExtractionAnimation(ctx, canvas);
     }
 
     function drawRegionView(ctx, canvas) {
@@ -6188,37 +6352,13 @@
             Math.pow(clickY - signalScreenY, 2)
           );
 
-          if (distToSignal > 40) {
+          // Larger hit area for easier clicking
+          if (distToSignal > 60) {
             return; // Didn't click on the signal
           }
 
-          GameState.signals = GameState.signals.filter(s => s.id !== signal.id);
-
-          if (GameState.signalSpawnInterval) {
-            clearInterval(GameState.signalSpawnInterval);
-            GameState.signalSpawnInterval = null;
-          }
-          if (GameState.signalUpdateInterval) {
-            clearInterval(GameState.signalUpdateInterval);
-            GameState.signalUpdateInterval = null;
-          }
-
-          // Reset scanner state for next planet
-          ScannerState.initialized = false;
-
-          if (signal.isFalseSignal) {
-            showFalseSignalMessage();
-          } else if (signal.lifeform) {
-            const elapsed = Date.now() - signal.createdAt;
-            const decayFactor = Math.min(elapsed / signal.duration, 1.0);
-            signal.lifeform.decayFactor = decayFactor;
-            signal.lifeform.condition = decayFactor < 0.3 ? 'pristine' :
-                                       decayFactor < 0.5 ? 'good' :
-                                       decayFactor < 0.75 ? 'fair' : 'poor';
-
-            loadLifeformIntoStasis(signal.lifeform);
-            showScreen('stasis-chamber');
-          }
+          // Start extraction sequence
+          startExtraction(signal);
           return;
       }
     }
