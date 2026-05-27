@@ -5548,182 +5548,16 @@
       ctx.fillStyle = '#080c12';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Get terrain type configuration
-      const terrainConfig = TERRAIN_TYPES[ScannerState.terrainType] || TERRAIN_TYPES.rocky_canyon;
-      const colors = terrainConfig.colors;
-
-      // Draw procedural terrain - Mars rover data transmission style
-      const pixelSize = 3; // Smaller pixels for more detail
-      const pixelsX = Math.floor(mapW / pixelSize);
-      const pixelsY = Math.floor(mapH / pixelSize);
-
-      // Precompute seeded random for consistent dithering pattern
-      const ditherSeed = ScannerState.terrainType?.charCodeAt(0) || 42;
-
-      for (let py = 0; py < pixelsY; py++) {
-        // Horizontal scan line artifacts (data transmission bands)
-        const scanLineNoise = Math.sin(py * 0.3 + ditherSeed) * 0.03;
-        const bandingOffset = (py % 47 < 2) ? 0.05 : 0; // Occasional bright bands
-
-        for (let px = 0; px < pixelsX; px++) {
-          // Sample terrain with sub-pixel interpolation for smoother gradients
-          const txRaw = (px / pixelsX) * size;
-          const tyRaw = (py / pixelsY) * size;
-          const terrainX = Math.floor(txRaw);
-          const terrainY = Math.floor(tyRaw);
-          const fracX = txRaw - terrainX;
-          const fracY = tyRaw - terrainY;
-
-          // Bilinear interpolation for smoother height sampling
-          const h00 = ScannerState.terrain[terrainY]?.[terrainX] || 0.5;
-          const h10 = ScannerState.terrain[terrainY]?.[terrainX + 1] || h00;
-          const h01 = ScannerState.terrain[terrainY + 1]?.[terrainX] || h00;
-          const h11 = ScannerState.terrain[terrainY + 1]?.[terrainX + 1] || h00;
-          const height = h00 * (1 - fracX) * (1 - fracY) + h10 * fracX * (1 - fracY) +
-                        h01 * (1 - fracX) * fracY + h11 * fracX * fracY;
-
-          // Calculate gradient for edge detection
-          const hLeft = ScannerState.terrain[terrainY]?.[terrainX - 1] || height;
-          const hRight = ScannerState.terrain[terrainY]?.[terrainX + 1] || height;
-          const hUp = ScannerState.terrain[terrainY - 1]?.[terrainX] || height;
-          const hDown = ScannerState.terrain[terrainY + 1]?.[terrainX] || height;
-          const gradient = Math.abs(hRight - hLeft) + Math.abs(hDown - hUp);
-
-          const screenX = mapX + px * pixelSize;
-          const screenY = mapY + py * pixelSize;
-
-          // Find base color from height threshold
-          let r, g, b;
-          let colorIndex = 0;
-          for (let i = 0; i < colors.length; i++) {
-            if (height <= colors[i].threshold) {
-              r = colors[i].r;
-              g = colors[i].g;
-              b = colors[i].b;
-              colorIndex = i;
-              break;
-            }
-          }
-
-          // Dithering at color boundaries (creates terrain texture)
-          if (colorIndex > 0) {
-            const prevThreshold = colors[colorIndex - 1].threshold;
-            const currThreshold = colors[colorIndex].threshold;
-            const blendZone = (height - prevThreshold) / (currThreshold - prevThreshold);
-
-            // Ordered dithering pattern (Bayer-like)
-            const ditherMatrix = ((px % 4) + (py % 4) * 4) / 16;
-            if (blendZone < ditherMatrix * 0.4) {
-              // Blend with previous color
-              r = r * 0.6 + colors[colorIndex - 1].r * 0.4;
-              g = g * 0.6 + colors[colorIndex - 1].g * 0.4;
-              b = b * 0.6 + colors[colorIndex - 1].b * 0.4;
-            }
-          }
-
-          // Add film grain / sensor noise (varies by position)
-          const grainSeed = (px * 7919 + py * 104729 + ditherSeed) % 1000;
-          const grain = ((grainSeed / 1000) - 0.5) * 18;
-          r += grain;
-          g += grain;
-          b += grain;
-
-          // Transmission artifacts - scan line noise
-          r += scanLineNoise * 30;
-          g += scanLineNoise * 30;
-          b += scanLineNoise * 30;
-
-          // Occasional bright horizontal bands (data bursts)
-          if (bandingOffset > 0) {
-            r += bandingOffset * 40;
-            g += bandingOffset * 40;
-            b += bandingOffset * 40;
-          }
-
-          // Edge enhancement (makes terrain features pop)
-          if (gradient > 0.15) {
-            const edgeBrightness = Math.min(gradient * 80, 25);
-            r += edgeBrightness;
-            g += edgeBrightness;
-            b += edgeBrightness;
-          }
-
-          // Clamp values
-          r = Math.max(0, Math.min(255, r));
-          g = Math.max(0, Math.min(255, g));
-          b = Math.max(0, Math.min(255, b));
-
-          ctx.fillStyle = `rgb(${Math.floor(r)}, ${Math.floor(g)}, ${Math.floor(b)})`;
-          ctx.fillRect(screenX, screenY, pixelSize, pixelSize);
-        }
-      }
-
-      // Contour lines at elevation thresholds
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-      ctx.lineWidth = 1;
-      const contourLevels = [0.25, 0.4, 0.55, 0.7, 0.85];
-      for (let py = 1; py < pixelsY - 1; py++) {
-        for (let px = 1; px < pixelsX - 1; px++) {
-          const txRaw = (px / pixelsX) * size;
-          const tyRaw = (py / pixelsY) * size;
-          const terrainX = Math.floor(txRaw);
-          const terrainY = Math.floor(tyRaw);
-          const height = ScannerState.terrain[terrainY]?.[terrainX] || 0.5;
-          const hRight = ScannerState.terrain[terrainY]?.[terrainX + 1] || height;
-          const hDown = ScannerState.terrain[terrainY + 1]?.[terrainX] || height;
-
-          for (const level of contourLevels) {
-            // Draw contour where height crosses threshold
-            if ((height < level && hRight >= level) || (height >= level && hRight < level)) {
-              const screenX = mapX + px * pixelSize;
-              const screenY = mapY + py * pixelSize;
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-              ctx.fillRect(screenX + pixelSize - 1, screenY, 1, pixelSize);
-            }
-            if ((height < level && hDown >= level) || (height >= level && hDown < level)) {
-              const screenX = mapX + px * pixelSize;
-              const screenY = mapY + py * pixelSize;
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-              ctx.fillRect(screenX, screenY + pixelSize - 1, pixelSize, 1);
-            }
-          }
-        }
-      }
-
-      // Apply terrain-specific color overlay
-      const overlay = terrainConfig.overlay;
-      ctx.fillStyle = `rgba(${overlay.r}, ${overlay.g}, ${overlay.b}, ${overlay.a})`;
+      // Simple dark background with subtle noise (like other screens)
+      ctx.fillStyle = '#0a0a0f';
       ctx.fillRect(mapX, mapY, mapW, mapH);
 
-      // Data transmission artifacts - occasional horizontal glitch lines
-      for (let i = 0; i < 5; i++) {
-        const glitchY = mapY + ((ditherSeed * (i + 1) * 7) % Math.floor(mapH));
-        const glitchWidth = 20 + (ditherSeed * i) % 100;
-        const glitchX = mapX + (ditherSeed * i * 13) % (mapW - glitchWidth);
-        ctx.fillStyle = `rgba(${terrainConfig.overlay.r + 50}, ${terrainConfig.overlay.g + 50}, ${terrainConfig.overlay.b + 50}, 0.15)`;
-        ctx.fillRect(glitchX, glitchY, glitchWidth, 1);
-      }
-
-      // CRT scanline effect (subtle)
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
-      for (let sy = mapY; sy < mapY + mapH; sy += 2) {
-        ctx.fillRect(mapX, sy, mapW, 1);
-      }
-
-      // Loading indicator for AI terrain
-      if (ScannerState.terrainLoading) {
-        ctx.font = '11px "Share Tech Mono", monospace';
-        ctx.fillStyle = `rgba(79, 209, 217, ${0.5 + Math.sin(time * 4) * 0.3})`;
-        ctx.textAlign = 'center';
-        ctx.fillText('◌ LOADING TERRAIN DATA...', canvas.width / 2, mapY + mapH + 35);
-      }
-
-      // Subtle noise overlay
-      ctx.fillStyle = 'rgba(79, 209, 217, 0.02)';
-      for (let i = 0; i < 100; i++) {
+      // Subtle noise dots
+      ctx.fillStyle = 'rgba(79, 209, 217, 0.03)';
+      for (let i = 0; i < 150; i++) {
         const nx = mapX + Math.random() * mapW;
         const ny = mapY + Math.random() * mapH;
-        ctx.fillRect(nx, ny, 2, 2);
+        ctx.fillRect(nx, ny, 1, 1);
       }
 
       // Grid overlay
@@ -5983,17 +5817,10 @@
       ctx.textAlign = 'left';
       ctx.fillText('PLANETARY SURVEY', 20, 30);
 
-      // Show terrain type name (terrainConfig already defined at top of function)
-      if (terrainConfig) {
-        ctx.font = '12px "Share Tech Mono", monospace';
-        ctx.fillStyle = 'rgba(79, 209, 217, 0.7)';
-        ctx.fillText('TERRAIN: ' + terrainConfig.name, 20, 50);
-      }
-
       if (signal) {
         ctx.font = '11px "Share Tech Mono", monospace';
         ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.fillText(signal.planet.toUpperCase(), 20, 68);
+        ctx.fillText(signal.planet.toUpperCase(), 20, 48);
       }
 
       // Top-right info
