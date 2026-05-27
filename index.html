@@ -1278,6 +1278,30 @@
       color: var(--sf-bg-dark);
     }
 
+    /* Large scan button for planet view */
+    #btn-scan {
+      padding: 18px 50px;
+      font-family: var(--sf-font-display);
+      font-size: 16px;
+      letter-spacing: 3px;
+      border: 2px solid var(--sf-primary);
+      color: var(--sf-primary);
+      background: rgba(79, 209, 217, 0.1);
+      text-transform: uppercase;
+      animation: scanButtonPulse 2s ease-in-out infinite;
+    }
+
+    #btn-scan:hover {
+      background: rgba(79, 209, 217, 0.3);
+      box-shadow: 0 0 30px rgba(79, 209, 217, 0.4);
+      transform: scale(1.02);
+    }
+
+    @keyframes scanButtonPulse {
+      0%, 100% { box-shadow: 0 0 10px rgba(79, 209, 217, 0.2); }
+      50% { box-shadow: 0 0 25px rgba(79, 209, 217, 0.4); }
+    }
+
     /* ============================================
        STASIS CHAMBER SCREEN - Starfall Header
        ============================================ */
@@ -4026,7 +4050,7 @@
     // Planetary terrain scanner state
     const ScannerState = {
       terrain: [],        // 2D heightmap array
-      gridSize: 120,      // Resolution of terrain
+      gridSize: 80,       // Resolution of terrain (lower = chunkier pixels)
       signalFound: false, // Has the scan found the signal?
       signalX: 0,         // Signal position (0-1)
       signalY: 0,
@@ -5317,53 +5341,88 @@
       ctx.fillStyle = '#080c12';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw terrain as topographic satellite view
-      const cellW = mapW / size;
-      const cellH = mapH / size;
+      // Draw terrain as chunky pixel art style
+      // Use larger pixels by sampling fewer points from the terrain
+      const pixelSize = 8; // Size of each pixel block
+      const pixelsX = Math.floor(mapW / pixelSize);
+      const pixelsY = Math.floor(mapH / pixelSize);
 
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          const height = ScannerState.terrain[y][x];
-          const screenX = mapX + x * cellW;
-          const screenY = mapY + y * cellH;
+      for (let py = 0; py < pixelsY; py++) {
+        for (let px = 0; px < pixelsX; px++) {
+          // Sample terrain at this pixel location
+          const terrainX = Math.floor((px / pixelsX) * size);
+          const terrainY = Math.floor((py / pixelsY) * size);
+          const height = ScannerState.terrain[terrainY]?.[terrainX] || 0.5;
 
-          // Teal/green topographic coloring like the reference
+          const screenX = mapX + px * pixelSize;
+          const screenY = mapY + py * pixelSize;
+
+          // Teal/green topographic coloring - more saturated for pixel art look
           let r, g, b;
-          if (height < 0.25) {
-            // Deep valleys - dark teal
-            const t = height / 0.25;
-            r = 15 + t * 10;
-            g = 40 + t * 30;
-            b = 50 + t * 20;
-          } else if (height < 0.45) {
-            // Low areas - teal
-            const t = (height - 0.25) / 0.2;
-            r = 25 + t * 15;
-            g = 70 + t * 40;
-            b = 70 + t * 20;
+          if (height < 0.2) {
+            // Deep valleys - dark blue-teal (water/depths)
+            r = 12;
+            g = 35;
+            b = 55;
+          } else if (height < 0.35) {
+            // Low areas - dark teal
+            r = 20;
+            g = 55;
+            b = 65;
+          } else if (height < 0.5) {
+            // Mid-low - teal
+            r = 30;
+            g = 85;
+            b = 80;
           } else if (height < 0.65) {
             // Mid elevation - green-teal
-            const t = (height - 0.45) / 0.2;
-            r = 40 + t * 20;
-            g = 110 + t * 30;
-            b = 90 - t * 10;
+            r = 45;
+            g = 115;
+            b = 85;
+          } else if (height < 0.8) {
+            // Higher areas - lighter teal
+            r = 65;
+            g = 140;
+            b = 95;
           } else {
-            // High areas - lighter teal/gray
-            const t = (height - 0.65) / 0.35;
-            r = 60 + t * 40;
-            g = 140 + t * 30;
-            b = 80 + t * 30;
+            // Peaks - bright teal/cyan
+            r = 90;
+            g = 170;
+            b = 120;
           }
 
-          // Add subtle noise variation
-          const noise = (Math.random() - 0.5) * 8;
-          r = Math.max(0, Math.min(255, r + noise));
-          g = Math.max(0, Math.min(255, g + noise));
-          b = Math.max(0, Math.min(255, b + noise));
+          // Draw the pixel block
+          ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+          ctx.fillRect(screenX, screenY, pixelSize, pixelSize);
 
-          ctx.fillStyle = `rgb(${Math.floor(r)}, ${Math.floor(g)}, ${Math.floor(b)})`;
-          ctx.fillRect(screenX, screenY, cellW + 1, cellH + 1);
+          // Add subtle edge highlight on some pixels for depth
+          if (height > 0.6 && Math.random() > 0.7) {
+            ctx.fillStyle = `rgba(255, 255, 255, 0.1)`;
+            ctx.fillRect(screenX, screenY, pixelSize, 1);
+            ctx.fillRect(screenX, screenY, 1, pixelSize);
+          }
+
+          // Add shadow on low areas
+          if (height < 0.3 && Math.random() > 0.8) {
+            ctx.fillStyle = `rgba(0, 0, 0, 0.2)`;
+            ctx.fillRect(screenX + pixelSize - 1, screenY, 1, pixelSize);
+            ctx.fillRect(screenX, screenY + pixelSize - 1, pixelSize, 1);
+          }
         }
+      }
+
+      // CRT scanline effect over terrain
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+      for (let sy = mapY; sy < mapY + mapH; sy += 4) {
+        ctx.fillRect(mapX, sy, mapW, 2);
+      }
+
+      // Subtle noise overlay
+      ctx.fillStyle = 'rgba(79, 209, 217, 0.02)';
+      for (let i = 0; i < 100; i++) {
+        const nx = mapX + Math.random() * mapW;
+        const ny = mapY + Math.random() * mapH;
+        ctx.fillRect(nx, ny, 2, 2);
       }
 
       // Grid overlay
