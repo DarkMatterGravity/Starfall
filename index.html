@@ -4376,19 +4376,20 @@
     }
 
     function renderTerrain() {
-      const gl = ScannerState.terrainGL;
-      const program = ScannerState.terrainProgram;
-
-      if (!gl || !program) {
+      // Initialize WebGL if not done
+      if (!ScannerState.terrainGL || !ScannerState.terrainProgram) {
         if (!initTerrainShader()) return false;
       }
 
-      gl.useProgram(ScannerState.terrainProgram);
+      const gl = ScannerState.terrainGL;
+      const program = ScannerState.terrainProgram;
+
+      gl.useProgram(program);
       gl.viewport(0, 0, ScannerState.terrainCanvas.width, ScannerState.terrainCanvas.height);
 
       // Set uniforms
-      const seedLoc = gl.getUniformLocation(ScannerState.terrainProgram, 'seed');
-      const timeLoc = gl.getUniformLocation(ScannerState.terrainProgram, 'time');
+      const seedLoc = gl.getUniformLocation(program, 'seed');
+      const timeLoc = gl.getUniformLocation(program, 'time');
       gl.uniform1f(seedLoc, ScannerState.terrainSeed);
       gl.uniform1f(timeLoc, Date.now() * 0.001);
 
