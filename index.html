@@ -4287,15 +4287,15 @@
           return f / 0.9375;
         }
 
-        // Get base tint color for planet type
+        // Get base tint color for planet type (applied to entire terrain)
         vec3 getBaseTint(float pType) {
-          if (pType < 0.5) return vec3(0.0, 0.0, 0.01);       // Rocky: slight blue
-          if (pType < 1.5) return vec3(-0.01, 0.02, 0.0);     // Forested: slight green
-          if (pType < 2.5) return vec3(0.0, 0.01, 0.03);      // Oceanic: blue tint
-          if (pType < 3.5) return vec3(0.02, 0.0, -0.01);     // Volcanic: warm
-          if (pType < 4.5) return vec3(0.01, 0.02, -0.01);    // Toxic: yellow-green
-          if (pType < 5.5) return vec3(0.01, 0.02, 0.03);     // Ice: cold blue
-          return vec3(0.02, 0.0, 0.02);                        // Gas: purple tint
+          if (pType < 0.5) return vec3(0.01, 0.005, 0.0);      // Rocky: warm brown-gray
+          if (pType < 1.5) return vec3(-0.02, 0.04, 0.01);     // Forested: green cast
+          if (pType < 2.5) return vec3(-0.01, 0.02, 0.06);     // Oceanic: blue cast
+          if (pType < 3.5) return vec3(0.05, 0.01, -0.02);     // Volcanic: orange/red cast
+          if (pType < 4.5) return vec3(0.02, 0.04, -0.02);     // Toxic: sickly yellow-green
+          if (pType < 5.5) return vec3(0.0, 0.03, 0.06);       // Ice: cyan-blue cast
+          return vec3(0.04, 0.0, 0.05);                         // Gas: purple cast
         }
 
         // Get primary vein color for planet type
@@ -4340,10 +4340,13 @@
 
           // Dark monochrome base (0.02 to 0.15 range - very dark)
           float brightness = 0.02 + height * 0.13;
-          vec3 color = vec3(brightness);
 
-          // Apply planet-specific tint
-          color += getBaseTint(planetType);
+          // Apply planet-specific tint to the base color
+          vec3 tint = getBaseTint(planetType);
+          vec3 color = vec3(brightness) + tint * (0.5 + height * 0.5);
+
+          // Also tint the highlights slightly
+          color += tint * brightness * 2.0;
 
           // Contour lines - subtle elevation bands
           float contour = fract(height * 8.0);
