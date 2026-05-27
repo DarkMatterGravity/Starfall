@@ -4047,25 +4047,157 @@
       selectedSystem: null // Track which system we're viewing
     };
 
+    // Terrain type definitions with unique color palettes and features
+    const TERRAIN_TYPES = {
+      rocky_canyon: {
+        name: 'ROCKY CANYON',
+        colors: [
+          { threshold: 0.2, r: 45, g: 35, b: 30 },   // Deep canyon - dark brown
+          { threshold: 0.35, r: 75, g: 55, b: 45 },  // Canyon floor - brown
+          { threshold: 0.5, r: 110, g: 80, b: 60 },  // Mid elevation - tan
+          { threshold: 0.65, r: 140, g: 100, b: 70 }, // Rocky - light brown
+          { threshold: 0.8, r: 170, g: 130, b: 95 },  // Cliff tops - sandy
+          { threshold: 1.0, r: 200, g: 160, b: 120 }  // Peaks - cream
+        ],
+        features: 'ridges', // Creates ridge-like formations
+        overlay: { r: 80, g: 60, b: 40, a: 0.15 }
+      },
+      frozen_plains: {
+        name: 'FROZEN PLAINS',
+        colors: [
+          { threshold: 0.2, r: 20, g: 40, b: 60 },    // Deep ice - dark blue
+          { threshold: 0.35, r: 40, g: 70, b: 100 },  // Ice cracks - blue
+          { threshold: 0.5, r: 80, g: 120, b: 150 },  // Frozen surface - light blue
+          { threshold: 0.65, r: 140, g: 180, b: 200 }, // Ice sheets - pale blue
+          { threshold: 0.8, r: 200, g: 220, b: 235 },  // Snow - almost white
+          { threshold: 1.0, r: 240, g: 250, b: 255 }   // Ice peaks - white
+        ],
+        features: 'cracks', // Creates ice crack patterns
+        overlay: { r: 100, g: 150, b: 200, a: 0.1 }
+      },
+      volcanic: {
+        name: 'VOLCANIC ZONE',
+        colors: [
+          { threshold: 0.15, r: 180, g: 60, b: 20 },  // Lava - bright orange
+          { threshold: 0.3, r: 120, g: 30, b: 10 },   // Hot rock - dark red
+          { threshold: 0.5, r: 40, g: 25, b: 25 },    // Cooled lava - dark gray
+          { threshold: 0.65, r: 60, g: 50, b: 50 },   // Volcanic rock - gray
+          { threshold: 0.8, r: 80, g: 70, b: 65 },    // Ash - light gray
+          { threshold: 1.0, r: 50, g: 45, b: 45 }     // Peaks - dark
+        ],
+        features: 'lava', // Creates lava flow patterns
+        overlay: { r: 150, g: 50, b: 20, a: 0.12 }
+      },
+      alien_jungle: {
+        name: 'ALIEN JUNGLE',
+        colors: [
+          { threshold: 0.2, r: 15, g: 40, b: 30 },    // Deep shadow - dark green
+          { threshold: 0.35, r: 25, g: 70, b: 45 },   // Undergrowth - forest green
+          { threshold: 0.5, r: 40, g: 100, b: 60 },   // Canopy - green
+          { threshold: 0.65, r: 60, g: 140, b: 80 },  // Bright foliage - lime
+          { threshold: 0.8, r: 100, g: 180, b: 90 },  // Canopy tops - bright green
+          { threshold: 1.0, r: 150, g: 200, b: 100 }  // Emergent trees - yellow-green
+        ],
+        features: 'organic', // Creates organic blob patterns
+        overlay: { r: 50, g: 120, b: 60, a: 0.15 }
+      },
+      crystal_formations: {
+        name: 'CRYSTAL FIELDS',
+        colors: [
+          { threshold: 0.2, r: 30, g: 20, b: 50 },    // Deep cavern - purple
+          { threshold: 0.35, r: 60, g: 40, b: 100 },  // Crystal base - violet
+          { threshold: 0.5, r: 100, g: 70, b: 150 },  // Crystal mid - purple
+          { threshold: 0.65, r: 150, g: 100, b: 200 }, // Crystal - light purple
+          { threshold: 0.8, r: 200, g: 150, b: 230 },  // Crystal tips - pink
+          { threshold: 1.0, r: 230, g: 200, b: 255 }   // Bright crystals - white-pink
+        ],
+        features: 'crystals', // Creates sharp crystalline patterns
+        overlay: { r: 150, g: 100, b: 200, a: 0.12 }
+      },
+      toxic_swamp: {
+        name: 'TOXIC SWAMP',
+        colors: [
+          { threshold: 0.25, r: 60, g: 80, b: 20 },   // Toxic pools - sickly green
+          { threshold: 0.4, r: 40, g: 60, b: 30 },    // Murky water - dark green
+          { threshold: 0.55, r: 50, g: 70, b: 40 },   // Marsh - olive
+          { threshold: 0.7, r: 70, g: 90, b: 50 },    // Bog - muddy green
+          { threshold: 0.85, r: 90, g: 80, b: 60 },   // Dry patches - brown-green
+          { threshold: 1.0, r: 80, g: 100, b: 40 }    // Vegetation - bright
+        ],
+        features: 'pools', // Creates pool/blob patterns
+        overlay: { r: 80, g: 120, b: 40, a: 0.18 }
+      },
+      ancient_ruins: {
+        name: 'ANCIENT RUINS',
+        colors: [
+          { threshold: 0.2, r: 30, g: 35, b: 40 },    // Shadows - dark gray
+          { threshold: 0.35, r: 55, g: 60, b: 65 },   // Stone - gray
+          { threshold: 0.5, r: 80, g: 85, b: 90 },    // Weathered stone - light gray
+          { threshold: 0.65, r: 70, g: 80, b: 70 },   // Overgrown - gray-green
+          { threshold: 0.8, r: 100, g: 105, b: 100 }, // Exposed stone - pale
+          { threshold: 1.0, r: 60, g: 75, b: 65 }     // Moss covered - green-gray
+        ],
+        features: 'grid', // Creates geometric patterns
+        overlay: { r: 80, g: 90, b: 80, a: 0.15 }
+      },
+      metallic_asteroid: {
+        name: 'METALLIC ASTEROID',
+        colors: [
+          { threshold: 0.2, r: 25, g: 25, b: 30 },    // Deep crater - dark
+          { threshold: 0.35, r: 50, g: 50, b: 60 },   // Metal shadow - gray
+          { threshold: 0.5, r: 80, g: 85, b: 95 },    // Metal surface - silver
+          { threshold: 0.65, r: 110, g: 115, b: 130 }, // Polished - light silver
+          { threshold: 0.8, r: 140, g: 145, b: 160 },  // Reflective - bright
+          { threshold: 1.0, r: 170, g: 175, b: 190 }   // Peaks - white-silver
+        ],
+        features: 'craters', // Creates crater patterns
+        overlay: { r: 100, g: 110, b: 140, a: 0.1 }
+      },
+      bioluminescent: {
+        name: 'BIOLUMINESCENT ZONE',
+        colors: [
+          { threshold: 0.2, r: 10, g: 20, b: 35 },    // Dark background
+          { threshold: 0.35, r: 20, g: 50, b: 60 },   // Deep glow - teal
+          { threshold: 0.5, r: 30, g: 90, b: 100 },   // Biolume - cyan
+          { threshold: 0.65, r: 50, g: 150, b: 140 }, // Bright glow - turquoise
+          { threshold: 0.8, r: 100, g: 200, b: 180 }, // Hot spots - bright cyan
+          { threshold: 1.0, r: 150, g: 230, b: 200 }  // Peak glow - white-cyan
+        ],
+        features: 'glow', // Creates glowing spot patterns
+        overlay: { r: 50, g: 200, b: 180, a: 0.08 }
+      },
+      sandstorm_mesa: {
+        name: 'SANDSTORM MESA',
+        colors: [
+          { threshold: 0.2, r: 100, g: 70, b: 45 },   // Shadow - dark sand
+          { threshold: 0.35, r: 140, g: 100, b: 65 }, // Valley - sand
+          { threshold: 0.5, r: 180, g: 140, b: 90 },  // Desert floor - tan
+          { threshold: 0.65, r: 200, g: 165, b: 115 }, // Dunes - light sand
+          { threshold: 0.8, r: 220, g: 190, b: 140 },  // Mesa top - pale sand
+          { threshold: 1.0, r: 235, g: 210, b: 170 }   // Peaks - cream
+        ],
+        features: 'dunes', // Creates dune/wave patterns
+        overlay: { r: 200, g: 150, b: 100, a: 0.12 }
+      }
+    };
+
     // Planetary terrain scanner state
     const ScannerState = {
       terrain: [],        // 2D heightmap array
-      gridSize: 80,       // Resolution of terrain (lower = chunkier pixels)
-      signalFound: false, // Has the scan found the signal?
-      signalX: 0,         // Signal position (0-1)
+      gridSize: 100,      // Resolution of terrain
+      terrainType: null,  // Selected terrain type key
+      signalFound: false,
+      signalX: 0,
       signalY: 0,
       initialized: false,
-      scanning: false,    // Is scan animation running?
-      scanProgress: 0,    // 0-1 scan sweep progress
-      scanComplete: false, // Has a scan been completed?
-      signalStrength: 100, // Signal strength percentage (degrades over time)
-      lastStrengthUpdate: 0, // Timestamp for strength degradation
-      interference: [],   // False positive blips during scan
-      scanStartTime: 0,   // When scan started
-      revealPhase: 0,     // Animation phase for signal reveal
-      terrainImage: null, // AI-generated terrain image
-      terrainLoading: false, // Is terrain image loading?
-      terrainLoaded: false   // Has terrain image loaded?
+      scanning: false,
+      scanProgress: 0,
+      scanComplete: false,
+      signalStrength: 100,
+      lastStrengthUpdate: 0,
+      interference: [],
+      scanStartTime: 0,
+      revealPhase: 0
     };
 
     const GameState = {
@@ -5247,64 +5379,7 @@
       });
     }
 
-    // Generate AI terrain image using Pollinations.ai
-    function generateTerrainImage() {
-      // Prevent duplicate calls
-      if (ScannerState.terrainLoading) {
-        return;
-      }
-
-      const signal = GameState.signal;
-      if (!signal) return;
-
-      // Short simple prompts work best
-      const terrainTypes = [
-        'rocky alien canyon',
-        'ice planet craters',
-        'volcanic lava world',
-        'alien jungle',
-        'crystal cave',
-        'toxic swamp',
-        'ancient ruins',
-        'asteroid surface',
-        'mushroom forest',
-        'desert mesa'
-      ];
-
-      const terrainType = terrainTypes[Math.floor(Math.random() * terrainTypes.length)];
-      const prompt = `${terrainType} satellite view teal`;
-
-      ScannerState.terrainLoading = true;
-      ScannerState.terrainLoaded = false;
-      ScannerState.terrainImage = null;
-
-      const img = new Image();
-      const seed = Math.floor(Math.random() * 999999);
-
-      const timeout = setTimeout(() => {
-        if (ScannerState.terrainLoading) {
-          ScannerState.terrainLoading = false;
-        }
-      }, 12000);
-
-      img.onload = () => {
-        clearTimeout(timeout);
-        ScannerState.terrainImage = img;
-        ScannerState.terrainLoaded = true;
-        ScannerState.terrainLoading = false;
-      };
-
-      img.onerror = () => {
-        clearTimeout(timeout);
-        ScannerState.terrainLoading = false;
-      };
-
-      // Smaller image size for faster loading
-      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=384&seed=${seed}`;
-      img.src = imageUrl;
-    }
-
-    // Initialize planetary terrain scanner
+    // Initialize planetary terrain scanner with random terrain type
     function initPlanetScanner() {
       const size = ScannerState.gridSize;
       ScannerState.terrain = [];
@@ -5316,34 +5391,100 @@
       ScannerState.lastStrengthUpdate = Date.now();
       ScannerState.interference = [];
       ScannerState.revealPhase = 0;
-      ScannerState.terrainImage = null;
-      ScannerState.terrainLoading = false;
-      ScannerState.terrainLoaded = false;
 
-      // Start loading AI-generated terrain image
-      generateTerrainImage();
+      // Select random terrain type
+      const typeKeys = Object.keys(TERRAIN_TYPES);
+      ScannerState.terrainType = typeKeys[Math.floor(Math.random() * typeKeys.length)];
+      const terrainConfig = TERRAIN_TYPES[ScannerState.terrainType];
 
-      // Generate procedural heightmap as fallback
+      // Generate procedural heightmap with terrain-specific features
       const seed = Date.now();
       for (let y = 0; y < size; y++) {
         ScannerState.terrain[y] = [];
         for (let x = 0; x < size; x++) {
           let height = 0;
-          height += noise2D(x * 0.04, y * 0.04, seed) * 0.5;
-          height += noise2D(x * 0.08, y * 0.08, seed + 100) * 0.3;
-          height += noise2D(x * 0.15, y * 0.15, seed + 200) * 0.15;
-          height += noise2D(x * 0.3, y * 0.3, seed + 300) * 0.05;
-          // Add crater-like depressions
-          const craterNoise = noise2D(x * 0.025, y * 0.025, seed + 400);
-          if (craterNoise > 0.5) {
-            height -= (craterNoise - 0.5) * 1.5;
+
+          // Base terrain noise
+          height += noise2D(x * 0.04, y * 0.04, seed) * 0.4;
+          height += noise2D(x * 0.08, y * 0.08, seed + 100) * 0.25;
+          height += noise2D(x * 0.16, y * 0.16, seed + 200) * 0.15;
+          height += noise2D(x * 0.32, y * 0.32, seed + 300) * 0.1;
+
+          // Apply terrain-specific features
+          switch (terrainConfig.features) {
+            case 'ridges':
+              // Sharp ridge patterns
+              const ridge = Math.abs(noise2D(x * 0.03, y * 0.08, seed + 400));
+              if (ridge < 0.12) height += 0.4;
+              break;
+
+            case 'cracks':
+              // Ice crack patterns
+              const crack1 = Math.abs(noise2D(x * 0.02, y * 0.1, seed + 400));
+              const crack2 = Math.abs(noise2D(x * 0.08, y * 0.02, seed + 500));
+              if (crack1 < 0.08 || crack2 < 0.08) height -= 0.5;
+              break;
+
+            case 'lava':
+              // Lava flow channels
+              const flow = noise2D(x * 0.02, y * 0.06, seed + 400);
+              if (Math.abs(flow) < 0.15) height = -0.3; // Lava rivers
+              break;
+
+            case 'organic':
+              // Organic blob patterns for jungle
+              const blob = noise2D(x * 0.06, y * 0.06, seed + 400);
+              height += blob * 0.3;
+              break;
+
+            case 'crystals':
+              // Sharp crystalline spikes
+              const crystal = noise2D(x * 0.1, y * 0.1, seed + 400);
+              if (crystal > 0.5) height += (crystal - 0.5) * 2;
+              break;
+
+            case 'pools':
+              // Pools and bogs
+              const pool = noise2D(x * 0.05, y * 0.05, seed + 400);
+              if (pool < -0.2) height = 0.1; // Flat pool areas
+              break;
+
+            case 'grid':
+              // Geometric ruins grid
+              const gridX = Math.sin(x * 0.15) * 0.15;
+              const gridY = Math.sin(y * 0.15) * 0.15;
+              height += (gridX + gridY);
+              break;
+
+            case 'craters':
+              // Impact craters
+              for (let c = 0; c < 5; c++) {
+                const cx = noise2D(c * 100, 0, seed) * size;
+                const cy = noise2D(0, c * 100, seed) * size;
+                const dist = Math.sqrt(Math.pow(x - cx, 2) + Math.pow(y - cy, 2));
+                const craterSize = 8 + noise2D(c, c, seed) * 12;
+                if (dist < craterSize) {
+                  height -= (1 - dist / craterSize) * 0.5;
+                } else if (dist < craterSize * 1.3) {
+                  height += 0.2; // Crater rim
+                }
+              }
+              break;
+
+            case 'glow':
+              // Bioluminescent spots
+              const glow = noise2D(x * 0.08, y * 0.08, seed + 400);
+              if (glow > 0.4) height += (glow - 0.4) * 1.5;
+              break;
+
+            case 'dunes':
+              // Sand dune waves
+              const dune = Math.sin(x * 0.08 + noise2D(x * 0.02, y * 0.02, seed + 400) * 3);
+              height += dune * 0.25;
+              break;
           }
-          // Add ridges/channels
-          const ridgeNoise = Math.abs(noise2D(x * 0.02, y * 0.06, seed + 500));
-          if (ridgeNoise < 0.15) {
-            height -= 0.3 - ridgeNoise * 2;
-          }
-          ScannerState.terrain[y][x] = Math.max(0, Math.min(1, (height + 0.8) / 1.6));
+
+          ScannerState.terrain[y][x] = Math.max(0, Math.min(1, (height + 0.6) / 1.2));
         }
       }
 
@@ -5407,75 +5548,68 @@
       ctx.fillStyle = '#080c12';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw terrain - use AI image if loaded, otherwise procedural fallback
-      if (ScannerState.terrainLoaded && ScannerState.terrainImage) {
-        try {
-          // Draw AI-generated terrain image
-          ctx.drawImage(ScannerState.terrainImage, mapX, mapY, mapW, mapH);
+      // Get terrain type configuration
+      const terrainConfig = TERRAIN_TYPES[ScannerState.terrainType] || TERRAIN_TYPES.rocky_canyon;
+      const colors = terrainConfig.colors;
 
-          // Add teal color overlay to match game aesthetic
-          ctx.fillStyle = 'rgba(20, 80, 90, 0.3)';
-          ctx.fillRect(mapX, mapY, mapW, mapH);
+      // Draw procedural terrain with terrain-type specific colors
+      const pixelSize = 6;
+      const pixelsX = Math.floor(mapW / pixelSize);
+      const pixelsY = Math.floor(mapH / pixelSize);
 
-          // Add scanline effect over the image
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
-          for (let sy = mapY; sy < mapY + mapH; sy += 3) {
-            ctx.fillRect(mapX, sy, mapW, 1);
-          }
-        } catch (e) {
-          console.error('Error drawing terrain image:', e);
-          ScannerState.terrainLoaded = false;
-        }
-      } else {
-        // Procedural terrain fallback
-        const pixelSize = 8;
-        const pixelsX = Math.floor(mapW / pixelSize);
-        const pixelsY = Math.floor(mapH / pixelSize);
+      for (let py = 0; py < pixelsY; py++) {
+        for (let px = 0; px < pixelsX; px++) {
+          const terrainX = Math.floor((px / pixelsX) * size);
+          const terrainY = Math.floor((py / pixelsY) * size);
+          const height = ScannerState.terrain[terrainY]?.[terrainX] || 0.5;
 
-        for (let py = 0; py < pixelsY; py++) {
-          for (let px = 0; px < pixelsX; px++) {
-            const terrainX = Math.floor((px / pixelsX) * size);
-            const terrainY = Math.floor((py / pixelsY) * size);
-            const height = ScannerState.terrain[terrainY]?.[terrainX] || 0.5;
+          const screenX = mapX + px * pixelSize;
+          const screenY = mapY + py * pixelSize;
 
-            const screenX = mapX + px * pixelSize;
-            const screenY = mapY + py * pixelSize;
-
-            let r, g, b;
-            if (height < 0.2) {
-              r = 12; g = 35; b = 55;
-            } else if (height < 0.35) {
-              r = 20; g = 55; b = 65;
-            } else if (height < 0.5) {
-              r = 30; g = 85; b = 80;
-            } else if (height < 0.65) {
-              r = 45; g = 115; b = 85;
-            } else if (height < 0.8) {
-              r = 65; g = 140; b = 95;
-            } else {
-              r = 90; g = 170; b = 120;
-            }
-
-            ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-            ctx.fillRect(screenX, screenY, pixelSize, pixelSize);
-
-            if (height > 0.6 && Math.random() > 0.7) {
-              ctx.fillStyle = `rgba(255, 255, 255, 0.1)`;
-              ctx.fillRect(screenX, screenY, pixelSize, 1);
-              ctx.fillRect(screenX, screenY, 1, pixelSize);
-            }
-
-            if (height < 0.3 && Math.random() > 0.8) {
-              ctx.fillStyle = `rgba(0, 0, 0, 0.2)`;
-              ctx.fillRect(screenX + pixelSize - 1, screenY, 1, pixelSize);
-              ctx.fillRect(screenX, screenY + pixelSize - 1, pixelSize, 1);
+          // Find color based on height threshold
+          let r, g, b;
+          for (let i = 0; i < colors.length; i++) {
+            if (height <= colors[i].threshold) {
+              r = colors[i].r;
+              g = colors[i].g;
+              b = colors[i].b;
+              break;
             }
           }
-        }
 
-        // CRT scanline effect over procedural terrain
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-        for (let sy = mapY; sy < mapY + mapH; sy += 4) {
+          // Add slight variation for texture
+          const variation = (Math.random() - 0.5) * 12;
+          r = Math.max(0, Math.min(255, r + variation));
+          g = Math.max(0, Math.min(255, g + variation));
+          b = Math.max(0, Math.min(255, b + variation));
+
+          ctx.fillStyle = `rgb(${Math.floor(r)}, ${Math.floor(g)}, ${Math.floor(b)})`;
+          ctx.fillRect(screenX, screenY, pixelSize, pixelSize);
+
+          // Add highlights on high areas
+          if (height > 0.65 && Math.random() > 0.75) {
+            ctx.fillStyle = `rgba(255, 255, 255, 0.12)`;
+            ctx.fillRect(screenX, screenY, pixelSize, 1);
+            ctx.fillRect(screenX, screenY, 1, pixelSize);
+          }
+
+          // Add shadows on low areas
+          if (height < 0.35 && Math.random() > 0.8) {
+            ctx.fillStyle = `rgba(0, 0, 0, 0.15)`;
+            ctx.fillRect(screenX + pixelSize - 1, screenY, 1, pixelSize);
+            ctx.fillRect(screenX, screenY + pixelSize - 1, pixelSize, 1);
+          }
+        }
+      }
+
+      // Apply terrain-specific color overlay
+      const overlay = terrainConfig.overlay;
+      ctx.fillStyle = `rgba(${overlay.r}, ${overlay.g}, ${overlay.b}, ${overlay.a})`;
+      ctx.fillRect(mapX, mapY, mapW, mapH);
+
+      // CRT scanline effect
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+      for (let sy = mapY; sy < mapY + mapH; sy += 3) {
           ctx.fillRect(mapX, sy, mapW, 2);
         }
       }
@@ -5753,10 +5887,18 @@
       ctx.textAlign = 'left';
       ctx.fillText('PLANETARY SURVEY', 20, 30);
 
+      // Show terrain type name
+      const terrainConfig = TERRAIN_TYPES[ScannerState.terrainType];
+      if (terrainConfig) {
+        ctx.font = '12px "Share Tech Mono", monospace';
+        ctx.fillStyle = 'rgba(79, 209, 217, 0.7)';
+        ctx.fillText('TERRAIN: ' + terrainConfig.name, 20, 50);
+      }
+
       if (signal) {
         ctx.font = '11px "Share Tech Mono", monospace';
         ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.fillText(signal.planet.toUpperCase(), 20, 48);
+        ctx.fillText(signal.planet.toUpperCase(), 20, 68);
       }
 
       // Top-right info
