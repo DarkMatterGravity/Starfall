@@ -1326,6 +1326,30 @@
       50% { box-shadow: 0 0 35px rgba(232, 90, 60, 0.6); }
     }
 
+    /* Extract button overlay - positioned under specimen */
+    #btn-extract-overlay {
+      position: absolute;
+      padding: 12px 24px;
+      font-family: var(--sf-font-display);
+      font-size: 12px;
+      letter-spacing: 2px;
+      border: 2px solid var(--sf-alert);
+      color: var(--sf-alert);
+      background: rgba(10, 10, 15, 0.9);
+      text-transform: uppercase;
+      cursor: pointer;
+      transform: translateX(-50%);
+      z-index: 100;
+      animation: extractButtonPulse 1.5s ease-in-out infinite;
+      transition: all 0.2s ease;
+    }
+
+    #btn-extract-overlay:hover {
+      background: rgba(232, 90, 60, 0.3);
+      box-shadow: 0 0 30px rgba(232, 90, 60, 0.5);
+      transform: translateX(-50%) scale(1.05);
+    }
+
     /* ============================================
        STASIS CHAMBER SCREEN - Starfall Header
        ============================================ */
@@ -3157,6 +3181,8 @@
     <div class="map-container">
       <canvas id="map-canvas"></canvas>
       <div class="planet-surface" id="planet-surface"></div>
+      <!-- Extract button positioned over the signal -->
+      <button id="btn-extract-overlay" style="display:none;">EXTRACT SPECIMEN</button>
     </div>
 
     <!-- Multiple signals container (top right) -->
@@ -5415,15 +5441,36 @@
         }
       }
 
-      // Show extract button when signal is found
-      const extractBtn = document.getElementById('btn-extract');
+      // Show extract button when signal is found - positioned under specimen
+      const extractBtn = document.getElementById('btn-extract-overlay');
       if (extractBtn) {
         if (MapState.level === 'planet' && ScannerState.signalFound && !extractionState.active) {
-          extractBtn.style.display = 'block';
+          // Position under the specimen
+          const canvas = document.getElementById('map-canvas');
+          if (canvas) {
+            const rect = canvas.getBoundingClientRect();
+            const margin = 60;
+            const mapW = canvas.width - margin * 2;
+            const mapH = canvas.height - margin * 2;
+
+            // Calculate screen position (accounting for canvas scaling)
+            const scaleX = rect.width / canvas.width;
+            const scaleY = rect.height / canvas.height;
+            const signalScreenX = (margin + ScannerState.signalX * mapW) * scaleX;
+            const signalScreenY = (margin + ScannerState.signalY * mapH) * scaleY;
+
+            extractBtn.style.left = signalScreenX + 'px';
+            extractBtn.style.top = (signalScreenY + 80) + 'px'; // 80px below signal
+            extractBtn.style.display = 'block';
+          }
         } else {
           extractBtn.style.display = 'none';
         }
       }
+
+      // Hide the old extract button in footer
+      const extractBtnOld = document.getElementById('btn-extract');
+      if (extractBtnOld) extractBtnOld.style.display = 'none';
 
       // Update stats
       const recoveredEl = document.getElementById('stat-recovered');
@@ -6050,6 +6097,7 @@
           ScannerState.scanComplete = true;
           ScannerState.signalFound = true;
           ScannerState.revealPhase = 0;
+          updateMapUI(); // Show extract button
         }
 
         // Draw scan line
@@ -7329,6 +7377,14 @@
 
       // Extract button - starts extraction animation
       document.getElementById('btn-extract')?.addEventListener('click', () => {
+        if (MapState.level === 'planet' && ScannerState.signalFound && GameState.signal) {
+          startExtraction(GameState.signal);
+          updateMapUI(); // Hide the button
+        }
+      });
+
+      // Extract button overlay (positioned under specimen)
+      document.getElementById('btn-extract-overlay')?.addEventListener('click', () => {
         if (MapState.level === 'planet' && ScannerState.signalFound && GameState.signal) {
           startExtraction(GameState.signal);
           updateMapUI(); // Hide the button
