@@ -4062,7 +4062,10 @@
       lastStrengthUpdate: 0, // Timestamp for strength degradation
       interference: [],   // False positive blips during scan
       scanStartTime: 0,   // When scan started
-      revealPhase: 0      // Animation phase for signal reveal
+      revealPhase: 0,     // Animation phase for signal reveal
+      terrainImage: null, // AI-generated terrain image
+      terrainLoading: false, // Is terrain image loading?
+      terrainLoaded: false   // Has terrain image loaded?
     };
 
     const GameState = {
@@ -5244,6 +5247,55 @@
       });
     }
 
+    // Generate AI terrain image using Pollinations.ai
+    function generateTerrainImage() {
+      const signal = GameState.signal;
+      if (!signal) return;
+
+      // Build a prompt based on planet characteristics
+      const terrainTypes = [
+        'rocky desert canyon',
+        'frozen ice plains with crevasses',
+        'volcanic lava fields',
+        'dense alien jungle canopy',
+        'crystalline mineral formations',
+        'toxic swamp marshlands',
+        'ancient ruins overgrown',
+        'metallic asteroid surface',
+        'bioluminescent fungal forest',
+        'sandstorm eroded mesas'
+      ];
+
+      const terrainType = terrainTypes[Math.floor(Math.random() * terrainTypes.length)];
+      const planetName = signal.planet || 'alien world';
+
+      const prompt = `${terrainType} on alien planet, topographic satellite scan view, teal and green color palette, dark moody atmosphere, sci-fi scanner display, no text, ${planetName}`;
+
+      ScannerState.terrainLoading = true;
+      ScannerState.terrainLoaded = false;
+
+      // Create image element
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+
+      img.onload = () => {
+        ScannerState.terrainImage = img;
+        ScannerState.terrainLoaded = true;
+        ScannerState.terrainLoading = false;
+        console.log('Terrain image loaded:', prompt);
+      };
+
+      img.onerror = () => {
+        console.warn('Failed to load terrain image, using procedural fallback');
+        ScannerState.terrainLoading = false;
+        ScannerState.terrainLoaded = false;
+      };
+
+      // Pollinations.ai URL - generates image from prompt
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=600&seed=${Date.now()}&nologo=true`;
+      img.src = imageUrl;
+    }
+
     // Initialize planetary terrain scanner
     function initPlanetScanner() {
       const size = ScannerState.gridSize;
@@ -5256,8 +5308,14 @@
       ScannerState.lastStrengthUpdate = Date.now();
       ScannerState.interference = [];
       ScannerState.revealPhase = 0;
+      ScannerState.terrainImage = null;
+      ScannerState.terrainLoading = false;
+      ScannerState.terrainLoaded = false;
 
-      // Generate procedural heightmap using layered noise
+      // Start loading AI-generated terrain image
+      generateTerrainImage();
+
+      // Generate procedural heightmap as fallback
       const seed = Date.now();
       for (let y = 0; y < size; y++) {
         ScannerState.terrain[y] = [];
@@ -5341,80 +5399,80 @@
       ctx.fillStyle = '#080c12';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw terrain as chunky pixel art style
-      // Use larger pixels by sampling fewer points from the terrain
-      const pixelSize = 8; // Size of each pixel block
-      const pixelsX = Math.floor(mapW / pixelSize);
-      const pixelsY = Math.floor(mapH / pixelSize);
+      // Draw terrain - use AI image if loaded, otherwise procedural fallback
+      if (ScannerState.terrainLoaded && ScannerState.terrainImage) {
+        // Draw AI-generated terrain image
+        ctx.drawImage(ScannerState.terrainImage, mapX, mapY, mapW, mapH);
 
-      for (let py = 0; py < pixelsY; py++) {
-        for (let px = 0; px < pixelsX; px++) {
-          // Sample terrain at this pixel location
-          const terrainX = Math.floor((px / pixelsX) * size);
-          const terrainY = Math.floor((py / pixelsY) * size);
-          const height = ScannerState.terrain[terrainY]?.[terrainX] || 0.5;
+        // Add teal color overlay to match game aesthetic
+        ctx.fillStyle = 'rgba(20, 80, 90, 0.3)';
+        ctx.fillRect(mapX, mapY, mapW, mapH);
 
-          const screenX = mapX + px * pixelSize;
-          const screenY = mapY + py * pixelSize;
+        // Add scanline effect over the image
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+        for (let sy = mapY; sy < mapY + mapH; sy += 3) {
+          ctx.fillRect(mapX, sy, mapW, 1);
+        }
+      } else {
+        // Procedural terrain fallback
+        const pixelSize = 8;
+        const pixelsX = Math.floor(mapW / pixelSize);
+        const pixelsY = Math.floor(mapH / pixelSize);
 
-          // Teal/green topographic coloring - more saturated for pixel art look
-          let r, g, b;
-          if (height < 0.2) {
-            // Deep valleys - dark blue-teal (water/depths)
-            r = 12;
-            g = 35;
-            b = 55;
-          } else if (height < 0.35) {
-            // Low areas - dark teal
-            r = 20;
-            g = 55;
-            b = 65;
-          } else if (height < 0.5) {
-            // Mid-low - teal
-            r = 30;
-            g = 85;
-            b = 80;
-          } else if (height < 0.65) {
-            // Mid elevation - green-teal
-            r = 45;
-            g = 115;
-            b = 85;
-          } else if (height < 0.8) {
-            // Higher areas - lighter teal
-            r = 65;
-            g = 140;
-            b = 95;
-          } else {
-            // Peaks - bright teal/cyan
-            r = 90;
-            g = 170;
-            b = 120;
+        for (let py = 0; py < pixelsY; py++) {
+          for (let px = 0; px < pixelsX; px++) {
+            const terrainX = Math.floor((px / pixelsX) * size);
+            const terrainY = Math.floor((py / pixelsY) * size);
+            const height = ScannerState.terrain[terrainY]?.[terrainX] || 0.5;
+
+            const screenX = mapX + px * pixelSize;
+            const screenY = mapY + py * pixelSize;
+
+            let r, g, b;
+            if (height < 0.2) {
+              r = 12; g = 35; b = 55;
+            } else if (height < 0.35) {
+              r = 20; g = 55; b = 65;
+            } else if (height < 0.5) {
+              r = 30; g = 85; b = 80;
+            } else if (height < 0.65) {
+              r = 45; g = 115; b = 85;
+            } else if (height < 0.8) {
+              r = 65; g = 140; b = 95;
+            } else {
+              r = 90; g = 170; b = 120;
+            }
+
+            ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+            ctx.fillRect(screenX, screenY, pixelSize, pixelSize);
+
+            if (height > 0.6 && Math.random() > 0.7) {
+              ctx.fillStyle = `rgba(255, 255, 255, 0.1)`;
+              ctx.fillRect(screenX, screenY, pixelSize, 1);
+              ctx.fillRect(screenX, screenY, 1, pixelSize);
+            }
+
+            if (height < 0.3 && Math.random() > 0.8) {
+              ctx.fillStyle = `rgba(0, 0, 0, 0.2)`;
+              ctx.fillRect(screenX + pixelSize - 1, screenY, 1, pixelSize);
+              ctx.fillRect(screenX, screenY + pixelSize - 1, pixelSize, 1);
+            }
           }
+        }
 
-          // Draw the pixel block
-          ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-          ctx.fillRect(screenX, screenY, pixelSize, pixelSize);
-
-          // Add subtle edge highlight on some pixels for depth
-          if (height > 0.6 && Math.random() > 0.7) {
-            ctx.fillStyle = `rgba(255, 255, 255, 0.1)`;
-            ctx.fillRect(screenX, screenY, pixelSize, 1);
-            ctx.fillRect(screenX, screenY, 1, pixelSize);
-          }
-
-          // Add shadow on low areas
-          if (height < 0.3 && Math.random() > 0.8) {
-            ctx.fillStyle = `rgba(0, 0, 0, 0.2)`;
-            ctx.fillRect(screenX + pixelSize - 1, screenY, 1, pixelSize);
-            ctx.fillRect(screenX, screenY + pixelSize - 1, pixelSize, 1);
-          }
+        // CRT scanline effect over procedural terrain
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        for (let sy = mapY; sy < mapY + mapH; sy += 4) {
+          ctx.fillRect(mapX, sy, mapW, 2);
         }
       }
 
-      // CRT scanline effect over terrain
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-      for (let sy = mapY; sy < mapY + mapH; sy += 4) {
-        ctx.fillRect(mapX, sy, mapW, 2);
+      // Loading indicator for AI terrain
+      if (ScannerState.terrainLoading) {
+        ctx.font = '11px "Share Tech Mono", monospace';
+        ctx.fillStyle = `rgba(79, 209, 217, ${0.5 + Math.sin(time * 4) * 0.3})`;
+        ctx.textAlign = 'center';
+        ctx.fillText('◌ LOADING TERRAIN DATA...', canvas.width / 2, mapY + mapH + 35);
       }
 
       // Subtle noise overlay
