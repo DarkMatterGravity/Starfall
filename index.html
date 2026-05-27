@@ -4202,8 +4202,32 @@
       terrainGL: null,       // WebGL context
       terrainProgram: null,  // Shader program
       terrainSeed: 0,        // Random seed for this terrain
+      terrainPlanetType: 0,  // Planet type (0-6)
       terrainReady: false    // Whether terrain has been rendered
     };
+
+    // Planet type definitions for terrain shader
+    // Each type has distinct visual characteristics
+    const PLANET_TYPES = [
+      { name: 'ROCKY',     index: 0 },  // Gray, lava veins
+      { name: 'FORESTED',  index: 1 },  // Dark green, bioluminescent veins
+      { name: 'OCEANIC',   index: 2 },  // Blue-gray, water pools
+      { name: 'VOLCANIC',  index: 3 },  // Dark, heavy lava
+      { name: 'TOXIC',     index: 4 },  // Sickly green, toxic pools
+      { name: 'ICE',       index: 5 },  // Blue-white, ice cracks
+      { name: 'GAS',       index: 6 }   // Swirling, plasma veins
+    ];
+
+    // Generate deterministic seed from planet name
+    function hashString(str) {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+      }
+      return Math.abs(hash);
+    }
 
     // ============================================
     // WEBGL TERRAIN SHADER SYSTEM
@@ -4224,6 +4248,7 @@
         varying vec2 vUv;
         uniform float seed;
         uniform float time;
+        uniform float planetType;
 
         // Simplex-like noise
         vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -4262,6 +4287,39 @@
           return f / 0.9375;
         }
 
+        // Get base tint color for planet type
+        vec3 getBaseTint(float pType) {
+          if (pType < 0.5) return vec3(0.0, 0.0, 0.01);       // Rocky: slight blue
+          if (pType < 1.5) return vec3(-0.01, 0.02, 0.0);     // Forested: slight green
+          if (pType < 2.5) return vec3(0.0, 0.01, 0.03);      // Oceanic: blue tint
+          if (pType < 3.5) return vec3(0.02, 0.0, -0.01);     // Volcanic: warm
+          if (pType < 4.5) return vec3(0.01, 0.02, -0.01);    // Toxic: yellow-green
+          if (pType < 5.5) return vec3(0.01, 0.02, 0.03);     // Ice: cold blue
+          return vec3(0.02, 0.0, 0.02);                        // Gas: purple tint
+        }
+
+        // Get primary vein color for planet type
+        vec3 getVeinColor1(float pType) {
+          if (pType < 0.5) return vec3(0.4, 0.08, 0.02);      // Rocky: lava orange
+          if (pType < 1.5) return vec3(0.0, 0.3, 0.25);       // Forested: bioluminescent cyan
+          if (pType < 2.5) return vec3(0.02, 0.15, 0.3);      // Oceanic: deep water blue
+          if (pType < 3.5) return vec3(0.5, 0.15, 0.0);       // Volcanic: bright lava
+          if (pType < 4.5) return vec3(0.3, 0.35, 0.0);       // Toxic: acid yellow
+          if (pType < 5.5) return vec3(0.15, 0.25, 0.35);     // Ice: glacial blue
+          return vec3(0.3, 0.1, 0.4);                          // Gas: plasma purple
+        }
+
+        // Get secondary vein color for planet type
+        vec3 getVeinColor2(float pType) {
+          if (pType < 0.5) return vec3(0.02, 0.08, 0.12);     // Rocky: mineral water
+          if (pType < 1.5) return vec3(0.2, 0.05, 0.3);       // Forested: fungal purple
+          if (pType < 2.5) return vec3(0.0, 0.25, 0.2);       // Oceanic: algae green
+          if (pType < 3.5) return vec3(0.3, 0.0, 0.0);        // Volcanic: deep magma
+          if (pType < 4.5) return vec3(0.1, 0.25, 0.1);       // Toxic: bile green
+          if (pType < 5.5) return vec3(0.0, 0.1, 0.15);       // Ice: deep crevasse
+          return vec3(0.4, 0.2, 0.1);                          // Gas: storm orange
+        }
+
         void main() {
           vec2 uv = vUv;
           vec2 p = uv * 8.0 + seed;
@@ -4274,12 +4332,18 @@
           ridge = pow(ridge, 2.0);
           height = mix(height, ridge, 0.3);
 
+          // Gas planets have more swirling patterns
+          if (planetType > 5.5) {
+            float swirl = snoise(p * 0.3 + vec2(seed * 0.1, uv.y * 2.0));
+            height = mix(height, swirl * 0.5 + 0.5, 0.5);
+          }
+
           // Dark monochrome base (0.02 to 0.15 range - very dark)
           float brightness = 0.02 + height * 0.13;
           vec3 color = vec3(brightness);
 
-          // Slight cool tint
-          color.b += 0.01;
+          // Apply planet-specific tint
+          color += getBaseTint(planetType);
 
           // Contour lines - subtle elevation bands
           float contour = fract(height * 8.0);
@@ -4287,17 +4351,27 @@
             color += 0.03;
           }
 
-          // Lava veins - rare, in low elevation cracks
-          float lavaPattern = snoise(p * 3.0 + seed * 0.5);
-          float lavaMask = smoothstep(0.25, 0.22, height) * smoothstep(0.7, 0.75, lavaPattern);
-          vec3 lavaColor = vec3(0.4, 0.08, 0.02); // Deep red/orange
-          color = mix(color, lavaColor, lavaMask * 0.8);
+          // Primary veins - in low elevation cracks
+          float veinPattern1 = snoise(p * 3.0 + seed * 0.5);
+          float veinMask1 = smoothstep(0.25, 0.22, height) * smoothstep(0.7, 0.75, veinPattern1);
+          // Volcanic planets have more veins
+          if (planetType > 2.5 && planetType < 3.5) veinMask1 *= 1.5;
+          vec3 veinColor1 = getVeinColor1(planetType);
+          color = mix(color, veinColor1, veinMask1 * 0.8);
 
-          // Water veins - in certain low areas
-          float waterPattern = snoise(p * 2.5 - seed * 0.3);
-          float waterMask = smoothstep(0.18, 0.15, height) * smoothstep(0.6, 0.65, waterPattern);
-          vec3 waterColor = vec3(0.02, 0.08, 0.12); // Dark blue
-          color = mix(color, waterColor, waterMask * 0.7);
+          // Secondary veins - different pattern
+          float veinPattern2 = snoise(p * 2.5 - seed * 0.3);
+          float veinMask2 = smoothstep(0.18, 0.15, height) * smoothstep(0.6, 0.65, veinPattern2);
+          vec3 veinColor2 = getVeinColor2(planetType);
+          color = mix(color, veinColor2, veinMask2 * 0.7);
+
+          // Ice planets have crack patterns
+          if (planetType > 4.5 && planetType < 5.5) {
+            float crack = abs(snoise(p * 4.0));
+            if (crack < 0.08) {
+              color = mix(color, vec3(0.2, 0.3, 0.35), 0.6);
+            }
+          }
 
           // Film grain
           float grain = snoise(uv * 400.0 + time) * 0.015;
@@ -4390,8 +4464,10 @@
       // Set uniforms
       const seedLoc = gl.getUniformLocation(program, 'seed');
       const timeLoc = gl.getUniformLocation(program, 'time');
+      const planetTypeLoc = gl.getUniformLocation(program, 'planetType');
       gl.uniform1f(seedLoc, ScannerState.terrainSeed);
       gl.uniform1f(timeLoc, Date.now() * 0.001);
+      gl.uniform1f(planetTypeLoc, ScannerState.terrainPlanetType);
 
       // Draw
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -5590,15 +5666,24 @@
       ScannerState.interference = [];
       ScannerState.revealPhase = 0;
 
-      // Generate new terrain seed for WebGL shader
-      ScannerState.terrainSeed = Math.random() * 1000;
+      // Generate terrain seed and type from planet name (deterministic)
+      const signal = GameState.signal;
+      const planetName = signal ? signal.planet : 'Unknown';
+      const planetHash = hashString(planetName);
+
+      // Seed is deterministic based on planet name
+      ScannerState.terrainSeed = (planetHash % 10000) / 10;
+
+      // Planet type is also deterministic (0-6 based on hash)
+      ScannerState.terrainPlanetType = planetHash % 7;
+
       ScannerState.terrainReady = false;
 
-      // Place signal at random location with padding from edges
-      const signal = GameState.signal;
+      // Place signal at deterministic location based on planet (but with some variation)
       if (signal) {
-        ScannerState.signalX = 0.15 + Math.random() * 0.7;
-        ScannerState.signalY = 0.15 + Math.random() * 0.7;
+        const signalHash = hashString(planetName + '_signal');
+        ScannerState.signalX = 0.15 + ((signalHash % 700) / 1000);
+        ScannerState.signalY = 0.15 + (((signalHash >> 10) % 700) / 1000);
       }
 
       ScannerState.initialized = true;
