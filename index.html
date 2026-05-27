@@ -1302,6 +1302,30 @@
       50% { box-shadow: 0 0 25px rgba(79, 209, 217, 0.4); }
     }
 
+    /* Extract button - appears after signal found */
+    #btn-extract {
+      padding: 18px 50px;
+      font-family: var(--sf-font-display);
+      font-size: 16px;
+      letter-spacing: 3px;
+      border: 2px solid var(--sf-alert);
+      color: var(--sf-alert);
+      background: rgba(232, 90, 60, 0.15);
+      text-transform: uppercase;
+      animation: extractButtonPulse 1.5s ease-in-out infinite;
+    }
+
+    #btn-extract:hover {
+      background: rgba(232, 90, 60, 0.35);
+      box-shadow: 0 0 30px rgba(232, 90, 60, 0.5);
+      transform: scale(1.02);
+    }
+
+    @keyframes extractButtonPulse {
+      0%, 100% { box-shadow: 0 0 15px rgba(232, 90, 60, 0.3); }
+      50% { box-shadow: 0 0 35px rgba(232, 90, 60, 0.6); }
+    }
+
     /* ============================================
        STASIS CHAMBER SCREEN - Starfall Header
        ============================================ */
@@ -3163,6 +3187,7 @@
       </div>
       <div class="map-actions">
         <button class="action-btn" id="btn-scan" style="display:none;">SCAN SECTOR</button>
+        <button class="action-btn primary" id="btn-extract" style="display:none;">EXTRACT SPECIMEN</button>
         <button class="action-btn primary" id="btn-deploy" style="display:none;">DEPLOY</button>
       </div>
     </div>
@@ -5382,11 +5407,21 @@
       }
 
       if (scanBtn) {
-        if (MapState.level === 'planet' && !ScannerState.scanning && !ScannerState.scanComplete) {
+        if (MapState.level === 'planet' && !ScannerState.scanning && !ScannerState.scanComplete && !ScannerState.signalFound) {
           scanBtn.style.display = 'block';
           scanBtn.textContent = 'INITIATE SCAN';
         } else {
           scanBtn.style.display = 'none';
+        }
+      }
+
+      // Show extract button when signal is found
+      const extractBtn = document.getElementById('btn-extract');
+      if (extractBtn) {
+        if (MapState.level === 'planet' && ScannerState.signalFound && !extractionState.active) {
+          extractBtn.style.display = 'block';
+        } else {
+          extractBtn.style.display = 'none';
         }
       }
 
@@ -7289,6 +7324,14 @@
         if (MapState.level === 'planet' && !ScannerState.scanning && !ScannerState.scanComplete) {
           startPlanetScan();
           updateMapUI();
+        }
+      });
+
+      // Extract button - starts extraction animation
+      document.getElementById('btn-extract')?.addEventListener('click', () => {
+        if (MapState.level === 'planet' && ScannerState.signalFound && GameState.signal) {
+          startExtraction(GameState.signal);
+          updateMapUI(); // Hide the button
         }
       });
 
