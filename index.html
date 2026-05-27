@@ -4033,7 +4033,12 @@
       initialized: false,
       scanning: false,    // Is scan animation running?
       scanProgress: 0,    // 0-1 scan sweep progress
-      scanComplete: false // Has a scan been completed?
+      scanComplete: false, // Has a scan been completed?
+      signalStrength: 100, // Signal strength percentage (degrades over time)
+      lastStrengthUpdate: 0, // Timestamp for strength degradation
+      interference: [],   // False positive blips during scan
+      scanStartTime: 0,   // When scan started
+      revealPhase: 0      // Animation phase for signal reveal
     };
 
     const GameState = {
@@ -4930,10 +4935,21 @@
         location.textContent = locationText[MapState.level];
       }
 
-      // Hide deploy button - extraction is done by clicking signal on scanner
+      // Show/hide buttons based on planet scanner state
       const deployBtn = document.getElementById('btn-deploy');
+      const scanBtn = document.getElementById('btn-scan');
+
       if (deployBtn) {
         deployBtn.style.display = 'none';
+      }
+
+      if (scanBtn) {
+        if (MapState.level === 'planet' && !ScannerState.scanning && !ScannerState.scanComplete) {
+          scanBtn.style.display = 'block';
+          scanBtn.textContent = 'INITIATE SCAN';
+        } else {
+          scanBtn.style.display = 'none';
+        }
       }
 
       // Update stats
@@ -5212,6 +5228,10 @@
       ScannerState.scanning = false;
       ScannerState.scanProgress = 0;
       ScannerState.scanComplete = false;
+      ScannerState.signalStrength = 100;
+      ScannerState.lastStrengthUpdate = Date.now();
+      ScannerState.interference = [];
+      ScannerState.revealPhase = 0;
 
       // Generate procedural heightmap using layered noise
       const seed = Date.now();
@@ -5258,6 +5278,22 @@
       if (ScannerState.scanning || ScannerState.scanComplete) return;
       ScannerState.scanning = true;
       ScannerState.scanProgress = 0;
+      ScannerState.scanStartTime = Date.now();
+
+      // Generate interference blips (false positives that appear during scan)
+      ScannerState.interference = [];
+      const numInterference = 3 + Math.floor(Math.random() * 4); // 3-6 blips
+      for (let i = 0; i < numInterference; i++) {
+        ScannerState.interference.push({
+          x: 0.1 + Math.random() * 0.8,
+          y: 0.1 + Math.random() * 0.8,
+          appearsAt: 0.1 + Math.random() * 0.7, // When in scan progress it appears
+          fadeTime: 0.8 + Math.random() * 1.5,   // How long it stays visible (seconds)
+          size: 0.8 + Math.random() * 0.4,
+          revealed: false,
+          revealedAt: 0
+        });
+      }
     }
 
     function drawPlanetView(ctx, canvas) {
@@ -5374,70 +5410,201 @@
         ctx.fillText(rowLabels[i], mapX - 8, mapY + (i + 0.5) * gridCellH + 4);
       }
 
+      // Signal strength degradation (loses 1% per second while on planet)
+      const now = Date.now();
+      if (now - ScannerState.lastStrengthUpdate > 1000) {
+        ScannerState.signalStrength = Math.max(5, ScannerState.signalStrength - 1);
+        ScannerState.lastStrengthUpdate = now;
+      }
+
+      // Draw signal strength bar (top left, under header)
+      const strengthBarW = 120;
+      const strengthBarH = 8;
+      const strengthBarX = 20;
+      const strengthBarY = 58;
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(strengthBarX, strengthBarY, strengthBarW, strengthBarH);
+
+      const strengthColor = ScannerState.signalStrength > 60 ? '#4fd97f' :
+                           ScannerState.signalStrength > 30 ? '#f4a62a' : '#e85a3c';
+      ctx.fillStyle = strengthColor;
+      ctx.fillRect(strengthBarX, strengthBarY, strengthBarW * (ScannerState.signalStrength / 100), strengthBarH);
+
+      ctx.strokeStyle = 'rgba(79, 209, 217, 0.5)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(strengthBarX, strengthBarY, strengthBarW, strengthBarH);
+
+      ctx.font = '9px "Share Tech Mono", monospace';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.textAlign = 'left';
+      ctx.fillText(`SIGNAL: ${ScannerState.signalStrength}%`, strengthBarX, strengthBarY + strengthBarH + 12);
+
       // Scan line animation
       if (ScannerState.scanning) {
-        ScannerState.scanProgress += 0.012;
+        ScannerState.scanProgress += 0.008; // Slower scan for more tension
+
+        // Check interference blips - reveal them when scan line passes
+        const scanTime = (Date.now() - ScannerState.scanStartTime) / 1000;
+        ScannerState.interference.forEach(blip => {
+          if (!blip.revealed && ScannerState.scanProgress >= blip.appearsAt) {
+            blip.revealed = true;
+            blip.revealedAt = scanTime;
+          }
+        });
 
         if (ScannerState.scanProgress >= 1) {
           ScannerState.scanning = false;
           ScannerState.scanComplete = true;
           ScannerState.signalFound = true;
+          ScannerState.revealPhase = 0;
         }
 
         // Draw scan line
         const scanY = mapY + ScannerState.scanProgress * mapH;
 
         // Glow above scan line
-        const glowGrad = ctx.createLinearGradient(0, scanY - 60, 0, scanY);
+        const glowGrad = ctx.createLinearGradient(0, scanY - 80, 0, scanY);
         glowGrad.addColorStop(0, 'rgba(79, 209, 217, 0)');
-        glowGrad.addColorStop(1, 'rgba(79, 209, 217, 0.3)');
+        glowGrad.addColorStop(0.5, 'rgba(79, 209, 217, 0.15)');
+        glowGrad.addColorStop(1, 'rgba(79, 209, 217, 0.4)');
         ctx.fillStyle = glowGrad;
-        ctx.fillRect(mapX, scanY - 60, mapW, 60);
+        ctx.fillRect(mapX, scanY - 80, mapW, 80);
 
-        // Bright scan line
-        ctx.strokeStyle = 'rgba(79, 209, 217, 0.9)';
-        ctx.lineWidth = 2;
+        // Bright scan line with flicker
+        const flicker = 0.8 + Math.random() * 0.2;
+        ctx.strokeStyle = `rgba(79, 209, 217, ${0.9 * flicker})`;
+        ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(mapX, scanY);
         ctx.lineTo(mapX + mapW, scanY);
         ctx.stroke();
 
-        // Scan percentage
-        ctx.font = '12px "Share Tech Mono", monospace';
-        ctx.fillStyle = 'rgba(79, 209, 217, 0.9)';
+        // Secondary scan line
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(mapX, scanY + 2);
+        ctx.lineTo(mapX + mapW, scanY + 2);
+        ctx.stroke();
+
+        // Draw interference blips (false positives)
+        ScannerState.interference.forEach(blip => {
+          if (blip.revealed) {
+            const blipAge = scanTime - blip.revealedAt;
+            const blipAlpha = Math.max(0, 1 - (blipAge / blip.fadeTime));
+
+            if (blipAlpha > 0) {
+              const bx = mapX + blip.x * mapW;
+              const by = mapY + blip.y * mapH;
+              const bSize = 15 * blip.size;
+
+              // Flickering interference marker
+              const interferenceFlicker = 0.5 + Math.random() * 0.5;
+              ctx.strokeStyle = `rgba(244, 166, 42, ${blipAlpha * interferenceFlicker})`;
+              ctx.lineWidth = 2;
+
+              // X marker
+              ctx.beginPath();
+              ctx.moveTo(bx - bSize / 2, by - bSize / 2);
+              ctx.lineTo(bx + bSize / 2, by + bSize / 2);
+              ctx.moveTo(bx + bSize / 2, by - bSize / 2);
+              ctx.lineTo(bx - bSize / 2, by + bSize / 2);
+              ctx.stroke();
+
+              // Label
+              if (blipAlpha > 0.3) {
+                ctx.font = '8px "Share Tech Mono", monospace';
+                ctx.fillStyle = `rgba(244, 166, 42, ${blipAlpha * 0.8})`;
+                ctx.textAlign = 'center';
+                ctx.fillText('INTERFERENCE', bx, by - bSize / 2 - 5);
+              }
+            }
+          }
+        });
+
+        // Scan percentage with pulsing effect
+        const scanPulse = Math.sin(time * 8) * 0.2 + 0.8;
+        ctx.font = '14px "Share Tech Mono", monospace';
+        ctx.fillStyle = `rgba(79, 209, 217, ${scanPulse})`;
         ctx.textAlign = 'right';
         ctx.fillText(`SCANNING: ${Math.floor(ScannerState.scanProgress * 100)}%`, canvas.width - 20, 30);
+
+        // Scanning status
+        ctx.font = '10px "Share Tech Mono", monospace';
+        ctx.fillStyle = 'rgba(79, 209, 217, 0.7)';
+        ctx.fillText('ANALYZING TERRAIN...', canvas.width - 20, 46);
       }
 
-      // Draw signal marker if found
+      // Draw signal marker if found (with reveal animation)
       if (ScannerState.signalFound && signal) {
+        ScannerState.revealPhase += 0.05;
+        const revealProgress = Math.min(1, ScannerState.revealPhase);
+
         const sx = mapX + ScannerState.signalX * mapW;
         const sy = mapY + ScannerState.signalY * mapH;
         const color = getSignalColor(signal.type);
 
+        // Dramatic reveal flash
+        if (revealProgress < 0.3) {
+          const flashIntensity = Math.sin(revealProgress / 0.3 * Math.PI);
+          ctx.fillStyle = `rgba(232, 90, 60, ${0.4 * flashIntensity})`;
+          ctx.fillRect(mapX, mapY, mapW, mapH);
+        }
+
+        // Expanding ring reveal
+        if (revealProgress < 0.5) {
+          const ringSize = revealProgress * 300;
+          ctx.strokeStyle = `rgba(232, 90, 60, ${0.8 * (1 - revealProgress * 2)})`;
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.arc(sx, sy, ringSize, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
         // Pulsing highlight area
         const pulse = Math.sin(time * 3) * 0.3 + 0.7;
-        ctx.fillStyle = `rgba(232, 90, 60, ${0.15 * pulse})`;
-        ctx.fillRect(sx - 30, sy - 30, 60, 60);
+        ctx.fillStyle = `rgba(232, 90, 60, ${0.2 * pulse * revealProgress})`;
+        const highlightSize = 40 + pulse * 10;
+        ctx.fillRect(sx - highlightSize, sy - highlightSize, highlightSize * 2, highlightSize * 2);
 
-        // Target brackets
-        drawTargetBox(ctx, sx, sy, 50, color);
+        // Target brackets (scale in)
+        const bracketScale = Math.min(1, revealProgress * 2);
+        drawTargetBox(ctx, sx, sy, 50 * bracketScale, color);
 
         // Ping effect
-        drawPing(ctx, sx, sy, color, 18);
+        drawPing(ctx, sx, sy, color, 20);
 
-        // Label
-        ctx.font = '11px "Orbitron", sans-serif';
+        // Label with typewriter effect
+        ctx.font = '12px "Orbitron", sans-serif';
         ctx.fillStyle = color;
         ctx.textAlign = 'center';
-        ctx.fillText('DISTRESS SIGNAL', sx, sy - 35);
+        const labelText = 'DISTRESS SIGNAL LOCATED';
+        const visibleChars = Math.floor(revealProgress * labelText.length * 1.5);
+        ctx.fillText(labelText.substring(0, Math.min(visibleChars, labelText.length)), sx, sy - 40);
+
+        // Rarity indicator (if applicable)
+        if (signal.lifeform && signal.lifeform.rarity && revealProgress > 0.5) {
+          const rarity = RARITY_TIERS[signal.lifeform.rarity];
+          if (rarity) {
+            ctx.font = '10px "Orbitron", sans-serif';
+            ctx.fillStyle = rarity.color;
+            ctx.fillText(`◆ ${rarity.label} SPECIMEN ◆`, sx, sy - 55);
+          }
+        }
 
         // Grid coordinate
-        const gridCol = Math.floor(ScannerState.signalX * gridCols) + 1;
-        const gridRow = rowLabels[Math.floor(ScannerState.signalY * gridRows)] || 'A';
-        ctx.font = '10px "Share Tech Mono", monospace';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-        ctx.fillText(`SECTOR ${gridRow}-${gridCol}`, sx, sy + 40);
+        if (revealProgress > 0.3) {
+          const gridCol = Math.floor(ScannerState.signalX * gridCols) + 1;
+          const gridRow = rowLabels[Math.floor(ScannerState.signalY * gridRows)] || 'A';
+          ctx.font = '10px "Share Tech Mono", monospace';
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+          ctx.fillText(`SECTOR ${gridRow}-${gridCol}`, sx, sy + 45);
+
+          // Click prompt
+          ctx.fillStyle = `rgba(255, 255, 255, ${0.4 + Math.sin(time * 4) * 0.2})`;
+          ctx.fillText('[ CLICK TO EXTRACT ]', sx, sy + 60);
+        }
       }
 
       // Dark vignette edges
@@ -5468,50 +5635,25 @@
       ctx.fillStyle = 'rgba(79, 209, 217, 0.7)';
       ctx.fillText(`MISSION DAY ${GameState.missionDay}`, canvas.width - 20, 30);
 
-      // Status indicator
-      ctx.font = '11px "Share Tech Mono", monospace';
-      if (ScannerState.signalFound) {
-        ctx.fillStyle = 'rgba(232, 90, 60, 0.9)';
-        ctx.fillText('◉ SIGNAL DETECTED', canvas.width - 20, 48);
-      } else if (!ScannerState.scanning) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.fillText('○ AWAITING SCAN', canvas.width - 20, 48);
+      // Status indicator (top right)
+      if (!ScannerState.scanning) {
+        ctx.font = '11px "Share Tech Mono", monospace';
+        ctx.textAlign = 'right';
+        if (ScannerState.signalFound) {
+          ctx.fillStyle = 'rgba(232, 90, 60, 0.9)';
+          ctx.fillText('◉ SIGNAL LOCKED', canvas.width - 20, 48);
+        } else {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+          ctx.fillText('○ READY TO SCAN', canvas.width - 20, 48);
+        }
       }
 
-      // Draw SCAN button if not scanned yet
-      if (!ScannerState.scanComplete && !ScannerState.scanning) {
-        const btnW = 140;
-        const btnH = 45;
-        const btnX = canvas.width / 2 - btnW / 2;
-        const btnY = canvas.height - margin - btnH - 20;
-
-        // Button background
-        ctx.fillStyle = 'rgba(79, 209, 217, 0.15)';
-        ctx.fillRect(btnX, btnY, btnW, btnH);
-
-        // Button border
-        ctx.strokeStyle = 'rgba(79, 209, 217, 0.8)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(btnX, btnY, btnW, btnH);
-
-        // Button text
-        ctx.font = '14px "Orbitron", sans-serif';
-        ctx.fillStyle = 'rgba(79, 209, 217, 0.95)';
+      // Warning if signal strength is low
+      if (ScannerState.signalStrength < 30 && !ScannerState.signalFound) {
+        ctx.font = '11px "Share Tech Mono", monospace';
+        ctx.fillStyle = `rgba(232, 90, 60, ${0.6 + Math.sin(time * 6) * 0.4})`;
         ctx.textAlign = 'center';
-        ctx.fillText('INITIATE SCAN', canvas.width / 2, btnY + btnH / 2 + 5);
-
-        // Store button bounds for click detection
-        ScannerState.scanButtonBounds = { x: btnX, y: btnY, w: btnW, h: btnH };
-      } else {
-        ScannerState.scanButtonBounds = null;
-      }
-
-      // Instructions at bottom
-      if (ScannerState.signalFound) {
-        ctx.font = '10px "Share Tech Mono", monospace';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.textAlign = 'center';
-        ctx.fillText('CLICK SIGNAL TO BEGIN EXTRACTION', canvas.width / 2, canvas.height - 15);
+        ctx.fillText('⚠ SIGNAL DEGRADING - SCAN NOW ⚠', canvas.width / 2, canvas.height - 20);
       }
     }
 
@@ -5628,26 +5770,16 @@
         case 'planet':
           if (!signal) return;
 
+          // Only allow extraction if signal has been found
+          if (!ScannerState.signalFound) {
+            return;
+          }
+
           // Scale click coordinates to canvas internal resolution
           const scaleX = canvas.width / rect.width;
           const scaleY = canvas.height / rect.height;
           const clickX = (e.clientX - rect.left) * scaleX;
           const clickY = (e.clientY - rect.top) * scaleY;
-
-          // Check if SCAN button was clicked
-          if (ScannerState.scanButtonBounds) {
-            const btn = ScannerState.scanButtonBounds;
-            if (clickX >= btn.x && clickX <= btn.x + btn.w &&
-                clickY >= btn.y && clickY <= btn.y + btn.h) {
-              startPlanetScan();
-              return;
-            }
-          }
-
-          // Only allow extraction if signal has been found
-          if (!ScannerState.signalFound) {
-            return;
-          }
 
           // Check if clicked on the signal (use pixel coordinates with margin offset)
           const margin = 60;
@@ -6613,6 +6745,14 @@
         if (GameState.signal && GameState.signal.lifeform) {
           loadLifeformIntoStasis(GameState.signal.lifeform);
           showScreen('stasis-chamber');
+        }
+      });
+
+      // Scan button - initiates planetary surface scan
+      document.getElementById('btn-scan')?.addEventListener('click', () => {
+        if (MapState.level === 'planet' && !ScannerState.scanning && !ScannerState.scanComplete) {
+          startPlanetScan();
+          updateMapUI();
         }
       });
 
