@@ -5610,8 +5610,7 @@
       // CRT scanline effect
       ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
       for (let sy = mapY; sy < mapY + mapH; sy += 3) {
-          ctx.fillRect(mapX, sy, mapW, 2);
-        }
+        ctx.fillRect(mapX, sy, mapW, 2);
       }
 
       // Loading indicator for AI terrain
@@ -5887,8 +5886,7 @@
       ctx.textAlign = 'left';
       ctx.fillText('PLANETARY SURVEY', 20, 30);
 
-      // Show terrain type name
-      const terrainConfig = TERRAIN_TYPES[ScannerState.terrainType];
+      // Show terrain type name (terrainConfig already defined at top of function)
       if (terrainConfig) {
         ctx.font = '12px "Share Tech Mono", monospace';
         ctx.fillStyle = 'rgba(79, 209, 217, 0.7)';
@@ -6952,7 +6950,6 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      console.log('DOMContentLoaded fired');
       updateSystemTime();
 
       // Periodic care update loop (every 60 seconds)
@@ -6977,13 +6974,8 @@
       updateCareBadge();
 
       // Main menu buttons
-      console.log('Setting up button handlers');
-      const btnStart = document.getElementById('btn-start-mission');
-      const btnCollection = document.getElementById('btn-collection');
-      console.log('btn-start-mission:', btnStart);
-      console.log('btn-collection:', btnCollection);
-      btnStart?.addEventListener('click', () => { console.log('Begin Mission clicked'); showScreen('universe-map'); });
-      btnCollection?.addEventListener('click', () => { console.log('Collection clicked'); showScreen('collection-archive'); });
+      document.getElementById('btn-start-mission')?.addEventListener('click', () => showScreen('universe-map'));
+      document.getElementById('btn-collection')?.addEventListener('click', () => showScreen('collection-archive'));
       document.getElementById('collection-back-btn')?.addEventListener('click', () => showScreen('main-menu'));
       document.getElementById('btn-stasis-direct')?.addEventListener('click', () => {
         // Generate a signal/lifeform if none exists
