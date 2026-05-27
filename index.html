@@ -5250,7 +5250,12 @@
     // Generate AI terrain image using Pollinations.ai
     function generateTerrainImage() {
       const signal = GameState.signal;
-      if (!signal) return;
+      console.log('generateTerrainImage called, signal:', signal?.planet);
+
+      if (!signal) {
+        console.warn('No signal available for terrain generation');
+        return;
+      }
 
       // Build a prompt based on planet characteristics
       const terrainTypes = [
@@ -5268,44 +5273,46 @@
 
       const terrainType = terrainTypes[Math.floor(Math.random() * terrainTypes.length)];
 
-      // Simpler, more reliable prompt
-      const prompt = `${terrainType}, teal green color scheme, dark atmosphere, topographic map style, no text no labels`;
+      // Include unique identifier in prompt itself
+      const uniqueId = Math.random().toString(36).substring(7);
+      const prompt = `${terrainType}, teal green color scheme, dark atmosphere, topographic map style, no text no labels, id${uniqueId}`;
 
       ScannerState.terrainLoading = true;
       ScannerState.terrainLoaded = false;
+      ScannerState.terrainImage = null;
 
       // Create image element
       const img = new Image();
 
-      // Timeout fallback - if image doesn't load in 15 seconds, give up
+      // Timeout fallback - if image doesn't load in 20 seconds, give up
       const timeout = setTimeout(() => {
         if (ScannerState.terrainLoading) {
           console.warn('Terrain image timeout, using procedural fallback');
           ScannerState.terrainLoading = false;
           ScannerState.terrainLoaded = false;
         }
-      }, 15000);
+      }, 20000);
 
       img.onload = () => {
         clearTimeout(timeout);
+        console.log('Terrain image loaded successfully, dimensions:', img.width, 'x', img.height);
         ScannerState.terrainImage = img;
         ScannerState.terrainLoaded = true;
         ScannerState.terrainLoading = false;
-        console.log('Terrain image loaded successfully');
       };
 
       img.onerror = (e) => {
         clearTimeout(timeout);
-        console.warn('Failed to load terrain image:', e);
+        console.error('Failed to load terrain image:', e);
         ScannerState.terrainLoading = false;
         ScannerState.terrainLoaded = false;
       };
 
-      // Pollinations.ai URL - generates image from prompt
-      // Using unique seed to avoid caching issues
-      const seed = Math.floor(Math.random() * 1000000);
-      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=600&seed=${seed}&nologo=true`;
-      console.log('Loading terrain:', imageUrl);
+      // Pollinations.ai URL with aggressive cache busting
+      const seed = Math.floor(Math.random() * 999999999);
+      const timestamp = Date.now();
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=600&seed=${seed}&nologo=true&t=${timestamp}`;
+      console.log('Loading terrain from:', imageUrl);
       img.src = imageUrl;
     }
 
@@ -5414,17 +5421,22 @@
 
       // Draw terrain - use AI image if loaded, otherwise procedural fallback
       if (ScannerState.terrainLoaded && ScannerState.terrainImage) {
-        // Draw AI-generated terrain image
-        ctx.drawImage(ScannerState.terrainImage, mapX, mapY, mapW, mapH);
+        try {
+          // Draw AI-generated terrain image
+          ctx.drawImage(ScannerState.terrainImage, mapX, mapY, mapW, mapH);
 
-        // Add teal color overlay to match game aesthetic
-        ctx.fillStyle = 'rgba(20, 80, 90, 0.3)';
-        ctx.fillRect(mapX, mapY, mapW, mapH);
+          // Add teal color overlay to match game aesthetic
+          ctx.fillStyle = 'rgba(20, 80, 90, 0.3)';
+          ctx.fillRect(mapX, mapY, mapW, mapH);
 
-        // Add scanline effect over the image
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
-        for (let sy = mapY; sy < mapY + mapH; sy += 3) {
-          ctx.fillRect(mapX, sy, mapW, 1);
+          // Add scanline effect over the image
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+          for (let sy = mapY; sy < mapY + mapH; sy += 3) {
+            ctx.fillRect(mapX, sy, mapW, 1);
+          }
+        } catch (e) {
+          console.error('Error drawing terrain image:', e);
+          ScannerState.terrainLoaded = false;
         }
       } else {
         // Procedural terrain fallback
