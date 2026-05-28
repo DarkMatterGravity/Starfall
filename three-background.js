@@ -3418,14 +3418,33 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         const inStasis = tumor.userData.stasisUntil && now < tumor.userData.stasisUntil;
 
         if (!inStasis) {
-          // Apply growth based on injury's growth rate (mm per month)
-          // Growth rate is stored as multiplier, convert to mm/month growth
-          const growthRate = tumor.userData.growthRate || 1.0;
-          const growthPerMonth = growthRate * 1.5; // Base growth scaled by rate
-          currentSizeMM = currentSizeMM + (growthPerMonth * deltaMonths);
+          // Check for active medication toggles and calculate growth reduction
+          const injuryCategory = tumor.userData.injuryCategory || 'injury';
+          let growthMultiplier = 1.0;
+          let shrinkAmount = 0;
 
-          // Cap at max injury size
-          currentSizeMM = Math.min(70, currentSizeMM);
+          for (const [medId, isActive] of Object.entries(activeMedications)) {
+            if (isActive && MEDICATION_DATABASE[medId]) {
+              const med = MEDICATION_DATABASE[medId];
+              const effectiveness = med.effectiveness[injuryCategory] || 0.3;
+
+              // Reduce growth based on effectiveness
+              growthMultiplier *= (1 - effectiveness * 0.5); // Up to 50% growth reduction per med
+
+              // Chance to shrink based on effectiveness and shrink rate
+              if (med.shrinkRate && effectiveness > 0.5) {
+                shrinkAmount += currentSizeMM * med.shrinkRate * effectiveness * deltaMonths;
+              }
+            }
+          }
+
+          // Apply growth based on injury's growth rate (mm per month)
+          const growthRate = tumor.userData.growthRate || 1.0;
+          const growthPerMonth = growthRate * 1.5 * growthMultiplier; // Reduced by active meds
+          currentSizeMM = currentSizeMM + (growthPerMonth * deltaMonths) - shrinkAmount;
+
+          // Cap at max injury size, min 1mm
+          currentSizeMM = Math.max(1, Math.min(70, currentSizeMM));
           tumor.userData.sizeMM = currentSizeMM;
         }
 
