@@ -6670,70 +6670,82 @@
         if (zoomIn) {
           // ZOOM IN: Current view scales up and fades, next view scales up from tiny
 
-          // Phase 1 (0-60%): Current level zooms into the focus point
-          if (eased < 0.6) {
-            const phase1Progress = eased / 0.6;
-            const scale = 1 + phase1Progress * 7; // Scale from 1x to 8x
-            const alpha = 1 - phase1Progress * 0.8; // Fade out
-
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            ctx.translate(centerX, centerY);
-            ctx.scale(scale, scale);
-            ctx.translate(-centerX, -centerY);
-            MapState.level = startLevel;
-            drawLevel(startLevel);
-            ctx.restore();
-          }
-
-          // Phase 2 (40-100%): Next level appears and scales up from tiny
-          if (eased > 0.4) {
-            const phase2Progress = (eased - 0.4) / 0.6;
-            const scale = 0.1 + phase2Progress * 0.9; // Scale from 0.1x to 1x
-            const alpha = phase2Progress; // Fade in
-
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            ctx.translate(canvas.width / 2, canvas.height / 2);
-            ctx.scale(scale, scale);
-            ctx.translate(-canvas.width / 2, -canvas.height / 2);
+          // At the end, just draw destination cleanly
+          if (eased >= 0.98) {
             MapState.level = nextLevel;
             drawLevel(nextLevel);
-            ctx.restore();
+          } else {
+            // Phase 1 (0-55%): Current level zooms into the focus point
+            if (eased < 0.55) {
+              const phase1Progress = eased / 0.55;
+              const scale = 1 + phase1Progress * 7;
+              const alpha = 1 - phase1Progress;
+
+              ctx.save();
+              ctx.globalAlpha = alpha;
+              ctx.translate(centerX, centerY);
+              ctx.scale(scale, scale);
+              ctx.translate(-centerX, -centerY);
+              MapState.level = startLevel;
+              drawLevel(startLevel);
+              ctx.restore();
+            }
+
+            // Phase 2 (35-100%): Next level appears and scales up from tiny
+            if (eased > 0.35) {
+              const phase2Progress = (eased - 0.35) / 0.65;
+              const scale = 0.1 + phase2Progress * 0.9;
+              const alpha = Math.min(1, phase2Progress * 1.2);
+
+              ctx.save();
+              ctx.globalAlpha = alpha;
+              ctx.translate(canvas.width / 2, canvas.height / 2);
+              ctx.scale(scale, scale);
+              ctx.translate(-canvas.width / 2, -canvas.height / 2);
+              MapState.level = nextLevel;
+              drawLevel(nextLevel);
+              ctx.restore();
+            }
           }
         } else {
           // ZOOM OUT: Current view scales down, previous view appears around it
 
-          // Current level scales down toward center
-          if (eased < 0.7) {
-            const phase1Progress = eased / 0.7;
-            const scale = 1 - phase1Progress * 0.9; // Scale from 1x to 0.1x
-            const alpha = 1 - phase1Progress;
-
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            ctx.translate(canvas.width / 2, canvas.height / 2);
-            ctx.scale(scale, scale);
-            ctx.translate(-canvas.width / 2, -canvas.height / 2);
-            MapState.level = startLevel;
-            drawLevel(startLevel);
-            ctx.restore();
-          }
-
-          // Previous level scales down from huge to normal
-          if (eased > 0.3) {
-            const phase2Progress = (eased - 0.3) / 0.7;
-            const scale = 8 - phase2Progress * 7; // Scale from 8x to 1x
-            const alpha = phase2Progress;
-
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            ctx.translate(centerX, centerY);
-            ctx.scale(scale, scale);
-            ctx.translate(-centerX, -centerY);
+          // At the end, just draw destination cleanly
+          if (eased >= 0.98) {
             MapState.level = nextLevel;
             drawLevel(nextLevel);
-            ctx.restore();
+          } else {
+            // Current level scales down toward center
+            if (eased < 0.65) {
+              const phase1Progress = eased / 0.65;
+              const scale = 1 - phase1Progress * 0.9;
+              const alpha = 1 - phase1Progress;
+
+              ctx.save();
+              ctx.globalAlpha = alpha;
+              ctx.translate(canvas.width / 2, canvas.height / 2);
+              ctx.scale(scale, scale);
+              ctx.translate(-canvas.width / 2, -canvas.height / 2);
+              MapState.level = startLevel;
+              drawLevel(startLevel);
+              ctx.restore();
+            }
+
+            // Previous level scales down from huge to normal
+            if (eased > 0.25) {
+              const phase2Progress = (eased - 0.25) / 0.75;
+              const scale = 8 - phase2Progress * 7;
+              const alpha = Math.min(1, phase2Progress * 1.2);
+
+              ctx.save();
+              ctx.globalAlpha = alpha;
+              ctx.translate(centerX, centerY);
+              ctx.scale(scale, scale);
+              ctx.translate(-centerX, -centerY);
+              MapState.level = nextLevel;
+              drawLevel(nextLevel);
+              ctx.restore();
+            }
           }
         }
 
