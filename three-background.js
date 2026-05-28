@@ -3393,6 +3393,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
     // Grow existing tumors
     droppedTumors.forEach(tumor => {
+      // Skip injuries - they are managed by the index.html injury growth system
+      if (tumor.userData.isInjury) return;
+
       // Store initial size if not stored
       if (!tumorInitialSizes.has(tumor)) {
         tumorInitialSizes.set(tumor, tumor.scale.x);
