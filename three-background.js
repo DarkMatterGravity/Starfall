@@ -3421,27 +3421,23 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           // Check for active medication toggles and calculate growth reduction
           const injuryCategory = tumor.userData.injuryCategory || 'injury';
           let growthMultiplier = 1.0;
-          let shrinkAmount = 0;
 
           for (const [medId, isActive] of Object.entries(activeMedications)) {
             if (isActive && MEDICATION_DATABASE[medId]) {
               const med = MEDICATION_DATABASE[medId];
               const effectiveness = med.effectiveness[injuryCategory] || 0.3;
 
-              // Reduce growth based on effectiveness
-              growthMultiplier *= (1 - effectiveness * 0.5); // Up to 50% growth reduction per med
-
-              // Chance to shrink based on effectiveness and shrink rate
-              if (med.shrinkRate && effectiveness > 0.5) {
-                shrinkAmount += currentSizeMM * med.shrinkRate * effectiveness * deltaMonths;
-              }
+              // Reduce growth based on effectiveness (toggles slow growth, don't shrink)
+              // 100% effective = halts growth completely, 50% = half speed, etc.
+              growthMultiplier *= (1 - effectiveness);
             }
           }
 
           // Apply growth based on injury's growth rate (mm per month)
+          // Toggles only slow/halt growth - drag-drop treatments do the shrinking
           const growthRate = tumor.userData.growthRate || 1.0;
-          const growthPerMonth = growthRate * 1.5 * growthMultiplier; // Reduced by active meds
-          currentSizeMM = currentSizeMM + (growthPerMonth * deltaMonths) - shrinkAmount;
+          const growthPerMonth = growthRate * 1.5 * growthMultiplier;
+          currentSizeMM = currentSizeMM + (growthPerMonth * deltaMonths);
 
           // Cap at max injury size, min 1mm
           currentSizeMM = Math.max(1, Math.min(70, currentSizeMM));
