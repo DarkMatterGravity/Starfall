@@ -2743,7 +2743,8 @@
     #tumor-creator {
       position: fixed;
       top: 22%;
-      left: 32%;
+      left: 50%;
+      transform: translateX(-50%);
       background: rgba(20, 26, 34, 0.92);
       border: 1px solid #5F7B7A;
       border-radius: 10px;
@@ -3379,16 +3380,6 @@
     <div id="body-hint" class="hint-label" style="display:none;"></div>
     <div id="new-injury-container" class="new-injury-container"></div>
 
-    <!-- Upload Panel -->
-    <div id="upload-panel">
-      <label id="upload-btn" for="report-upload">
-        <span id="upload-icon">&#128225;</span>
-        Import Scan Data
-      </label>
-      <input type="file" id="report-upload" accept="image/*,.pdf" />
-      <div id="upload-status"></div>
-    </div>
-
     <!-- Lifeform Info Panel -->
     <div id="patient-info-panel" class="draggable-panel">
       <div class="drag-handle"><span class="drag-indicator">&#8942;&#8942;</span></div>
@@ -3422,7 +3413,6 @@
           <span class="patient-info-value" id="patient-physician">--</span>
         </div>
       </div>
-      <button id="add-report-btn">Add Scan Data</button>
       <button id="delete-patient-btn">Release Specimen</button>
     </div>
 
@@ -7667,7 +7657,7 @@
       const defaultPositions = {
         'patient-info-panel': { top: '22%', left: '30px', right: 'auto', bottom: 'auto' },
         'spider-plot': { top: '22%', right: '30px', left: 'auto', bottom: 'auto' },
-        'tumor-creator': { top: '22%', left: '32%', right: 'auto', bottom: 'auto' },
+        'tumor-creator': { top: '22%', left: '50%', right: 'auto', bottom: 'auto', transform: 'translateX(-50%)' },
         'medication-panel': { top: '30px', left: '50%', right: 'auto', bottom: 'auto' },
         'timeline-panel': { bottom: '30px', left: '50%', top: 'auto', right: 'auto' }
       };
