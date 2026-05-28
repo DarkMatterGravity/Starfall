@@ -2408,6 +2408,90 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     nanobotSwarm.particles.geometry.attributes.position.needsUpdate = true;
   }
 
+  // ============================================
+  // CRYO/STASIS FIELD ANIMATION
+  // ============================================
+  let cryoField = {
+    active: false,
+    mesh: null,
+    pulsePhase: 0
+  };
+
+  function initCryoField() {
+    if (cryoField.mesh) return;
+
+    // Create a translucent shell around the body
+    const geometry = new THREE.SphereGeometry(1.2, 32, 24);
+    const material = new THREE.MeshBasicMaterial({
+      color: 0x88ccff,
+      transparent: true,
+      opacity: 0.08,
+      side: THREE.DoubleSide,
+      wireframe: false
+    });
+
+    cryoField.mesh = new THREE.Mesh(geometry, material);
+    cryoField.mesh.position.set(0, 0.5, 0);
+    cryoField.mesh.scale.set(0.8, 1.4, 0.6); // Ellipsoid shape
+    cryoField.mesh.visible = false;
+    scene.add(cryoField.mesh);
+
+    // Add wireframe overlay for tech look
+    const wireGeometry = new THREE.SphereGeometry(1.22, 16, 12);
+    const wireMaterial = new THREE.MeshBasicMaterial({
+      color: 0x4488ff,
+      transparent: true,
+      opacity: 0.15,
+      wireframe: true
+    });
+    cryoField.wireMesh = new THREE.Mesh(wireGeometry, wireMaterial);
+    cryoField.wireMesh.position.set(0, 0.5, 0);
+    cryoField.wireMesh.scale.set(0.8, 1.4, 0.6);
+    cryoField.wireMesh.visible = false;
+    scene.add(cryoField.wireMesh);
+  }
+
+  function startCryoField() {
+    if (!cryoField.mesh) initCryoField();
+    cryoField.active = true;
+    cryoField.mesh.visible = true;
+    cryoField.wireMesh.visible = true;
+    cryoField.pulsePhase = 0;
+  }
+
+  function stopCryoField() {
+    cryoField.active = false;
+    if (cryoField.mesh) {
+      cryoField.mesh.visible = false;
+      cryoField.wireMesh.visible = false;
+    }
+  }
+
+  function updateCryoField(time) {
+    if (!cryoField.active || !cryoField.mesh) return;
+
+    // Gentle pulsing effect
+    const pulse = Math.sin(time * 1.5) * 0.5 + 0.5;
+    cryoField.mesh.material.opacity = 0.05 + pulse * 0.06;
+    cryoField.wireMesh.material.opacity = 0.1 + pulse * 0.1;
+
+    // Slow rotation
+    cryoField.wireMesh.rotation.y = time * 0.1;
+    cryoField.wireMesh.rotation.x = Math.sin(time * 0.3) * 0.1;
+  }
+
+  // Reset all medication visual effects
+  function resetMedicationEffects() {
+    stopNanobotSwarm();
+    stopCryoField();
+    // Reset active medications state
+    if (typeof activeMedications !== 'undefined') {
+      Object.keys(activeMedications).forEach(key => {
+        activeMedications[key] = false;
+      });
+    }
+  }
+
   function animate() {
     requestAnimationFrame(animate);
 
@@ -2458,6 +2542,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
     // Update nanobot swarm
     updateNanobotSwarm(time);
+
+    // Update cryo field
+    updateCryoField(time);
 
     // 3D tumor panel replaced by 2D HTML panel - no position updates needed
 
@@ -2604,6 +2691,8 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       });
       droppedTumors.length = 0;
       tumorInitialSizes.clear();
+      // Reset medication visual effects
+      resetMedicationEffects();
       // tumorGrowthData and tumorIdCounter are cleared in clearAllTumorsExtended if available
       if (typeof clearAllTumorsExtended === 'function') {
         clearAllTumorsExtended();
@@ -3117,6 +3206,15 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
             startNanobotSwarm();
           } else {
             stopNanobotSwarm();
+          }
+        }
+
+        // Cryo/Stasis field animation
+        if (medId === 'stasis') {
+          if (activeMedications[medId]) {
+            startCryoField();
+          } else {
+            stopCryoField();
           }
         }
 
