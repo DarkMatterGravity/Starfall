@@ -5660,19 +5660,6 @@
       drawStars(ctx, canvas, 0.5);
       drawGrid(ctx, canvas, 150, 0.02);
 
-      // Draw distant galaxy clusters
-      for (let i = 0; i < 8; i++) {
-        const gx = (i % 4) * canvas.width / 4 + canvas.width / 8;
-        const gy = Math.floor(i / 4) * canvas.height / 2 + canvas.height / 4;
-        const gradient = ctx.createRadialGradient(gx, gy, 0, gx, gy, 40);
-        gradient.addColorStop(0, 'rgba(100, 120, 150, 0.3)');
-        gradient.addColorStop(1, 'rgba(100, 120, 150, 0)');
-        ctx.beginPath();
-        ctx.arc(gx, gy, 40, 0, Math.PI * 2);
-        ctx.fillStyle = gradient;
-        ctx.fill();
-      }
-
       // Signal ping with target box
       const signal = GameState.signal;
       if (signal) {
