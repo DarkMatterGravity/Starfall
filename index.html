@@ -2772,14 +2772,7 @@
       border-radius: 9px 9px 0 0;
       background: rgba(255, 255, 255, 0.03);
       border-bottom: 1px solid rgba(95, 123, 122, 0.3);
-      cursor: grab;
       box-sizing: border-box;
-    }
-    .tumor-creator-header:hover {
-      background: rgba(255, 255, 255, 0.06);
-    }
-    .tumor-creator-header:active {
-      cursor: grabbing;
     }
     #tumor-2d {
       width: 130px;
@@ -3316,8 +3309,8 @@
     </div>
 
     <!-- Treatments Panel -->
-    <div id="tumor-creator" class="draggable-panel treatments-panel">
-      <div class="tumor-creator-header drag-handle"><span class="drag-indicator">&#8942;&#8942;</span>TREATMENTS</div>
+    <div id="tumor-creator" class="treatments-panel">
+      <div class="tumor-creator-header">TREATMENTS</div>
       <div class="treatments-list">
         <div class="treatment-item" data-treatment="nanobots" draggable="true">
           <div class="treatment-icon" style="background: #FF4444;">&#9670;</div>
