@@ -3393,8 +3393,12 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
     // Grow existing tumors
     droppedTumors.forEach(tumor => {
-      // Skip injuries - they are managed by the index.html injury growth system
-      if (tumor.userData.isInjury) return;
+      // Injuries are managed by index.html - only record data for graph, skip growth/scale
+      if (tumor.userData.isInjury) {
+        // Record current size for graph tracking (use actual sizeMM from injury system)
+        recordTumorData(tumor, tumor.userData.sizeMM);
+        return;
+      }
 
       // Store initial size if not stored
       if (!tumorInitialSizes.has(tumor)) {
@@ -5940,8 +5944,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         // Reset if at end
         if (currentMonth >= maxMonths) {
           currentMonth = 0;
-          // Reset tumor sizes and growth profiles
+          // Reset tumor sizes and growth profiles (skip injuries - managed by index.html)
           droppedTumors.forEach(tumor => {
+            if (tumor.userData.isInjury) return; // Don't reset injuries
             if (tumorInitialSizes.has(tumor)) {
               tumor.scale.setScalar(tumorInitialSizes.get(tumor));
             }
@@ -6036,8 +6041,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         // Restore from exam history
         restoreTumorsFromExamHistory(subject);
       } else {
-        // No subject - just reset existing tumor sizes
+        // No subject - just reset existing tumor sizes (skip injuries - managed by index.html)
         droppedTumors.forEach(tumor => {
+          if (tumor.userData.isInjury) return; // Don't reset injuries
           if (tumorInitialSizes.has(tumor)) {
             tumor.scale.setScalar(tumorInitialSizes.get(tumor));
           }
