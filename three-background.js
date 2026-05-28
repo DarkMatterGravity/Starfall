@@ -2300,6 +2300,114 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     humanBodyMesh.position.y = entryAnimation.startY;
   }
 
+  // ============================================
+  // NANOBOT SWARM ANIMATION
+  // ============================================
+  let nanobotSwarm = {
+    active: false,
+    particles: null,
+    positions: null,
+    velocities: [],
+    count: 150
+  };
+
+  function initNanobotSwarm() {
+    if (nanobotSwarm.particles) return;
+
+    const count = nanobotSwarm.count;
+    const geometry = new THREE.BufferGeometry();
+    nanobotSwarm.positions = new Float32Array(count * 3);
+    nanobotSwarm.velocities = [];
+
+    // Initialize particles at random positions on a sphere around body
+    for (let i = 0; i < count; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.random() * Math.PI;
+      const radius = 0.8 + Math.random() * 0.4;
+
+      nanobotSwarm.positions[i * 3] = Math.sin(phi) * Math.cos(theta) * radius;
+      nanobotSwarm.positions[i * 3 + 1] = Math.cos(phi) * radius + 0.5;
+      nanobotSwarm.positions[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * radius;
+
+      // Random crawling velocity
+      nanobotSwarm.velocities.push({
+        theta: (Math.random() - 0.5) * 0.03,
+        phi: (Math.random() - 0.5) * 0.02,
+        speed: 0.005 + Math.random() * 0.01
+      });
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(nanobotSwarm.positions, 3));
+
+    const material = new THREE.PointsMaterial({
+      color: 0x1a1a1a,
+      size: 0.025,
+      transparent: true,
+      opacity: 0.8,
+      sizeAttenuation: true
+    });
+
+    nanobotSwarm.particles = new THREE.Points(geometry, material);
+    nanobotSwarm.particles.visible = false;
+    scene.add(nanobotSwarm.particles);
+  }
+
+  function startNanobotSwarm() {
+    if (!nanobotSwarm.particles) initNanobotSwarm();
+    nanobotSwarm.active = true;
+    nanobotSwarm.particles.visible = true;
+  }
+
+  function stopNanobotSwarm() {
+    nanobotSwarm.active = false;
+    if (nanobotSwarm.particles) {
+      nanobotSwarm.particles.visible = false;
+    }
+  }
+
+  function updateNanobotSwarm(time) {
+    if (!nanobotSwarm.active || !nanobotSwarm.particles) return;
+
+    const positions = nanobotSwarm.positions;
+    const count = nanobotSwarm.count;
+
+    for (let i = 0; i < count; i++) {
+      const vel = nanobotSwarm.velocities[i];
+
+      // Get current position
+      let x = positions[i * 3];
+      let y = positions[i * 3 + 1];
+      let z = positions[i * 3 + 2];
+
+      // Convert to spherical-ish coordinates relative to body center
+      const centerY = 0.5;
+      const dy = y - centerY;
+      const dist = Math.sqrt(x * x + dy * dy + z * z);
+
+      // Move along surface with some randomness
+      const angle = Math.atan2(z, x) + vel.theta + Math.sin(time * 2 + i) * 0.01;
+      const vertAngle = Math.atan2(dy, Math.sqrt(x * x + z * z)) + vel.phi + Math.cos(time * 3 + i * 0.5) * 0.008;
+
+      // Keep roughly on body surface (ellipsoid shape)
+      const targetDist = 0.7 + Math.sin(vertAngle * 2) * 0.2;
+      const newDist = dist + (targetDist - dist) * 0.05;
+
+      // Update position
+      const horizontalDist = newDist * Math.cos(vertAngle);
+      positions[i * 3] = Math.cos(angle) * horizontalDist;
+      positions[i * 3 + 1] = centerY + newDist * Math.sin(vertAngle);
+      positions[i * 3 + 2] = Math.sin(angle) * horizontalDist;
+
+      // Occasionally change direction
+      if (Math.random() < 0.01) {
+        vel.theta = (Math.random() - 0.5) * 0.03;
+        vel.phi = (Math.random() - 0.5) * 0.02;
+      }
+    }
+
+    nanobotSwarm.particles.geometry.attributes.position.needsUpdate = true;
+  }
+
   function animate() {
     requestAnimationFrame(animate);
 
@@ -2347,6 +2455,9 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
     // Update entry animation
     updateEntryAnimation();
+
+    // Update nanobot swarm
+    updateNanobotSwarm(time);
 
     // 3D tumor panel replaced by 2D HTML panel - no position updates needed
 
@@ -2999,6 +3110,15 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         droppedTumors.forEach(tumor => {
           determineTumorResponse(tumor);
         });
+
+        // Nanobot swarm animation
+        if (medId === 'nanobots') {
+          if (activeMedications[medId]) {
+            startNanobotSwarm();
+          } else {
+            stopNanobotSwarm();
+          }
+        }
 
         const med = MEDICATION_DATABASE[medId];
         console.log(`${med?.name || medId}: ${activeMedications[medId] ? 'ON' : 'OFF'} at month ${currentMonth.toFixed(1)}`);
