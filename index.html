@@ -6725,29 +6725,6 @@
         // Reset level for drawing
         MapState.level = tempLevel;
 
-        // Add speed lines during transition
-        if (eased > 0.2 && eased < 0.8) {
-          const lineIntensity = Math.sin((eased - 0.2) / 0.6 * Math.PI);
-          ctx.strokeStyle = `rgba(79, 209, 217, ${lineIntensity * 0.2})`;
-          ctx.lineWidth = 1.5;
-          const numLines = 24;
-          for (let i = 0; i < numLines; i++) {
-            const angle = (i / numLines) * Math.PI * 2;
-            const innerR = 30 + lineIntensity * 20;
-            const outerR = 100 + lineIntensity * 300;
-            ctx.beginPath();
-            ctx.moveTo(
-              canvas.width / 2 + Math.cos(angle) * innerR,
-              canvas.height / 2 + Math.sin(angle) * innerR
-            );
-            ctx.lineTo(
-              canvas.width / 2 + Math.cos(angle) * outerR,
-              canvas.height / 2 + Math.sin(angle) * outerR
-            );
-            ctx.stroke();
-          }
-        }
-
         // Vignette during zoom
         const vignetteIntensity = Math.sin(eased * Math.PI) * 0.4;
         if (vignetteIntensity > 0) {
