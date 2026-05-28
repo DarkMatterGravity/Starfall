@@ -5568,8 +5568,13 @@
       const ctx = canvas.getContext('2d');
 
       function animate() {
-        canvas.width = canvas.parentElement.clientWidth;
-        canvas.height = canvas.parentElement.clientHeight;
+        // Only resize if dimensions changed (setting width/height clears canvas)
+        const newWidth = canvas.parentElement.clientWidth;
+        const newHeight = canvas.parentElement.clientHeight;
+        if (canvas.width !== newWidth || canvas.height !== newHeight) {
+          canvas.width = newWidth;
+          canvas.height = newHeight;
+        }
 
         // Clear
         ctx.fillStyle = '#0a0a0f';
@@ -6749,25 +6754,29 @@
           }
         }
 
-        // Reset level for drawing
-        MapState.level = tempLevel;
+        // Reset level for drawing (but not on final frame)
+        if (eased < 0.98) {
+          MapState.level = tempLevel;
 
-        // Vignette during zoom
-        const vignetteIntensity = Math.sin(eased * Math.PI) * 0.4;
-        if (vignetteIntensity > 0) {
-          const gradient = ctx.createRadialGradient(
-            canvas.width / 2, canvas.height / 2, canvas.width * 0.2,
-            canvas.width / 2, canvas.height / 2, canvas.width * 0.8
-          );
-          gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-          gradient.addColorStop(1, `rgba(0, 0, 0, ${vignetteIntensity})`);
-          ctx.fillStyle = gradient;
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          // Vignette during zoom (not on final frame)
+          const vignetteIntensity = Math.sin(eased * Math.PI) * 0.4;
+          if (vignetteIntensity > 0) {
+            const gradient = ctx.createRadialGradient(
+              canvas.width / 2, canvas.height / 2, canvas.width * 0.2,
+              canvas.width / 2, canvas.height / 2, canvas.width * 0.8
+            );
+            gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            gradient.addColorStop(1, `rgba(0, 0, 0, ${vignetteIntensity})`);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
         }
 
         if (progress < 1) {
           requestAnimationFrame(animateZoom);
         } else {
+          // Set level to destination before restarting animation
+          MapState.level = nextLevel;
           // Restart normal animation loop
           startMapAnimation();
           onComplete();
