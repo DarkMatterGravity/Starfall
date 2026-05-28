@@ -7507,28 +7507,43 @@
         if (!droppedTumors || droppedTumors.length === 0) return;
 
         const camera = window.ThreeBackground.camera;
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2(
-          (x / window.innerWidth) * 2 - 1,
-          -(y / window.innerHeight) * 2 + 1
-        );
+        const renderer = window.ThreeBackground.renderer;
+        if (!camera || !renderer) return;
 
-        raycaster.setFromCamera(mouse, camera);
+        // Get canvas bounds for coordinate conversion
+        const canvas = renderer.domElement;
+        const rect = canvas.getBoundingClientRect();
 
-        // Find closest injury
+        // Find closest injury by screen distance (more reliable than raycasting)
         let closestInjury = null;
-        let closestDist = Infinity;
+        let closestScreenDist = 100; // Max pixel distance to detect (100px radius)
 
         droppedTumors.forEach(injury => {
-          const hits = raycaster.intersectObject(injury, true);
-          if (hits.length > 0 && hits[0].distance < closestDist) {
-            closestDist = hits[0].distance;
+          if (!injury.userData.isInjury) return;
+
+          // Get injury world position
+          const worldPos = new THREE.Vector3();
+          injury.getWorldPosition(worldPos);
+
+          // Project to screen coordinates
+          const screenPos = worldPos.clone().project(camera);
+          const screenX = (screenPos.x * 0.5 + 0.5) * rect.width + rect.left;
+          const screenY = (-screenPos.y * 0.5 + 0.5) * rect.height + rect.top;
+
+          // Calculate distance from drop point
+          const dist = Math.sqrt(Math.pow(x - screenX, 2) + Math.pow(y - screenY, 2));
+
+          if (dist < closestScreenDist) {
+            closestScreenDist = dist;
             closestInjury = injury;
           }
         });
 
         if (closestInjury) {
+          console.log(`Treatment ${treatmentType} dropped near injury at ${closestScreenDist.toFixed(0)}px distance`);
           applyTreatmentToInjury(closestInjury, treatmentType);
+        } else {
+          console.log(`No injury found within 100px of drop point`);
         }
       }
 
@@ -7626,14 +7641,40 @@
           console.log(`${treatmentType} applied to ${injury.userData.injuryType}: -${shrinkAmount.toFixed(1)}mm (${(effect * 100).toFixed(0)}% effective)`);
         }
 
-        // Visual feedback - flash the injury green
+        // Visual feedback - flash and pulse the injury
         const mesh = injury.children.find(c => c.name === 'injuryMesh');
         if (mesh) {
           const originalColor = mesh.material.color.getHex();
-          mesh.material.color.setHex(0x00ff00); // Flash green
-          setTimeout(() => {
-            mesh.material.color.setHex(originalColor);
-          }, 300);
+          // Color based on treatment: green for healing, blue for stasis
+          const flashColor = treatmentType === 'stasis' ? 0x44aaff : 0x44ff88;
+          mesh.material.color.setHex(flashColor);
+
+          // Scale pulse effect - grow then shrink back
+          const originalScale = injury.scale.x;
+          injury.scale.setScalar(originalScale * 1.5);
+
+          // Animate back to normal
+          let pulseProgress = 0;
+          const pulseAnimation = setInterval(() => {
+            pulseProgress += 0.1;
+            if (pulseProgress >= 1) {
+              clearInterval(pulseAnimation);
+              mesh.material.color.setHex(originalColor);
+              // Final scale based on new size
+              const finalScale = (injury.userData.sizeMM * 0.00084) / 0.35;
+              injury.scale.setScalar(finalScale);
+            } else {
+              // Ease out the pulse
+              const eased = 1 - Math.pow(1 - pulseProgress, 2);
+              const targetScale = (injury.userData.sizeMM * 0.00084) / 0.35;
+              const currentScale = originalScale * 1.5 + (targetScale - originalScale * 1.5) * eased;
+              injury.scale.setScalar(currentScale);
+              // Fade color back
+              if (pulseProgress > 0.5) {
+                mesh.material.color.setHex(originalColor);
+              }
+            }
+          }, 50);
         }
 
         // Toggle on the treatment in the top medication panel
