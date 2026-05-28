@@ -2261,15 +2261,14 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
   let entryAnimation = {
     active: false,
     startTime: 0,
-    duration: 1200,
+    duration: 700,
     startY: -3,
-    targetY: CONFIG.humanBody.position.y,
-    overshoot: 0.15
+    targetY: CONFIG.humanBody.position.y
   };
 
-  // Ease out with overshoot (attempt to mimic fluid rising)
+  // Ease out with subtle overshoot
   function easeOutBack(t) {
-    const c1 = 1.70158;
+    const c1 = 0.6;
     const c3 = c1 + 1;
     return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
   }
