@@ -6921,7 +6921,7 @@
     let isLifeformDead = false;
     let isLifeformSaved = false;
 
-    // Update injury growth
+    // Update injury game state (growth/scale handled by Three.js simulation)
     function updateInjuryGrowth() {
       if (!window.ThreeBackground || !GameState.currentLifeform || isLifeformDead || isLifeformSaved) return;
 
@@ -6938,12 +6938,7 @@
       injuries.forEach(injury => {
         if (!injury.userData.isInjury) return;
 
-        // Check if in stasis
-        if (injury.userData.stasisUntil && now < injury.userData.stasisUntil) {
-          return; // Still in stasis, no growth
-        }
-
-        // Restore growth rate if stasis expired
+        // Handle stasis expiration (restore growth rate when stasis ends)
         if (injury.userData.stasisUntil && now >= injury.userData.stasisUntil) {
           injury.userData.stasisUntil = null;
           // Restore original growth rate based on category
@@ -6953,22 +6948,14 @@
           }
         }
 
-        // Calculate growth
-        const growthRate = injury.userData.growthRate || 1.0;
-        const growthPerSecond = growthRate * 0.1; // mm per second base
-        const growth = growthPerSecond * (INJURY_GROWTH_INTERVAL / 1000);
-
-        // Apply growth
-        injury.userData.sizeMM = Math.min(MAX_INJURY_SIZE, injury.userData.sizeMM + growth);
-
-        // Update visual scale
-        const MM_TO_SCALE = 0.00084;
-        const newScale = (injury.userData.sizeMM * MM_TO_SCALE) / 0.35;
-        injury.scale.setScalar(newScale);
+        // Note: Growth and scale updates are now handled by Three.js updateSimulation()
+        // This keeps visualization smooth (60fps interpolation vs 2-second intervals)
 
         // Random chance to spread (create new injury)
-        if (injury.userData.canSpread && Math.random() < injury.userData.spreadChance * (INJURY_GROWTH_INTERVAL / 1000)) {
-          spreadInjury(injury);
+        if (injury.userData.canSpread && !injury.userData.stasisUntil) {
+          if (Math.random() < injury.userData.spreadChance * (INJURY_GROWTH_INTERVAL / 1000)) {
+            spreadInjury(injury);
+          }
         }
       });
 

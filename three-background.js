@@ -3391,12 +3391,42 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
   function updateSimulation(deltaMonths) {
     if (!humanBodyMesh) return;
 
-    // Grow existing tumors
+    // Grow existing tumors and injuries
     droppedTumors.forEach(tumor => {
-      // Injuries are managed by index.html - only record data for graph, skip growth/scale
+      // Handle injuries with simpler growth model (like Journey tumors but with injury growth rates)
       if (tumor.userData.isInjury) {
-        // Record current size for graph tracking (use actual sizeMM from injury system)
-        recordTumorData(tumor, tumor.userData.sizeMM);
+        // Store initial size if not stored
+        if (!tumorInitialSizes.has(tumor)) {
+          tumorInitialSizes.set(tumor, tumor.scale.x);
+        }
+
+        // Get current size
+        let currentSizeMM = tumor.userData.sizeMM || tumor.userData.initialSizeMM || 25;
+
+        // Check if in stasis (treatment effect) - skip growth if so
+        const now = Date.now();
+        const inStasis = tumor.userData.stasisUntil && now < tumor.userData.stasisUntil;
+
+        if (!inStasis) {
+          // Apply growth based on injury's growth rate (mm per month)
+          // Growth rate is stored as multiplier, convert to mm/month growth
+          const growthRate = tumor.userData.growthRate || 1.0;
+          const growthPerMonth = growthRate * 1.5; // Base growth scaled by rate
+          currentSizeMM = currentSizeMM + (growthPerMonth * deltaMonths);
+
+          // Cap at max injury size
+          currentSizeMM = Math.min(70, currentSizeMM);
+          tumor.userData.sizeMM = currentSizeMM;
+        }
+
+        // Calculate target scale (same formula as tumor)
+        const targetScale = (currentSizeMM * MM_TO_SCALE) / CONFIG.tumor.size;
+
+        // Smooth interpolation (10% lerp per frame - like Journey)
+        tumor.scale.setScalar(tumor.scale.x + (targetScale - tumor.scale.x) * 0.1);
+
+        // Record data for graph
+        recordTumorData(tumor, currentSizeMM);
         return;
       }
 
