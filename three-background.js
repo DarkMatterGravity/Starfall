@@ -2257,6 +2257,50 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
   const clock = new THREE.Clock();
 
+  // Entry animation state (body rising into tank)
+  let entryAnimation = {
+    active: false,
+    startTime: 0,
+    duration: 1200,
+    startY: -3,
+    targetY: CONFIG.humanBody.position.y,
+    overshoot: 0.15
+  };
+
+  // Ease out with overshoot (attempt to mimic fluid rising)
+  function easeOutBack(t) {
+    const c1 = 1.70158;
+    const c3 = c1 + 1;
+    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+  }
+
+  function updateEntryAnimation() {
+    if (!entryAnimation.active || !humanBodyMesh) return;
+
+    const elapsed = performance.now() - entryAnimation.startTime;
+    const progress = Math.min(elapsed / entryAnimation.duration, 1);
+
+    // Ease out with overshoot
+    const eased = easeOutBack(progress);
+
+    // Interpolate Y position
+    const y = entryAnimation.startY + (entryAnimation.targetY - entryAnimation.startY) * eased;
+    humanBodyMesh.position.y = y;
+
+    if (progress >= 1) {
+      entryAnimation.active = false;
+      humanBodyMesh.position.y = entryAnimation.targetY;
+    }
+  }
+
+  function playEntryAnimation() {
+    if (!humanBodyMesh) return;
+    entryAnimation.active = true;
+    entryAnimation.startTime = performance.now();
+    entryAnimation.targetY = CONFIG.humanBody.position.y;
+    humanBodyMesh.position.y = entryAnimation.startY;
+  }
+
   function animate() {
     requestAnimationFrame(animate);
 
@@ -2432,52 +2476,6 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
     console.log(`Injury placed: ${type} in ${targetRegion}, ${sizeMM}mm`);
     return injury;
-  }
-
-  // API - Note: clearAllTumors and createInjury call functions defined later
-  // This works because the functions are only called at runtime, not at definition time
-  // Entry animation state
-  let entryAnimation = {
-    active: false,
-    startTime: 0,
-    duration: 1200,
-    startY: -3,
-    targetY: CONFIG.humanBody.position.y,
-    overshoot: 0.15
-  };
-
-  // Ease out with overshoot (attempt to mimic fluid rising)
-  function easeOutBack(t) {
-    const c1 = 1.70158;
-    const c3 = c1 + 1;
-    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
-  }
-
-  function updateEntryAnimation() {
-    if (!entryAnimation.active || !humanBodyMesh) return;
-
-    const elapsed = performance.now() - entryAnimation.startTime;
-    const progress = Math.min(elapsed / entryAnimation.duration, 1);
-
-    // Ease out with overshoot
-    const eased = easeOutBack(progress);
-
-    // Interpolate Y position
-    const y = entryAnimation.startY + (entryAnimation.targetY - entryAnimation.startY) * eased;
-    humanBodyMesh.position.y = y;
-
-    if (progress >= 1) {
-      entryAnimation.active = false;
-      humanBodyMesh.position.y = entryAnimation.targetY;
-    }
-  }
-
-  function playEntryAnimation() {
-    if (!humanBodyMesh) return;
-    entryAnimation.active = true;
-    entryAnimation.startTime = performance.now();
-    entryAnimation.targetY = CONFIG.humanBody.position.y;
-    humanBodyMesh.position.y = entryAnimation.startY;
   }
 
   window.ThreeBackground = {
