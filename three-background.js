@@ -2690,6 +2690,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         if (tumor.parent) tumor.parent.remove(tumor);
       });
       droppedTumors.length = 0;
+      metastases.length = 0;
       tumorInitialSizes.clear();
       // Reset medication visual effects
       resetMedicationEffects();
@@ -2697,7 +2698,16 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       if (typeof clearAllTumorsExtended === 'function') {
         clearAllTumorsExtended();
       }
-      console.log('All injuries cleared');
+      // Reset simulation timeline for fresh start
+      currentMonth = 0;
+      isPlaying = false;
+      if (playPauseBtn) playPauseBtn.textContent = '▶';
+      updateTimelineUI();
+      // Clear the graph canvas
+      if (plotCtx && plotCanvas) {
+        plotCtx.clearRect(0, 0, plotCanvas.width, plotCanvas.height);
+      }
+      console.log('All injuries cleared, timeline reset');
     },
     createInjury: (injuryData) => createInjury(injuryData),
     setOutlineColor: (hex) => {
