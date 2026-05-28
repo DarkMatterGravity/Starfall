@@ -806,11 +806,18 @@
       z-index: 100;
     }
 
+    .collection-header .collection-back-btn {
+      min-width: 140px;
+    }
+
     .collection-title {
       font-family: var(--sf-font-display);
       font-size: 24px;
       letter-spacing: 4px;
       color: var(--sf-primary);
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
     }
 
     .collection-stats {
@@ -3253,13 +3260,12 @@
     <div class="sf-noise"></div>
 
     <div class="collection-header">
-      <div>
-        <div class="collection-title">COLLECTION ARCHIVE</div>
-      </div>
+      <button class="collection-back-btn" id="collection-back-btn">&#9664; MAIN MENU</button>
+      <div class="collection-title">LIFEFORM COLLECTION</div>
       <div class="collection-stats">
         <div class="collection-stat">
           <div class="collection-stat-value" id="collection-total">0</div>
-          <div class="collection-stat-label">Total Recovered</div>
+          <div class="collection-stat-label">Total</div>
         </div>
         <div class="collection-stat">
           <div class="collection-stat-value rarity-legendary" id="collection-legendary">0</div>
@@ -3274,7 +3280,6 @@
           <div class="collection-stat-label">Rare</div>
         </div>
       </div>
-      <button class="collection-back-btn" id="collection-back-btn">&#9664; MAIN MENU</button>
     </div>
 
     <div class="collection-grid" id="collection-grid">
