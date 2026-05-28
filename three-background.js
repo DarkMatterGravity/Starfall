@@ -7666,17 +7666,20 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     }
   });
 
-  // Initialize subjects
-  loadSubjectsFromStorage();
-  updateSubjectMenu();
+  // Initialize subjects (only if subject menu exists - Journey mode)
+  // Skip in Starfall mode where injuries are managed separately
+  if (subjectMenu) {
+    loadSubjectsFromStorage();
+    updateSubjectMenu();
 
-  // Create default subject if none exist
-  if (subjects.length === 0) {
-    createNewSubject();
-  } else {
-    // Load the most recent subject
-    const mostRecent = [...subjects].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
-    loadSubject(mostRecent.id);
+    // Create default subject if none exist
+    if (subjects.length === 0) {
+      createNewSubject();
+    } else {
+      // Load the most recent subject
+      const mostRecent = [...subjects].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
+      loadSubject(mostRecent.id);
+    }
   }
 
   // Initialize medication panel with relevant drugs
