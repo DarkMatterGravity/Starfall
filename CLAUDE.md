@@ -562,3 +562,95 @@ let criticalStartTime = null;
 - `collectLifeform()` / `releaseLifeform()` - collection actions
 - `getVisibleSignals()` - filters signals by current map level
 - `zoomToLevel(targetLevel)` - breadcrumb navigation
+
+## Planet Types System
+
+Seven distinct planet types with unique terrain visuals:
+
+```javascript
+const PLANET_TYPES = [
+  { name: 'ROCKY',     index: 0 },  // Gray base, lava veins
+  { name: 'FORESTED',  index: 1 },  // Dark green, bioluminescent veins
+  { name: 'OCEANIC',   index: 2 },  // Blue-gray, water pools
+  { name: 'VOLCANIC',  index: 3 },  // Dark charcoal, heavy lava
+  { name: 'TOXIC',     index: 4 },  // Sickly green, toxic pools
+  { name: 'ICE',       index: 5 },  // Blue-white, ice cracks
+  { name: 'GAS',       index: 6 }   // Swirling purple, plasma veins
+];
+```
+
+- Planet type determined by hash of planet name (deterministic)
+- Each type has distinct base color tint and vein colors
+- Type displayed in planet view header
+
+## WebGL Terrain Shader
+
+GPU-accelerated procedural terrain rendering:
+
+```javascript
+const TerrainShader = {
+  vertexSource: `...`,
+  fragmentSource: `
+    // Simplex noise for terrain heightmap
+    // FBM (fractal Brownian motion) for detail
+    // Planet-type-specific color functions
+    // Ridge noise for terrain features
+    // Animated vein patterns (lava, water, etc.)
+  `
+};
+```
+
+Key functions:
+- `initTerrainShader()` - Creates WebGL context, compiles shaders
+- `renderTerrain()` - Renders terrain to offscreen canvas
+- `hashString(str)` - Deterministic seed from planet name
+
+Stored in `ScannerState`:
+- `terrainGL` - WebGL context
+- `terrainProgram` - Compiled shader program
+- `terrainCanvas` - Offscreen rendering canvas
+
+## Extraction Animation
+
+Beam-down animation when extracting specimens:
+
+```javascript
+let extractionState = {
+  active: false,
+  startTime: 0,
+  signal: null,
+  phase: 0  // 0-3: beam down, pulse rings, particles, complete
+};
+```
+
+Animation phases:
+1. Beam descends from top to specimen location
+2. Pulse rings expand outward
+3. Particles rise up the beam
+4. Transition to stasis chamber
+
+Key functions:
+- `startExtraction(signal)` - Initiates extraction sequence
+- `drawExtractionAnimation(ctx, canvas)` - Renders animation frame
+- `completeExtraction()` - Transitions to stasis chamber
+
+## HTML Overlay Buttons
+
+Map buttons use HTML overlays for reliable click detection:
+
+```html
+<div class="map-container">
+  <canvas id="map-canvas"></canvas>
+  <button id="btn-scan-overlay">INITIATE SCAN</button>
+  <button id="btn-extract-overlay">EXTRACT SPECIMEN</button>
+</div>
+```
+
+Button positioning:
+- **INITIATE SCAN**: Centered over map (`left: 50%`, `top: 50%`)
+- **EXTRACT SPECIMEN**: Positioned under specimen location (dynamic)
+
+Visibility controlled by `updateMapUI()` based on:
+- Current map level (planet level only)
+- Scan state (before/after scan)
+- Signal found state
