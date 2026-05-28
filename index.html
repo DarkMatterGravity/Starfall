@@ -1453,21 +1453,30 @@
 
     .stasis-title {
       font-family: var(--sf-font-display);
-      font-size: 12px;
-      letter-spacing: 3px;
+      font-size: 14px;
+      letter-spacing: 4px;
       color: var(--sf-primary);
       text-transform: uppercase;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .stasis-header-spacer {
+      width: 120px;
     }
 
     .stasis-exit-btn {
-      padding: 6px 16px;
+      padding: 8px 18px;
       background: transparent;
       border: 1px solid var(--sf-border);
-      color: var(--sf-text-dim);
-      font-family: var(--sf-font-mono);
+      color: var(--sf-text);
+      font-family: var(--sf-font-display);
       font-size: 11px;
+      letter-spacing: 2px;
       cursor: pointer;
       transition: all 0.2s;
+      min-width: 120px;
     }
 
     .stasis-exit-btn:hover {
@@ -3294,8 +3303,9 @@
 
     <!-- Starfall Header -->
     <div class="stasis-header">
-      <span class="stasis-title">Stasis Chamber // Recovery Bay 01</span>
-      <button class="stasis-exit-btn" id="stasis-exit-btn">EXIT TO MAP</button>
+      <button class="stasis-exit-btn" id="stasis-exit-btn">&#9664; MAIN MENU</button>
+      <span class="stasis-title">STASIS CHAMBER // RECOVERY BAY 01</span>
+      <div class="stasis-header-spacer"></div>
     </div>
 
     <!-- Medication Panel -->
@@ -4580,6 +4590,10 @@
         } else if (screenId === 'stasis-chamber') {
           setTimeout(() => {
             window.dispatchEvent(new Event('resize'));
+            // Play entry animation - body rises up from below
+            if (window.ThreeBackground && window.ThreeBackground.playEntryAnimation) {
+              window.ThreeBackground.playEntryAnimation();
+            }
             // Auto-start the simulation after a brief delay for injuries to load
             setTimeout(() => {
               if (window.ThreeBackground) {
