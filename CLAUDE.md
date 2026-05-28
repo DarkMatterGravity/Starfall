@@ -654,3 +654,151 @@ Visibility controlled by `updateMapUI()` based on:
 - Current map level (planet level only)
 - Scan state (before/after scan)
 - Signal found state
+
+## Injury System Architecture (Unified with Journey)
+
+Injuries are now managed by `updateSimulation()` in three-background.js, matching Journey's tumor system architecture for smooth visualization and graph rendering.
+
+### Why This Matters
+- **Before:** Two separate systems (index.html setInterval every 2s + three-background.js)
+- **After:** Single system in `updateSimulation()` running every frame
+
+### Injury Growth in updateSimulation()
+```javascript
+if (tumor.userData.isInjury) {
+  // Check stasis (treatment effect)
+  const inStasis = tumor.userData.stasisUntil && Date.now() < tumor.userData.stasisUntil;
+
+  if (!inStasis) {
+    // Check active medication toggles
+    for (const [medId, isActive] of Object.entries(activeMedications)) {
+      if (isActive) {
+        const effectiveness = MEDICATION_DATABASE[medId].effectiveness[injuryCategory];
+        growthMultiplier *= (1 - effectiveness * 0.5);
+        // High effectiveness meds also shrink injuries
+      }
+    }
+
+    // Apply growth with medication reduction
+    const growthPerMonth = growthRate * 1.5 * growthMultiplier;
+    currentSizeMM += growthPerMonth * deltaMonths - shrinkAmount;
+  }
+
+  // Smooth 10% lerp interpolation (like Journey)
+  tumor.scale.setScalar(tumor.scale.x + (targetScale - tumor.scale.x) * 0.1);
+
+  // Record data for smooth graph curves
+  recordTumorData(tumor, currentSizeMM);
+}
+```
+
+### Key Benefits
+1. **Smooth visualization** - 10% lerp per frame instead of jumping every 2 seconds
+2. **Smooth graph lines** - Data recorded every frame tied to `currentMonth`
+3. **Medication toggles work** - Active meds reduce injury growth in real-time
+4. **Stasis respected** - Treatments halt growth when `stasisUntil` is set
+
+## Treatment System
+
+### Two Ways to Treat Injuries
+
+**1. Drag-and-Drop (from treatments panel)**
+- Instant shrink effect based on effectiveness
+- Visual pulse: injury grows 1.5x then shrinks to new size
+- Color flash: green for healing, blue for stasis
+- Applies to closest injury within 100px of drop point
+
+**2. Toggle Medications (top buttons)**
+- Ongoing growth reduction while active
+- Stacks with multiple active medications
+- Visual effects: nanobot swarm (nanobots), cryo field (stasis)
+
+### Treatment Effectiveness Matrix
+| Treatment | Crash (Radiation) | Battle (Wounds) | Injury (Parasites) |
+|-----------|-------------------|-----------------|-------------------|
+| Nanobots | 100% | 30% | 50% |
+| Bio-Foam | 30% | 100% | 30% |
+| Anti-Parasitic | 20% | 20% | 100% |
+| Stasis Field | 70% | 70% | 70% |
+
+### Drag-Drop Detection
+Uses screen-distance instead of raycaster (more reliable for small objects with depthTest:false):
+```javascript
+// Project injury to screen coordinates
+const screenPos = worldPos.project(camera);
+const screenX = (screenPos.x * 0.5 + 0.5) * rect.width;
+const screenY = (-screenPos.y * 0.5 + 0.5) * rect.height;
+
+// Find closest within 100px radius
+const dist = Math.sqrt(Math.pow(x - screenX, 2) + Math.pow(y - screenY, 2));
+if (dist < 100) closestInjury = injury;
+```
+
+## Graph System
+
+### Clearing Between Specimens
+When loading a new specimen, `clearAllTumors()` now resets:
+- `currentMonth = 0` (timeline position)
+- `isPlaying = false` (simulation state)
+- `tumorGrowthData.clear()` (graph data)
+- Canvas cleared directly
+
+### Smooth Curve Rendering
+- Data points recorded every frame (not every 2 seconds)
+- Only adds new point if `currentMonth` changed by > 0.05
+- Canvas `lineTo()` connects dense points for smooth appearance
+
+## Stasis Chamber Entry Animation
+
+Body rises from below with easeOutBack overshoot:
+```javascript
+let entryAnimation = {
+  active: false,
+  startTime: 0,
+  duration: 700,  // ms
+  startY: -3,
+  targetY: CONFIG.humanBody.position.y
+};
+
+function easeOutBack(t) {
+  const c1 = 0.6;  // Reduced overshoot
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+```
+
+## Visual Effects
+
+### Medication Toggle Effects
+- **Nanobots toggle** → Dark particle swarm crawling on body surface (~150 particles)
+- **Stasis toggle** → Translucent blue ellipsoid shell with wireframe overlay
+
+### Treatment Application Effect
+- Injury pulses to 1.5x scale
+- Color changes to treatment color (green heal / blue stasis)
+- Smooth 500ms animation back to new size
+
+## Legacy Journey Code
+
+### Disabled Features
+- Subject loading from localStorage skipped (check `if (subjectMenu)`)
+- Old tumor growth profiles not used for injuries
+- Complex medication response system (`determineTumorResponse`) bypassed for injuries
+
+### Protected Injury Resets
+Timeline reset and reset button skip injuries:
+```javascript
+if (tumor.userData.isInjury) return; // Don't reset injuries
+```
+
+## Important Code Locations
+
+| Feature | File | Line(s) |
+|---------|------|---------|
+| Injury growth logic | three-background.js | ~3406-3456 |
+| Treatment drag-drop | index.html | ~7502-7550 |
+| Treatment application | index.html | ~7600-7680 |
+| Graph data recording | three-background.js | ~5660-5680 |
+| clearAllTumors (API) | three-background.js | ~2687-2715 |
+| Medication toggles | three-background.js | ~3192-3235 |
+| Entry animation | three-background.js | ~2261-2301
