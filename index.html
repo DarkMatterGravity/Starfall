@@ -3167,7 +3167,7 @@
 </head>
 <body>
   <!-- Background Music -->
-  <audio id="bg-music" loop preload="auto">
+  <audio id="bg-music" loop preload="auto" autoplay>
     <source src="Moonwire Drifters.mp3" type="audio/mpeg">
   </audio>
 
@@ -7403,8 +7403,8 @@
         const title = document.querySelector('#main-menu .game-title');
         const subtitle = document.querySelector('#main-menu .game-subtitle');
         if (title && document.getElementById('main-menu').classList.contains('active')) {
-          const glowSize = 30 + intensity * 50; // 30px base, up to 80px on beat
-          const glowOpacity = 0.5 + intensity * 0.5;
+          const glowSize = 5 + intensity * 75; // 5px base, up to 80px on beat
+          const glowOpacity = 0.15 + intensity * 0.85; // Dim between beats, bright on hits
           title.style.textShadow = `0 0 ${glowSize}px rgba(79, 209, 217, ${glowOpacity})`;
           if (subtitle) {
             subtitle.style.textShadow = `0 0 ${glowSize * 0.6}px rgba(79, 209, 217, ${glowOpacity * 0.7})`;
@@ -7417,10 +7417,24 @@
       if (bgMusic) {
         bgMusic.volume = 0.4; // Medium volume
 
-        // Start music on first user interaction (browser autoplay policy)
-        const startMusic = () => {
+        // Try to autoplay immediately (may work if user visited before)
+        const tryAutoplay = () => {
           setupAudioAnalyser();
-          bgMusic.play().catch(e => console.log('Music autoplay blocked:', e));
+          if (audioContext && audioContext.state === 'suspended') {
+            audioContext.resume();
+          }
+          bgMusic.play().catch(() => {});
+        };
+
+        // Attempt autoplay on various events
+        tryAutoplay();
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) tryAutoplay();
+        });
+
+        // Fallback: start on first user interaction
+        const startMusic = () => {
+          tryAutoplay();
           document.removeEventListener('click', startMusic);
           document.removeEventListener('keydown', startMusic);
         };
