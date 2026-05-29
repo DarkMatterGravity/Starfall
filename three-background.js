@@ -3403,41 +3403,76 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
     // Grow existing tumors and injuries
     droppedTumors.forEach(tumor => {
-      // Handle injuries with simpler growth model (like Journey tumors but with injury growth rates)
+      // Handle injuries with gradual medication ramp-up (like Journey but gamified)
       if (tumor.userData.isInjury) {
         // Store initial size if not stored
         if (!tumorInitialSizes.has(tumor)) {
           tumorInitialSizes.set(tumor, tumor.scale.x);
         }
 
+        // Initialize medication tracking for this injury
+        if (!tumor.userData.medStartTimes) {
+          tumor.userData.medStartTimes = {};
+        }
+
         // Get current size
         let currentSizeMM = tumor.userData.sizeMM || tumor.userData.initialSizeMM || 25;
 
-        // Check if in stasis (treatment effect) - skip growth if so
-        const now = Date.now();
-        const inStasis = tumor.userData.stasisUntil && now < tumor.userData.stasisUntil;
+        // Check if in stasis (drag-drop treatment effect) - skip growth if so
+        const inStasis = tumor.userData.stasisUntil && Date.now() < tumor.userData.stasisUntil;
 
         if (!inStasis) {
-          // Check for active medication toggles and calculate growth reduction
           const injuryCategory = tumor.userData.injuryCategory || 'injury';
           let growthMultiplier = 1.0;
+          let totalShrink = 0;
+
+          // Ramp-up time constants (in simulation months)
+          // Matching treatment ramps up faster
+          const RAMP_TIME_MATCHED = 0.8;    // ~0.8 months for 63% effect when matched
+          const RAMP_TIME_UNMATCHED = 2.0;  // ~2 months for 63% effect when mismatched
 
           for (const [medId, isActive] of Object.entries(activeMedications)) {
-            if (isActive && MEDICATION_DATABASE[medId]) {
+            if (MEDICATION_DATABASE[medId]) {
               const med = MEDICATION_DATABASE[medId];
-              const effectiveness = med.effectiveness[injuryCategory] || 0.3;
+              const baseEffectiveness = med.effectiveness[injuryCategory] || 0.3;
+              const isMatched = baseEffectiveness >= 0.7; // 70%+ = matched treatment
 
-              // Reduce growth based on effectiveness (toggles slow growth, don't shrink)
-              // 100% effective = halts growth completely, 50% = half speed, etc.
-              growthMultiplier *= (1 - effectiveness);
+              if (isActive) {
+                // Track when this med was activated for this injury
+                if (!tumor.userData.medStartTimes[medId]) {
+                  tumor.userData.medStartTimes[medId] = currentMonth;
+                }
+
+                // Calculate time on treatment
+                const monthsOnTreatment = Math.max(0, currentMonth - tumor.userData.medStartTimes[medId]);
+                const rampTime = isMatched ? RAMP_TIME_MATCHED : RAMP_TIME_UNMATCHED;
+
+                // Exponential ramp-up: 1 - e^(-t/tau)
+                const rampedEffect = 1 - Math.exp(-monthsOnTreatment / rampTime);
+
+                // Final effectiveness = base * ramp
+                const effectiveness = baseEffectiveness * rampedEffect;
+
+                // Reduce growth (matched treatments can fully halt, unmatched only slow)
+                const maxReduction = isMatched ? 1.0 : 0.6;
+                growthMultiplier *= (1 - effectiveness * maxReduction);
+
+                // Matched treatments also slowly shrink when fully ramped
+                if (isMatched && rampedEffect > 0.8) {
+                  const shrinkRate = 0.02 * effectiveness; // Slow shrink
+                  totalShrink += currentSizeMM * shrinkRate * deltaMonths;
+                }
+              } else {
+                // Med turned off - clear start time so it ramps up fresh next time
+                tumor.userData.medStartTimes[medId] = null;
+              }
             }
           }
 
-          // Apply growth based on injury's growth rate (mm per month)
-          // Toggles only slow/halt growth - drag-drop treatments do the shrinking
+          // Apply growth with medication effects
           const growthRate = tumor.userData.growthRate || 1.0;
           const growthPerMonth = growthRate * 1.5 * growthMultiplier;
-          currentSizeMM = currentSizeMM + (growthPerMonth * deltaMonths);
+          currentSizeMM = currentSizeMM + (growthPerMonth * deltaMonths) - totalShrink;
 
           // Cap at max injury size, min 1mm
           currentSizeMM = Math.max(1, Math.min(70, currentSizeMM));
