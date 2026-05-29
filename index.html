@@ -3166,6 +3166,11 @@
   </style>
 </head>
 <body>
+  <!-- Background Music -->
+  <audio id="bg-music" loop preload="auto">
+    <source src="Moonwire Drifters.mp3" type="audio/mpeg">
+  </audio>
+
   <!-- ============================================
        MAIN MENU SCREEN
        ============================================ -->
@@ -7359,6 +7364,24 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       updateSystemTime();
+
+      // Background music setup
+      const bgMusic = document.getElementById('bg-music');
+      if (bgMusic) {
+        bgMusic.volume = 0.4; // Medium volume
+
+        // Start music on first user interaction (browser autoplay policy)
+        const startMusic = () => {
+          bgMusic.play().catch(e => console.log('Music autoplay blocked:', e));
+          document.removeEventListener('click', startMusic);
+          document.removeEventListener('keydown', startMusic);
+        };
+        document.addEventListener('click', startMusic);
+        document.addEventListener('keydown', startMusic);
+
+        // Try to autoplay anyway (works if user has interacted before)
+        bgMusic.play().catch(() => {});
+      }
 
       // Periodic care update loop (every 60 seconds)
       setInterval(() => {

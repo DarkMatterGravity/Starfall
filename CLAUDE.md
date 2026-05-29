@@ -60,6 +60,7 @@ Starfall/
 ├── index.html              # Main HTML with all game screens
 ├── three-background.js     # Stasis Chamber Three.js scene (from Journey)
 ├── three-background-cyber.js # Backup style
+├── Moonwire Drifters.mp3   # Background music (plays throughout game)
 ├── CLAUDE.md               # This file
 └── Mesh/
     ├── Body.fbx    # Placeholder body mesh (will be lifeforms)
@@ -215,8 +216,15 @@ Risk: Aggression spike under heat stress
 | Lifeforms | Expressive, painterly, colorful, chaotic (CreatureBox-inspired) |
 | Environment | Cold, data-driven contrast with vivid creatures |
 
-## Audio Direction (TODO)
+## Audio Direction
 
+### Background Music
+- **Track:** "Moonwire Drifters.mp3" - ambient sci-fi soundtrack
+- **Volume:** 0.4 (medium)
+- **Playback:** Loops continuously, starts on first user interaction
+- Plays from main menu through all screens (map, stasis chamber)
+
+### TODO
 - UI: Subtle clicks and tones
 - Lifeforms: Organic breathing and instability
 - Treatment: Rising tension layers
@@ -390,18 +398,17 @@ Drag treatments onto injury sites to apply.
 - [x] Lifeform name database (saves good generated names)
 - [x] Treatments panel (replaces medication toggles)
 - [x] Acquisition timer (real-time from pickup)
-
-## TODO
-
-### Core Mechanics
-- [ ] Treatment drag-and-drop functionality
-- [ ] Treatment effects (shrink injuries, halt growth)
-- [ ] Real-time injury growth (instead of simulated timeline)
 - [x] Treatment drag-and-drop functionality
 - [x] Treatment effects (shrink injuries, halt growth)
 - [x] Real-time injury growth (every 2 seconds)
 - [x] Death mechanics (250mm burden → 10s → death)
 - [x] Dying animations (red flashing panels)
+- [x] Background music (Moonwire Drifters, loops throughout game)
+- [x] Medication ramp-up system (gradual effectiveness increase)
+
+## TODO
+
+### Core Mechanics
 - [ ] Extraction mission (top-down drone gameplay)
 - [ ] Lifeform 3D models (replace human body placeholder)
 - [ ] Animation state machine with blending
@@ -411,7 +418,7 @@ Drag treatments onto injury sites to apply.
 ### Polish
 - [ ] Map zoom transition effects (stars flying by)
 - [ ] Smooth screen transitions
-- [ ] Sound effects
+- [ ] UI sound effects (clicks, tones)
 - [ ] Keyboard navigation
 
 ### Content
