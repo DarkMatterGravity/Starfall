@@ -1643,14 +1643,15 @@
       height: 100%;
       background: transparent;
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       justify-content: center;
+      padding-bottom: 80px;
       z-index: 2000;
       pointer-events: none;
     }
     .saved-content {
       text-align: center;
-      padding: 50px 80px;
+      padding: 25px 60px;
       border: 2px solid rgba(34, 197, 94, 0.6);
       background: rgba(10, 15, 20, 0.95);
       animation: savedContentGlow 2s ease-in-out infinite, savedContentSlideIn 0.4s ease-out;
@@ -1665,27 +1666,27 @@
       50% { box-shadow: 0 0 50px rgba(34, 197, 94, 0.4); }
     }
     .saved-icon {
-      font-size: 60px;
+      font-size: 36px;
       color: #22c55e;
-      margin-bottom: 15px;
+      margin-bottom: 8px;
       text-shadow: 0 0 30px rgba(34, 197, 94, 0.8);
     }
     .saved-title {
       font-family: var(--sf-font-display);
-      font-size: 28px;
+      font-size: 20px;
       letter-spacing: 6px;
       color: #22c55e;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
       text-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
     }
     .saved-name {
       font-family: var(--sf-font-display);
-      font-size: 32px;
+      font-size: 24px;
       letter-spacing: 2px;
-      margin-bottom: 15px;
+      margin-bottom: 8px;
     }
     .saved-rarity {
-      margin-bottom: 30px;
+      margin-bottom: 15px;
     }
     .saved-buttons {
       display: flex;
