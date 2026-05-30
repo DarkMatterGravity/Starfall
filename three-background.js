@@ -55,11 +55,17 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     // Human body with outline glow
     humanBody: {
       enabled: true,
-      modelPath: './Mesh/Body.fbx',
+      // SWAP MODELS: Comment/uncomment to switch
+      // modelPath: './Mesh/Body.fbx',
+      // useTextures: false,
+      // scale: 0.015,
+      modelPath: './Mesh/ShellBruiser/Meshy_AI_Shellbruiser_0530125320_texture.fbx',
+      useTextures: true,
+      texturePath: './Mesh/ShellBruiser/Meshy_AI_Shellbruiser_0530125320_texture',
+      scale: 0.012,  // Adjust as needed for ShellBruiser
       position: { x: 0, y: 0.5, z: 0 },   // Moved up for MedicalHuman_03
       rotation: { x: 0, y: 0, z: 0 },   // Facing camera
-      scale: 0.015,  // Adjusted for MedicalHuman_03 remesh
-      // Outline settings
+      // Outline settings (used when useTextures: false)
       outlineColor: 0xffffff,      // White outline
       innerColor: 0x9DB3B2,        // Teal-gray fill
       outlineIntensity: 1.0,
@@ -343,38 +349,67 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
   if (CONFIG.humanBody.enabled) {
     const loader = new FBXLoader();
+    const textureLoader = new THREE.TextureLoader();
 
     loader.load(
       CONFIG.humanBody.modelPath,
       (model) => {
-        // Create materials
-        outlineMaterial = new THREE.ShaderMaterial(outlineShader);
-        innerMaterial = new THREE.ShaderMaterial(innerShader);
-
-        // Collect meshes first
-        const meshes = [];
-        model.traverse((child) => {
-          if (child.isMesh) {
-            meshes.push(child);
-          }
-        });
-
         // Create container
         humanBodyMesh = new THREE.Group();
 
-        // Add outline and inner for each mesh
-        meshes.forEach((mesh) => {
-          // Inner mesh (front faces) - dark fill with scan lines
-          const innerMesh = mesh.clone();
-          innerMesh.material = innerMaterial;
-          humanBodyMesh.add(innerMesh);
+        if (CONFIG.humanBody.useTextures && CONFIG.humanBody.texturePath) {
+          // Load PBR textures for creature models
+          const basePath = CONFIG.humanBody.texturePath;
+          const diffuseMap = textureLoader.load(basePath + '.png');
+          const normalMap = textureLoader.load(basePath + '_normal.png');
+          const roughnessMap = textureLoader.load(basePath + '_roughness.png');
+          const metalnessMap = textureLoader.load(basePath + '_metallic.png');
+          const emissiveMap = textureLoader.load(basePath + '_emission.png');
 
-          // OUTLINE DISABLED - uncomment to re-enable
-          // // Outline mesh (back faces) - pushed outward
-          // const outlineMesh = mesh.clone();
-          // outlineMesh.material = outlineMaterial;
-          // humanBodyMesh.add(outlineMesh);
-        });
+          // Flip textures for correct orientation
+          [diffuseMap, normalMap, roughnessMap, metalnessMap, emissiveMap].forEach(tex => {
+            tex.flipY = false;
+          });
+
+          const pbrMaterial = new THREE.MeshStandardMaterial({
+            map: diffuseMap,
+            normalMap: normalMap,
+            roughnessMap: roughnessMap,
+            metalnessMap: metalnessMap,
+            emissiveMap: emissiveMap,
+            emissive: new THREE.Color(0xffffff),
+            emissiveIntensity: 0.5
+          });
+
+          model.traverse((child) => {
+            if (child.isMesh) {
+              child.material = pbrMaterial;
+              humanBodyMesh.add(child.clone());
+            }
+          });
+
+          // Store for animation (no shader uniforms for PBR)
+          humanBodyMaterial = { pbr: pbrMaterial };
+
+          console.log('Creature loaded with PBR textures');
+        } else {
+          // Original shader-based rendering for silhouette body
+          outlineMaterial = new THREE.ShaderMaterial(outlineShader);
+          innerMaterial = new THREE.ShaderMaterial(innerShader);
+
+          model.traverse((child) => {
+            if (child.isMesh) {
+              const innerMesh = child.clone();
+              innerMesh.material = innerMaterial;
+              humanBodyMesh.add(innerMesh);
+            }
+          });
+
+          // Store materials for animation
+          humanBodyMaterial = { outline: outlineMaterial, inner: innerMaterial };
+
+          console.log('Human body loaded with outline shader');
+        }
 
         humanBodyMesh.position.set(
           CONFIG.humanBody.position.x,
@@ -388,12 +423,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         );
         humanBodyMesh.scale.setScalar(CONFIG.humanBody.scale);
 
-        // Store materials for animation
-        humanBodyMaterial = { outline: outlineMaterial, inner: innerMaterial };
-
         scene.add(humanBodyMesh);
-
-        console.log('Human body loaded with outline');
 
         // Organ meshes disabled for Starfall (alien lifeforms don't need human anatomy)
         // loadOrganMeshes();
