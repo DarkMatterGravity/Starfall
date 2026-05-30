@@ -2804,9 +2804,15 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     captureSnapshot: () => {
       if (!renderer || !scene || !camera || !humanBodyMesh) return null;
 
-      // Ensure textured material is showing
+      // Ensure textured material is showing (should already be from save/death)
+      if (!texturedMaterial) {
+        console.log('No textured material available for snapshot');
+        return null;
+      }
+
+      // Make sure we're in textured mode
       const wasTextured = currentMaterialMode === 'textured';
-      if (!wasTextured && texturedMaterial) {
+      if (!wasTextured) {
         setLifeformTextured(true);
       }
 
@@ -2817,21 +2823,24 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         tumor.visible = false;
       });
 
-      // Render frame
+      // Force material update and render multiple frames to ensure textures are loaded
+      humanBodyMesh.traverse((child) => {
+        if (child.isMesh && child.material) {
+          child.material.needsUpdate = true;
+        }
+      });
+
+      // Render a couple frames to ensure everything is updated
+      renderer.render(scene, camera);
       renderer.render(scene, camera);
 
-      // Capture as data URL (smaller size for cards)
-      const dataURL = renderer.domElement.toDataURL('image/jpeg', 0.8);
+      // Capture as data URL
+      const dataURL = renderer.domElement.toDataURL('image/png');
 
       // Restore injury visibility
       droppedTumors.forEach((tumor, i) => {
         tumor.visible = injuryVisibility[i];
       });
-
-      // Restore shader mode if it wasn't textured
-      if (!wasTextured) {
-        setLifeformTextured(false);
-      }
 
       return dataURL;
     }
