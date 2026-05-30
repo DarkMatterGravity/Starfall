@@ -59,7 +59,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       rotation: { x: 0, y: 0, z: 0 },
       // Shader settings (used during stasis)
       outlineColor: 0xffffff,
-      innerColor: 0x9DB3B2,
+      innerColor: 0x1a2525,  // Dark silhouette (was 0x9DB3B2)
       outlineIntensity: 1.0,
       outlinePower: 3.0,
       scanLineIntensity: 0.0,
