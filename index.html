@@ -868,14 +868,16 @@
       background: var(--sf-bg-panel);
       border: 1px solid var(--sf-border);
       border-radius: 4px;
-      padding: 20px;
       position: relative;
       transition: all 0.3s ease;
       overflow: hidden;
+      height: 320px;
+      display: flex;
+      flex-direction: column;
     }
     /* Full-bleed snapshot background */
     .collection-card.has-snapshot {
-      background: transparent;
+      background: #000;
     }
     .collection-card .card-snapshot-bg {
       position: absolute;
@@ -884,23 +886,28 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      object-position: center 20%;
+      object-position: center 15%;
       z-index: 0;
-      transform: scale(1.8);
-      transform-origin: center 25%;
+      transform: scale(2.2);
+      transform-origin: center 20%;
     }
     .collection-card .card-content-overlay {
       position: relative;
       z-index: 1;
-      background: linear-gradient(180deg,
-        transparent 0%,
-        transparent 80px,
-        rgba(10, 10, 15, 0.7) 120px,
-        rgba(10, 10, 15, 0.95) 180px,
-        rgba(10, 10, 15, 0.98) 100%);
-      margin: -20px;
-      padding: 20px;
-      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding: 15px;
+    }
+    /* Top row: name left, rarity right */
+    .collection-card .card-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    /* Spacer to push condition to bottom */
+    .collection-card .card-spacer {
+      flex: 1;
     }
 
     .collection-card:hover {
@@ -912,28 +919,12 @@
     .collection-card.legendary {
       border-color: rgba(245, 158, 11, 0.5);
     }
-    .collection-card.legendary .card-content-overlay {
-      background: linear-gradient(180deg,
-        transparent 0%,
-        transparent 80px,
-        rgba(30, 20, 5, 0.7) 120px,
-        rgba(15, 12, 8, 0.95) 180px,
-        rgba(10, 10, 15, 0.98) 100%);
-    }
 
     .collection-card.epic {
       border-color: rgba(168, 85, 247, 0.5);
     }
-    .collection-card.epic .card-content-overlay {
-      background: linear-gradient(180deg,
-        transparent 0%,
-        transparent 80px,
-        rgba(20, 10, 30, 0.7) 120px,
-        rgba(12, 8, 18, 0.95) 180px,
-        rgba(10, 10, 15, 0.98) 100%);
-    }
 
-    /* Avatar area - spacer for face visibility */
+    /* Avatar area - for cards without snapshot */
     .collection-card-avatar {
       position: relative;
       width: 100%;
@@ -1044,43 +1035,16 @@
 
     .collection-card-name {
       font-family: var(--sf-font-display);
-      font-size: 16px;
+      font-size: 18px;
       letter-spacing: 1px;
       color: var(--sf-text);
-    }
-
-    .collection-card-designation {
-      font-size: 11px;
-      color: var(--sf-text-dim);
-      letter-spacing: 1px;
-      margin-top: 4px;
-    }
-
-    .collection-card-details {
-      font-size: 12px;
-      color: var(--sf-text-dim);
-      line-height: 1.8;
-    }
-
-    .collection-card-detail {
-      display: flex;
-      justify-content: space-between;
-    }
-
-    .collection-card-origin {
-      font-size: 10px;
-      color: var(--sf-text-dim);
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid var(--sf-border);
+      text-shadow: 0 2px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.8);
     }
 
     .collection-card-condition {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      font-size: 10px;
-      letter-spacing: 1px;
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.9);
     }
 
     .condition-pristine { color: #22c55e; }
@@ -4994,43 +4958,14 @@
         // Care indicator colors
         const getCareClass = (value) => value > 60 ? 'care-good' : value > 30 ? 'care-warning' : 'care-danger';
 
-        // Get care values (initialize if missing)
-        const care = lifeform.care || { hydration: 100, oxygen: 100, food: 100 };
-
         card.innerHTML = `
           ${hasSnapshot ? `<img class="card-snapshot-bg" src="${lifeform.snapshot}" alt="" />` : ''}
           <div class="card-content-overlay">
-            <div class="collection-card-avatar ${hasSnapshot ? 'has-snapshot' : 'rarity-bg-' + rarity}">
-              ${!hasSnapshot ? `<div class="avatar-icon">${avatarIcon}</div><div class="avatar-glow"></div>` : ''}
-            </div>
-            <div class="collection-card-header">
-              <div>
-                <div class="collection-card-name rarity-${rarity} rarity-glow-${rarity}">${lifeform.name}</div>
-                <div class="collection-card-designation">${lifeform.designation}</div>
-              </div>
+            <div class="card-top-row">
+              <div class="collection-card-name rarity-${rarity} rarity-glow-${rarity}">${lifeform.name}</div>
               <span class="rarity-badge ${rarity}">${rarityInfo.label}</span>
             </div>
-            <div class="collection-card-details">
-              <div class="collection-card-detail"><span>Age</span><span>${lifeform.age}</span></div>
-              <div class="collection-card-detail"><span>Type</span><span>${lifeform.alertType || 'Unknown'}</span></div>
-              <div class="collection-card-detail"><span>Traits</span><span>${(lifeform.traits || []).slice(0, 2).join(', ')}</span></div>
-              <div class="collection-card-detail"><span>Recovered</span><span>${recoveredDate}</span></div>
-            </div>
-            <div class="care-indicators">
-              <div class="care-indicator">
-                <span class="care-icon">💧</span>
-                <span class="care-value ${getCareClass(care.hydration)}">${Math.round(care.hydration)}%</span>
-              </div>
-              <div class="care-indicator">
-                <span class="care-icon">🫁</span>
-                <span class="care-value ${getCareClass(care.oxygen)}">${Math.round(care.oxygen)}%</span>
-              </div>
-              <div class="care-indicator">
-                <span class="care-icon">🍖</span>
-                <span class="care-value ${getCareClass(care.food)}">${Math.round(care.food)}%</span>
-              </div>
-            </div>
-            <div class="collection-card-origin">${lifeform.origin?.full || 'Unknown Origin'}</div>
+            <div class="card-spacer"></div>
             <div class="collection-card-condition condition-${condition}">${condition.toUpperCase()}</div>
           </div>
         `;
