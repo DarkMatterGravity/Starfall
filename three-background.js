@@ -52,29 +52,41 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       far: 100
     },
 
-    // Human body with outline glow
+    // Lifeform model settings
     humanBody: {
       enabled: true,
-      // SWAP MODELS: Comment/uncomment to switch
-      // modelPath: './Mesh/Body.fbx',
-      // useTextures: false,
-      // scale: 0.015,
-      modelPath: './Mesh/ShellBruiser/Meshy_AI_Shellbruiser_0530125320_texture.fbx',
-      useTextures: true,
-      texturePath: './Mesh/ShellBruiser/Meshy_AI_Shellbruiser_0530125320_texture',
-      scale: 0.012,  // Adjust as needed for ShellBruiser
-      position: { x: 0, y: 0.5, z: 0 },   // Moved up for MedicalHuman_03
-      rotation: { x: 0, y: 0, z: 0 },   // Facing camera
-      // Outline settings (used when useTextures: false)
-      outlineColor: 0xffffff,      // White outline
-      innerColor: 0x9DB3B2,        // Teal-gray fill
+      position: { x: 0, y: 0.5, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      // Shader settings (used during stasis)
+      outlineColor: 0xffffff,
+      innerColor: 0x9DB3B2,
       outlineIntensity: 1.0,
       outlinePower: 3.0,
-      scanLineIntensity: 0.0,      // No scan lines
+      scanLineIntensity: 0.0,
       scanLineFrequency: 0.0,
-      pulseSpeed: 0.0,             // No pulse
+      pulseSpeed: 0.0,
       pulseAmount: 0.0
     },
+
+    // Lifeform species/classes
+    lifeformClasses: {
+      default: {
+        name: 'Unknown Species',
+        modelPath: './Mesh/Body.fbx',
+        scale: 0.015,
+        hasTextures: false
+      },
+      shellbruiser: {
+        name: 'Shellbruiser',
+        modelPath: './Mesh/ShellBruiser/Meshy_AI_Shellbruiser_0530125320_texture.fbx',
+        texturePath: './Mesh/ShellBruiser/Meshy_AI_Shellbruiser_0530125320_texture',
+        scale: 0.012,
+        hasTextures: true
+      }
+    },
+
+    // Current active lifeform class
+    activeLifeformClass: 'shellbruiser',
 
     // Draggable tumor
     tumor: {
@@ -346,70 +358,87 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
   // Load model
   let outlineMaterial = null;
   let innerMaterial = null;
+  let texturedMaterial = null;  // Stored for swap on save/death
+  let currentMaterialMode = 'shader';  // 'shader' or 'textured'
+
+  // Function to swap lifeform material (called on save/death)
+  function setLifeformTextured(enabled) {
+    if (!humanBodyMesh || !texturedMaterial) return;
+
+    const targetMaterial = enabled ? texturedMaterial : innerMaterial;
+    currentMaterialMode = enabled ? 'textured' : 'shader';
+
+    humanBodyMesh.traverse((child) => {
+      if (child.isMesh) {
+        child.material = targetMaterial;
+      }
+    });
+
+    console.log('Lifeform material switched to:', currentMaterialMode);
+  }
 
   if (CONFIG.humanBody.enabled) {
     const loader = new FBXLoader();
     const textureLoader = new THREE.TextureLoader();
 
+    // Get active lifeform class
+    const lifeformClass = CONFIG.lifeformClasses[CONFIG.activeLifeformClass] || CONFIG.lifeformClasses.default;
+    console.log('Loading lifeform class:', lifeformClass.name);
+
     loader.load(
-      CONFIG.humanBody.modelPath,
+      lifeformClass.modelPath,
       (model) => {
         // Create container
         humanBodyMesh = new THREE.Group();
 
-        if (CONFIG.humanBody.useTextures && CONFIG.humanBody.texturePath) {
-          // Load PBR textures for creature models
-          const basePath = CONFIG.humanBody.texturePath;
+        // Always create shader material for stasis view
+        outlineMaterial = new THREE.ShaderMaterial(outlineShader);
+        innerMaterial = new THREE.ShaderMaterial(innerShader);
+
+        // If this class has textures, pre-load them for save/death reveal
+        if (lifeformClass.hasTextures && lifeformClass.texturePath) {
+          const basePath = lifeformClass.texturePath;
           const diffuseMap = textureLoader.load(basePath + '.png');
           const normalMap = textureLoader.load(basePath + '_normal.png');
           const roughnessMap = textureLoader.load(basePath + '_roughness.png');
           const metalnessMap = textureLoader.load(basePath + '_metallic.png');
           const emissiveMap = textureLoader.load(basePath + '_emission.png');
 
-          // Flip textures for correct orientation
+          // Try different UV settings - Meshy exports often need this
           [diffuseMap, normalMap, roughnessMap, metalnessMap, emissiveMap].forEach(tex => {
-            tex.flipY = false;
+            tex.flipY = true;  // Try true for Meshy exports
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
           });
 
-          const pbrMaterial = new THREE.MeshStandardMaterial({
+          texturedMaterial = new THREE.MeshStandardMaterial({
             map: diffuseMap,
             normalMap: normalMap,
             roughnessMap: roughnessMap,
             metalnessMap: metalnessMap,
             emissiveMap: emissiveMap,
             emissive: new THREE.Color(0xffffff),
-            emissiveIntensity: 0.5
+            emissiveIntensity: 0.3
           });
 
-          model.traverse((child) => {
-            if (child.isMesh) {
-              child.material = pbrMaterial;
-              humanBodyMesh.add(child.clone());
-            }
-          });
-
-          // Store for animation (no shader uniforms for PBR)
-          humanBodyMaterial = { pbr: pbrMaterial };
-
-          console.log('Creature loaded with PBR textures');
-        } else {
-          // Original shader-based rendering for silhouette body
-          outlineMaterial = new THREE.ShaderMaterial(outlineShader);
-          innerMaterial = new THREE.ShaderMaterial(innerShader);
-
-          model.traverse((child) => {
-            if (child.isMesh) {
-              const innerMesh = child.clone();
-              innerMesh.material = innerMaterial;
-              humanBodyMesh.add(innerMesh);
-            }
-          });
-
-          // Store materials for animation
-          humanBodyMaterial = { outline: outlineMaterial, inner: innerMaterial };
-
-          console.log('Human body loaded with outline shader');
+          console.log('Textured material pre-loaded for reveal');
         }
+
+        // Add meshes with shader material (stasis mode)
+        model.traverse((child) => {
+          if (child.isMesh) {
+            const mesh = child.clone();
+            mesh.material = innerMaterial;
+            humanBodyMesh.add(mesh);
+          }
+        });
+
+        // Store materials
+        humanBodyMaterial = {
+          outline: outlineMaterial,
+          inner: innerMaterial,
+          textured: texturedMaterial
+        };
 
         humanBodyMesh.position.set(
           CONFIG.humanBody.position.x,
@@ -421,9 +450,11 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           CONFIG.humanBody.rotation.y,
           CONFIG.humanBody.rotation.z
         );
-        humanBodyMesh.scale.setScalar(CONFIG.humanBody.scale);
+        humanBodyMesh.scale.setScalar(lifeformClass.scale);
 
         scene.add(humanBodyMesh);
+
+        console.log('Lifeform loaded with shader (stasis mode)');
 
         // Organ meshes disabled for Starfall (alien lifeforms don't need human anatomy)
         // loadOrganMeshes();
@@ -2740,6 +2771,8 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       console.log('All injuries cleared, timeline reset');
     },
     createInjury: (injuryData) => createInjury(injuryData),
+    setLifeformTextured: (enabled) => setLifeformTextured(enabled),
+    getLifeformClass: () => CONFIG.lifeformClasses[CONFIG.activeLifeformClass],
     setOutlineColor: (hex) => {
       if (humanBodyMaterial && humanBodyMaterial.outline) {
         humanBodyMaterial.outline.uniforms.uOutlineColor.value.setHex(hex);

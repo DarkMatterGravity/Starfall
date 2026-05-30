@@ -6811,6 +6811,11 @@
         resetDeathState();
       }
 
+      // Reset to shader mode (stasis view)
+      if (window.ThreeBackground?.setLifeformTextured) {
+        window.ThreeBackground.setLifeformTextured(false);
+      }
+
       // Save lifeform name to database
       saveLifeformName(lifeform.name, lifeform.designation);
 
@@ -7084,6 +7089,11 @@
     function showDeathOverlay() {
       hideDeathOverlay();
 
+      // Reveal textured model on death
+      if (window.ThreeBackground?.setLifeformTextured) {
+        window.ThreeBackground.setLifeformTextured(true);
+      }
+
       const lifeform = GameState.currentLifeform;
       const overlay = document.createElement('div');
       overlay.id = 'death-overlay';
@@ -7243,6 +7253,11 @@
     function showSavedOverlay() {
       // Remove existing overlay if any
       hideSavedOverlay();
+
+      // Reveal textured model on save
+      if (window.ThreeBackground?.setLifeformTextured) {
+        window.ThreeBackground.setLifeformTextured(true);
+      }
 
       const lifeform = GameState.currentLifeform;
       if (!lifeform) return;
