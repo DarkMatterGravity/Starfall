@@ -7633,14 +7633,15 @@
           }
           bgMusic.play().catch(() => {});
 
-          // Fade volume down as logo settles (over 2.5 seconds)
-          const fadeStart = Date.now();
-          const fadeDuration = 2500;
+          // Fade volume down after intro fully resolves
+          const fadeDuration = 2000;
           const startVol = 1.0;
           const endVol = 0.4;
+          let fadeStartTime = null;
 
           function fadeVolume() {
-            const elapsed = Date.now() - fadeStart;
+            if (!fadeStartTime) fadeStartTime = Date.now();
+            const elapsed = Date.now() - fadeStartTime;
             const progress = Math.min(elapsed / fadeDuration, 1);
             // Ease out curve for smooth fade
             const eased = 1 - Math.pow(1 - progress, 2);
@@ -7650,8 +7651,8 @@
               requestAnimationFrame(fadeVolume);
             }
           }
-          // Start fade after title begins animating
-          setTimeout(fadeVolume, 500);
+          // Start fade after all intro elements have resolved (4.5s)
+          setTimeout(fadeVolume, 4500);
         }
 
         // Hide intro overlay
