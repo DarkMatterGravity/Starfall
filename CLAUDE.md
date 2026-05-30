@@ -491,7 +491,73 @@ Concept documents located at:
 4. **CreatureBox art style** - For lifeforms: painterly, exaggerated, colorful
 5. **Terminology matters** - Never "aliens", always clinical then personal names
 
-## Recent Implementations (Latest Session)
+## Recent Implementations (Current Session - May 2026)
+
+### Cinematic Intro Sequence
+- Black screen with START button on load
+- Button click triggers timed animation sequence:
+  - 0ms: Stars fade in and begin drifting
+  - 500ms: STARFALL title zooms from large to final position
+  - 2000ms: Corner brackets slide in from sides
+  - 2500ms: "EXTRACTION PROTOCOL" types on with clip-path animation
+  - 3500ms: Menu buttons fade in
+  - 4000ms: System time and version info fade in
+- Music starts at full volume (1.0), fades to 0.4 as logo settles
+
+### Lifeform Class System
+```javascript
+lifeformClasses: {
+  default: {
+    name: 'Unknown Species',
+    modelPath: './Mesh/Body.fbx',
+    scale: 0.015,
+    hasTextures: false
+  },
+  shellbruiser: {
+    name: 'Shellbruiser',
+    modelPath: './Mesh/ShellBruiser/..._texture.fbx',
+    texturePath: './Mesh/ShellBruiser/..._texture',
+    scale: 0.010,
+    hasTextures: true
+  }
+}
+```
+
+### Material Swap System
+- **Stasis mode:** Dark silhouette shader (innerMaterial)
+- **Saved/Dead mode:** Full textured model with PBR materials
+- `setLifeformTextured(enabled)` swaps materials and adjusts lighting
+- Lighting boost when textured: ambient 0.7, key 1.5, fill 1.2
+
+### Collection Card Snapshots
+- `captureSnapshot()` function in three-background.js
+- Forces textured material, hides injuries, double-renders
+- Returns PNG data URL stored with lifeform in collection
+- Full-bleed card images with centered creature positioning
+
+### Collection Card Layout
+```
+┌─────────────────────────┐
+│ Name                    │  ← Full width top
+│                         │
+│      [Creature Image]   │  ← Centered, scaled 2.8x
+│                         │
+│ CONDITION    RARITY     │  ← Bottom row with dark bg
+└─────────────────────────┘
+```
+
+### Visual Effects Updates
+- **Nanobot swarm:** Bright lime green (#39ff14) with additive blending glow
+- **Death overlay:** Intense pure red (#ff0000) text and button with strong shadows
+- **Drifting stars:** Animated star field on main menu and collection screens
+- **StasisBay background:** Custom background image for stasis chamber
+
+### Background Elements
+- Main menu: Drifting stars canvas animation (no grid)
+- Collection archive: Same drifting stars (no grid)
+- Stasis chamber: StasisBay_Large.webp background image (no grid)
+
+## Recent Implementations (Previous Session)
 
 ### Simplified Navigation (3 Levels)
 - **Universe** → **System** → **Planet** (reduced from 5 levels)

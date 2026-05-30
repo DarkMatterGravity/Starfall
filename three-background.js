@@ -2406,11 +2406,12 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     geometry.setAttribute('position', new THREE.BufferAttribute(nanobotSwarm.positions, 3));
 
     const material = new THREE.PointsMaterial({
-      color: 0x1a1a1a,
-      size: 0.025,
+      color: 0x39ff14,  // Bright lime green
+      size: 0.035,
       transparent: true,
-      opacity: 0.8,
-      sizeAttenuation: true
+      opacity: 0.9,
+      sizeAttenuation: true,
+      blending: THREE.AdditiveBlending  // Glow effect
     });
 
     nanobotSwarm.particles = new THREE.Points(geometry, material);

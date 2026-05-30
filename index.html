@@ -892,15 +892,15 @@
     }
     .collection-card .card-snapshot-bg {
       position: absolute;
-      top: -20%;
-      left: 0;
+      top: 50%;
+      left: 50%;
       width: 100%;
-      height: 140%;
+      height: 100%;
       object-fit: cover;
-      object-position: center top;
+      object-position: center center;
       z-index: 0;
-      transform: scale(2.2);
-      transform-origin: center top;
+      transform: translate(-50%, -50%) scale(2.8);
+      transform-origin: center center;
     }
     .collection-card .card-content-overlay {
       position: relative;
@@ -910,15 +910,22 @@
       height: 100%;
       padding: 15px;
     }
-    /* Top row: name left, rarity right */
-    .collection-card .card-top-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
+    /* Name takes full width at top */
+    .collection-card .card-name-row {
+      width: 100%;
     }
-    /* Spacer to push condition to bottom */
+    /* Spacer to push bottom row down */
     .collection-card .card-spacer {
       flex: 1;
+    }
+    /* Bottom row: condition left, rarity right */
+    .collection-card .card-bottom-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 8px 15px;
+      margin: 0 -15px -15px -15px;
     }
 
     .collection-card:hover {
@@ -1055,10 +1062,6 @@
     .collection-card-condition {
       font-size: 12px;
       letter-spacing: 2px;
-      background: rgba(0, 0, 0, 0.6);
-      padding: 8px 15px;
-      margin: 0 -15px -15px -15px;
-      text-align: center;
     }
 
     .condition-pristine { color: #22c55e; }
@@ -1588,8 +1591,8 @@
     .death-title {
       font-family: var(--sf-font-display, 'Orbitron', sans-serif);
       font-size: 48px;
-      color: #ff4444;
-      text-shadow: 0 0 30px rgba(255, 0, 0, 0.8), 0 0 60px rgba(255, 0, 0, 0.5);
+      color: #ff0000;
+      text-shadow: 0 0 40px rgba(255, 0, 0, 1), 0 0 80px rgba(255, 0, 0, 0.8), 0 0 120px rgba(255, 0, 0, 0.5);
       letter-spacing: 8px;
       margin-bottom: 20px;
       animation: specimenLostPulse 1s ease-in-out infinite;
@@ -1597,31 +1600,31 @@
     .death-subtitle {
       font-family: var(--sf-font-display);
       font-size: 14px;
-      color: rgba(255, 100, 100, 0.7);
+      color: rgba(255, 50, 50, 0.9);
       letter-spacing: 3px;
       margin-bottom: 50px;
     }
     .death-btn {
       padding: 15px 40px;
-      background: #ff4444;
-      border: 2px solid #ff2222;
-      color: #000000;
+      background: #ff0000;
+      border: 2px solid #cc0000;
+      color: #ffffff;
       font-family: var(--sf-font-display);
       font-size: 14px;
       font-weight: 700;
       letter-spacing: 3px;
       cursor: pointer;
       transition: all 0.3s ease;
-      box-shadow: 0 0 20px rgba(255, 68, 68, 0.6), 0 0 40px rgba(255, 68, 68, 0.4);
+      box-shadow: 0 0 30px rgba(255, 0, 0, 0.8), 0 0 60px rgba(255, 0, 0, 0.6);
       animation: deathBtnGlow 1.5s ease-in-out infinite;
     }
     @keyframes deathBtnGlow {
-      0%, 100% { box-shadow: 0 0 20px rgba(255, 68, 68, 0.6), 0 0 40px rgba(255, 68, 68, 0.4); }
-      50% { box-shadow: 0 0 30px rgba(255, 68, 68, 0.8), 0 0 60px rgba(255, 68, 68, 0.6); }
+      0%, 100% { box-shadow: 0 0 30px rgba(255, 0, 0, 0.8), 0 0 60px rgba(255, 0, 0, 0.6); }
+      50% { box-shadow: 0 0 50px rgba(255, 0, 0, 1), 0 0 100px rgba(255, 0, 0, 0.8); }
     }
     .death-btn:hover {
-      background: #ff6666;
-      box-shadow: 0 0 30px rgba(255, 68, 68, 0.8), 0 0 60px rgba(255, 68, 68, 0.6);
+      background: #ff2222;
+      box-shadow: 0 0 50px rgba(255, 0, 0, 1), 0 0 100px rgba(255, 0, 0, 0.8);
       transform: translateY(-2px);
     }
     @keyframes specimenLostPulse {
@@ -4975,12 +4978,14 @@
         card.innerHTML = `
           ${hasSnapshot ? `<img class="card-snapshot-bg" src="${lifeform.snapshot}" alt="" />` : ''}
           <div class="card-content-overlay">
-            <div class="card-top-row">
+            <div class="card-name-row">
               <div class="collection-card-name rarity-${rarity} rarity-glow-${rarity}">${lifeform.name}</div>
-              <span class="rarity-badge ${rarity}">${rarityInfo.label}</span>
             </div>
             <div class="card-spacer"></div>
-            <div class="collection-card-condition condition-${condition}">${condition.toUpperCase()}</div>
+            <div class="card-bottom-row">
+              <div class="collection-card-condition condition-${condition}">${condition.toUpperCase()}</div>
+              <span class="rarity-badge ${rarity}">${rarityInfo.label}</span>
+            </div>
           </div>
         `;
 
@@ -7640,13 +7645,34 @@
         if (introPlayed) return;
         introPlayed = true;
 
-        // Start music
+        // Start music at full volume
         if (bgMusic) {
+          bgMusic.volume = 1.0;  // Start loud
           setupAudioAnalyser();
           if (audioContext && audioContext.state === 'suspended') {
             audioContext.resume();
           }
           bgMusic.play().catch(() => {});
+
+          // Fade volume down as logo settles (over 2.5 seconds)
+          const fadeStart = Date.now();
+          const fadeDuration = 2500;
+          const startVol = 1.0;
+          const endVol = 0.4;
+
+          function fadeVolume() {
+            const elapsed = Date.now() - fadeStart;
+            const progress = Math.min(elapsed / fadeDuration, 1);
+            // Ease out curve for smooth fade
+            const eased = 1 - Math.pow(1 - progress, 2);
+            bgMusic.volume = startVol + (endVol - startVol) * eased;
+
+            if (progress < 1) {
+              requestAnimationFrame(fadeVolume);
+            }
+          }
+          // Start fade after title begins animating
+          setTimeout(fadeVolume, 500);
         }
 
         // Hide intro overlay
