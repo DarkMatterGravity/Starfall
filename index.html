@@ -3221,20 +3221,37 @@
       pointer-events: none;
     }
     #intro-start-btn {
-      padding: 20px 60px;
+      position: relative;
+      padding: 20px 80px;
       background: transparent;
-      border: 2px solid var(--sf-primary);
+      border: 1px solid var(--sf-border);
       color: var(--sf-primary);
       font-family: var(--sf-font-display);
       font-size: 18px;
+      font-weight: 500;
       letter-spacing: 6px;
+      text-transform: uppercase;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: all 0.2s ease;
+      overflow: hidden;
+    }
+    #intro-start-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, var(--sf-primary-dim), transparent);
+      transition: left 0.4s ease;
     }
     #intro-start-btn:hover {
-      background: rgba(79, 209, 217, 0.1);
-      box-shadow: 0 0 30px rgba(79, 209, 217, 0.4);
-      transform: scale(1.05);
+      background: var(--sf-primary-dim);
+      border-color: var(--sf-primary);
+      box-shadow: 0 0 20px var(--sf-primary-glow), inset 0 0 20px var(--sf-primary-dim);
+    }
+    #intro-start-btn:hover::before {
+      left: 100%;
     }
 
     /* Intro animation states */
