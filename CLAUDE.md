@@ -502,7 +502,7 @@ Concept documents located at:
   - 2500ms: "EXTRACTION PROTOCOL" types on with clip-path animation
   - 3500ms: Menu buttons fade in
   - 4000ms: System time and version info fade in
-- Music starts at full volume (1.0), fades to 0.4 as logo settles
+- Music starts at full volume (1.0), stays loud for 4.5s, then fades to 0.4 over 2s
 
 ### Lifeform Class System
 ```javascript
@@ -528,22 +528,50 @@ lifeformClasses: {
 - **Saved/Dead mode:** Full textured model with PBR materials
 - `setLifeformTextured(enabled)` swaps materials and adjusts lighting
 - Lighting boost when textured: ambient 0.7, key 1.5, fill 1.2
+- `stopAllEffects()` API to shut off nanobot swarm and cryo field on save/death
 
 ### Collection Card Snapshots
 - `captureSnapshot()` function in three-background.js
 - Forces textured material, hides injuries, double-renders
 - Returns PNG data URL stored with lifeform in collection
 - Full-bleed card images with centered creature positioning
+- Image transform: `translate(-50%, -30%) scale(2.8)` for proper face positioning
 
 ### Collection Card Layout
 ```
 ┌─────────────────────────┐
 │ Name                    │  ← Full width top
 │                         │
-│      [Creature Image]   │  ← Centered, scaled 2.8x
+│      [Creature Image]   │  ← Centered, scaled 2.8x, shifted down 20%
 │                         │
 │ CONDITION    RARITY     │  ← Bottom row with dark bg
 └─────────────────────────┘
+```
+- Removed "NEW" tag animation from newly collected cards
+- Collection version: `v3_centered_cards`
+
+### Expanded Care Panel (Click on Collection Card)
+When clicking a card in the collection archive:
+```
+┌─────────────────────────────────┐
+│ [Large Snapshot Image]          │
+│   Name (overlay)                │
+│   RARITY  CONDITION             │
+├─────────────────────────────────┤
+│ 💧 Hydration    [████████] 80%  │
+│ 🫁 Oxygen       [██████──] 60%  │
+│ 🍖 Food         [████────] 40%  │
+│                                 │
+│ [HYDRATE] [OXYGENATE] [FEED]    │
+│                                 │
+│ ─────────────────────────────── │
+│ Designation: Indigenous LF 67-A │
+│ Origin: Varnax System / Brakka  │
+│ Age: ~1.2 million years         │
+│ Recovered: 5/30/2026            │
+│                                 │
+│ Traits: [Heavy] [Armored]       │
+└─────────────────────────────────┘
 ```
 
 ### Visual Effects Updates
@@ -551,11 +579,18 @@ lifeformClasses: {
 - **Death overlay:** Intense pure red (#ff0000) text and button with strong shadows
 - **Drifting stars:** Animated star field on main menu and collection screens
 - **StasisBay background:** Custom background image for stasis chamber
+- **Saved overlay:** Moved up (padding-bottom: 150px)
 
 ### Background Elements
 - Main menu: Drifting stars canvas animation (no grid)
 - Collection archive: Same drifting stars (no grid)
 - Stasis chamber: StasisBay_Large.webp background image (no grid)
+
+### Treatment Effects Auto-Shutoff
+- When lifeform is saved or dies, `stopAllEffects()` is called
+- Turns off nanobot swarm particles
+- Turns off cryo field visual
+- Resets all active medication states
 
 ## Recent Implementations (Previous Session)
 
