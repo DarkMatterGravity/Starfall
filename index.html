@@ -899,7 +899,7 @@
       object-fit: cover;
       object-position: center center;
       z-index: 0;
-      transform: translate(-50%, -50%) scale(2.8);
+      transform: translate(-50%, -30%) scale(2.8);
       transform-origin: center center;
     }
     .collection-card .card-content-overlay {
@@ -4094,7 +4094,7 @@
     // GAME STATE & SCREEN MANAGEMENT
     // ============================================
     const COLLECTION_KEY = 'starfall_collection';
-    const COLLECTION_VERSION = 'v2_fullbleed_cards';
+    const COLLECTION_VERSION = 'v3_centered_cards';
 
     // One-time collection reset for new card format
     if (localStorage.getItem('starfall_collection_version') !== COLLECTION_VERSION) {
