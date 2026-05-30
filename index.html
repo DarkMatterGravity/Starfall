@@ -1122,21 +1122,60 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.95);
       z-index: 1000;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 20px;
+      animation: carePanelFadeIn 0.3s ease-out;
+    }
+    @keyframes carePanelFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
 
     .care-detail-content {
       background: var(--sf-bg-panel);
       border: 1px solid var(--sf-border);
       border-radius: 8px;
-      max-width: 400px;
+      max-width: 500px;
       width: 100%;
-      padding: 24px;
+      padding: 0;
+      overflow: hidden;
+      animation: carePanelSlideIn 0.3s ease-out;
+      position: relative;
+    }
+    @keyframes carePanelSlideIn {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .care-detail-image {
+      width: 100%;
+      height: 280px;
+      background: #000;
+      position: relative;
+      overflow: hidden;
+    }
+    .care-detail-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scale(1.8);
+      transform-origin: center 30%;
+    }
+    .care-detail-image-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 20px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.9));
+    }
+
+    .care-detail-body {
+      padding: 20px;
     }
 
     .care-detail-header {
@@ -1245,6 +1284,42 @@
     .care-btn.hydration:hover { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
     .care-btn.oxygen:hover { border-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
     .care-btn.food:hover { border-color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+
+    .care-info-section {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--sf-border);
+    }
+    .care-info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+    .care-info-label {
+      color: var(--sf-text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .care-info-value {
+      color: var(--sf-text);
+      text-align: right;
+      max-width: 60%;
+    }
+    .care-traits {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+    .care-trait {
+      background: rgba(79, 209, 217, 0.15);
+      border: 1px solid rgba(79, 209, 217, 0.3);
+      padding: 4px 10px;
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: var(--sf-primary);
+    }
 
     .collection-empty {
       grid-column: 1 / -1;
@@ -5008,74 +5083,117 @@
 
       const care = lifeform.care || { hydration: 100, oxygen: 100, food: 100 };
       const rarity = lifeform.rarity || 'common';
+      const rarityInfo = RARITY_TIERS[rarity] || RARITY_TIERS.common;
+      const hasSnapshot = lifeform.snapshot && lifeform.snapshot.length > 0;
 
       const getMeterClass = (value) => value > 60 ? 'good' : value > 30 ? 'warning' : 'danger';
+
+      // Build traits HTML
+      const traitsHtml = (lifeform.traits || []).map(t => `<span class="care-trait">${t}</span>`).join('');
 
       const panel = document.createElement('div');
       panel.className = 'care-detail-panel';
       panel.id = 'care-detail-panel';
       panel.innerHTML = `
         <div class="care-detail-content">
-          <div class="care-detail-header">
-            <div>
-              <div class="care-detail-name rarity-${rarity} rarity-glow-${rarity}">${lifeform.name}</div>
-              <div style="font-size: 11px; color: var(--sf-text-dim); margin-top: 4px;">${lifeform.designation}</div>
+          ${hasSnapshot ? `
+            <div class="care-detail-image">
+              <img src="${lifeform.snapshot}" alt="${lifeform.name}" />
+              <div class="care-detail-image-overlay">
+                <div class="care-detail-name rarity-${rarity} rarity-glow-${rarity}" style="font-size: 24px;">${lifeform.name}</div>
+                <div style="display: flex; gap: 12px; margin-top: 8px; align-items: center;">
+                  <span class="rarity-badge ${rarity}">${rarityInfo.label}</span>
+                  <span class="condition-${lifeform.condition || 'good'}" style="font-size: 12px; letter-spacing: 2px;">${(lifeform.condition || 'good').toUpperCase()}</span>
+                </div>
+              </div>
             </div>
-            <button class="care-detail-close" id="care-panel-close">&times;</button>
-          </div>
+          ` : `
+            <div class="care-detail-header" style="padding: 20px;">
+              <div>
+                <div class="care-detail-name rarity-${rarity} rarity-glow-${rarity}">${lifeform.name}</div>
+                <div style="font-size: 11px; color: var(--sf-text-dim); margin-top: 4px;">${lifeform.designation}</div>
+              </div>
+              <button class="care-detail-close" id="care-panel-close">&times;</button>
+            </div>
+          `}
 
-          <div class="care-meters">
-            <div class="care-meter">
-              <div class="care-meter-label">
-                <span>💧</span>
-                <span>Hydration</span>
+          <div class="care-detail-body">
+            ${hasSnapshot ? `<button class="care-detail-close" id="care-panel-close" style="position: absolute; top: 15px; right: 15px; z-index: 10;">&times;</button>` : ''}
+
+            <div class="care-meters">
+              <div class="care-meter">
+                <div class="care-meter-label">
+                  <span>💧</span>
+                  <span>Hydration</span>
+                </div>
+                <div class="care-meter-bar">
+                  <div class="care-meter-fill ${getMeterClass(care.hydration)}" style="width: ${care.hydration}%"></div>
+                </div>
+                <div class="care-meter-value">${Math.round(care.hydration)}%</div>
               </div>
-              <div class="care-meter-bar">
-                <div class="care-meter-fill ${getMeterClass(care.hydration)}" style="width: ${care.hydration}%"></div>
+
+              <div class="care-meter">
+                <div class="care-meter-label">
+                  <span>🫁</span>
+                  <span>Oxygen</span>
+                </div>
+                <div class="care-meter-bar">
+                  <div class="care-meter-fill ${getMeterClass(care.oxygen)}" style="width: ${care.oxygen}%"></div>
+                </div>
+                <div class="care-meter-value">${Math.round(care.oxygen)}%</div>
               </div>
-              <div class="care-meter-value">${Math.round(care.hydration)}%</div>
+
+              <div class="care-meter">
+                <div class="care-meter-label">
+                  <span>🍖</span>
+                  <span>Food</span>
+                </div>
+                <div class="care-meter-bar">
+                  <div class="care-meter-fill ${getMeterClass(care.food)}" style="width: ${care.food}%"></div>
+                </div>
+                <div class="care-meter-value">${Math.round(care.food)}%</div>
+              </div>
             </div>
 
-            <div class="care-meter">
-              <div class="care-meter-label">
-                <span>🫁</span>
-                <span>Oxygen</span>
-              </div>
-              <div class="care-meter-bar">
-                <div class="care-meter-fill ${getMeterClass(care.oxygen)}" style="width: ${care.oxygen}%"></div>
-              </div>
-              <div class="care-meter-value">${Math.round(care.oxygen)}%</div>
+            <div class="care-buttons">
+              <button class="care-btn hydration" data-stat="hydration">
+                <span class="care-btn-icon">💧</span>
+                HYDRATE
+              </button>
+              <button class="care-btn oxygen" data-stat="oxygen">
+                <span class="care-btn-icon">🫁</span>
+                OXYGENATE
+              </button>
+              <button class="care-btn food" data-stat="food">
+                <span class="care-btn-icon">🍖</span>
+                FEED
+              </button>
             </div>
 
-            <div class="care-meter">
-              <div class="care-meter-label">
-                <span>🍖</span>
-                <span>Food</span>
+            <div class="care-info-section">
+              <div class="care-info-row">
+                <span class="care-info-label">Designation</span>
+                <span class="care-info-value">${lifeform.designation || 'Unknown'}</span>
               </div>
-              <div class="care-meter-bar">
-                <div class="care-meter-fill ${getMeterClass(care.food)}" style="width: ${care.food}%"></div>
+              <div class="care-info-row">
+                <span class="care-info-label">Origin</span>
+                <span class="care-info-value">${lifeform.origin || 'Unknown'}</span>
               </div>
-              <div class="care-meter-value">${Math.round(care.food)}%</div>
+              <div class="care-info-row">
+                <span class="care-info-label">Age</span>
+                <span class="care-info-value">${lifeform.age || 'Unknown'}</span>
+              </div>
+              <div class="care-info-row">
+                <span class="care-info-label">Recovered</span>
+                <span class="care-info-value">${lifeform.recoveredAt ? new Date(lifeform.recoveredAt).toLocaleDateString() : 'Unknown'}</span>
+              </div>
+              ${traitsHtml ? `
+                <div style="margin-top: 12px;">
+                  <div class="care-info-label" style="margin-bottom: 8px;">Traits</div>
+                  <div class="care-traits">${traitsHtml}</div>
+                </div>
+              ` : ''}
             </div>
-          </div>
-
-          <div class="care-buttons">
-            <button class="care-btn hydration" data-stat="hydration">
-              <span class="care-btn-icon">💧</span>
-              HYDRATE
-            </button>
-            <button class="care-btn oxygen" data-stat="oxygen">
-              <span class="care-btn-icon">🫁</span>
-              OXYGENATE
-            </button>
-            <button class="care-btn food" data-stat="food">
-              <span class="care-btn-icon">🍖</span>
-              FEED
-            </button>
-          </div>
-
-          <div style="margin-top: 16px; text-align: center; font-size: 11px; color: var(--sf-text-dim);">
-            Condition: <span class="condition-${lifeform.condition || 'good'}">${(lifeform.condition || 'good').toUpperCase()}</span>
           </div>
         </div>
       `;
@@ -7223,6 +7341,11 @@
       isLifeformDead = true;
       stopDyingAnimation();
 
+      // Stop all visual treatment effects
+      if (window.ThreeBackground?.stopAllEffects) {
+        window.ThreeBackground.stopAllEffects();
+      }
+
       const stasisChamber = document.getElementById('stasis-chamber');
       if (stasisChamber) {
         stasisChamber.classList.add('dead');
@@ -7326,6 +7449,11 @@
     // Trigger saved state
     function triggerSaved() {
       isLifeformSaved = true;
+
+      // Stop all visual treatment effects
+      if (window.ThreeBackground?.stopAllEffects) {
+        window.ThreeBackground.stopAllEffects();
+      }
 
       const stasisChamber = document.getElementById('stasis-chamber');
       if (stasisChamber) {

@@ -2844,6 +2844,10 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       });
 
       return dataURL;
+    },
+    // Stop all visual treatment effects (nanobot swarm, cryo field)
+    stopAllEffects: () => {
+      resetMedicationEffects();
     }
   };
 
