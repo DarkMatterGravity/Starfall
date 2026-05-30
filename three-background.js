@@ -2783,7 +2783,42 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       onTimelineEndCallback = callback;
     },
     getCurrentMonth: () => currentMonth,
-    getMaxMonths: () => maxMonths
+    getMaxMonths: () => maxMonths,
+    // Capture snapshot of textured lifeform for collection cards
+    captureSnapshot: () => {
+      if (!renderer || !scene || !camera || !humanBodyMesh) return null;
+
+      // Ensure textured material is showing
+      const wasTextured = currentMaterialMode === 'textured';
+      if (!wasTextured && texturedMaterial) {
+        setLifeformTextured(true);
+      }
+
+      // Hide injuries for clean snapshot
+      const injuryVisibility = [];
+      droppedTumors.forEach(tumor => {
+        injuryVisibility.push(tumor.visible);
+        tumor.visible = false;
+      });
+
+      // Render frame
+      renderer.render(scene, camera);
+
+      // Capture as data URL (smaller size for cards)
+      const dataURL = renderer.domElement.toDataURL('image/jpeg', 0.8);
+
+      // Restore injury visibility
+      droppedTumors.forEach((tumor, i) => {
+        tumor.visible = injuryVisibility[i];
+      });
+
+      // Restore shader mode if it wasn't textured
+      if (!wasTextured) {
+        setLifeformTextured(false);
+      }
+
+      return dataURL;
+    }
   };
 
   // ============================================
