@@ -890,13 +890,24 @@
     .collection-card-avatar {
       position: relative;
       width: 100%;
-      height: 120px;
+      height: 140px;
       display: flex;
       align-items: center;
       justify-content: center;
       margin-bottom: 15px;
       border-radius: 4px;
       overflow: hidden;
+    }
+    .collection-card-avatar.has-snapshot {
+      background: url('./Images/StasisBay_Large.webp') 45% center / 200% no-repeat;
+      background-color: #0a0a0f;
+    }
+    .collection-card-avatar .avatar-snapshot {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      position: relative;
+      z-index: 2;
     }
     .collection-card-avatar .avatar-icon {
       font-size: 60px;
@@ -4772,8 +4783,9 @@
         const rarityInfo = RARITY_TIERS[rarity] || RARITY_TIERS.common;
         const recoveredDate = lifeform.recoveredDate ? new Date(lifeform.recoveredDate).toLocaleDateString() : 'Unknown';
 
-        // Generate avatar based on lifeform properties
+        // Generate avatar - use snapshot if available, otherwise procedural
         const avatarIcon = generateLifeformAvatar(lifeform);
+        const hasSnapshot = lifeform.snapshot && lifeform.snapshot.length > 100;
 
         // Care indicator colors
         const getCareClass = (value) => value > 60 ? 'care-good' : value > 30 ? 'care-warning' : 'care-danger';
@@ -4782,8 +4794,11 @@
         const care = lifeform.care || { hydration: 100, oxygen: 100, food: 100 };
 
         card.innerHTML = `
-          <div class="collection-card-avatar rarity-bg-${rarity}">
-            <div class="avatar-icon">${avatarIcon}</div>
+          <div class="collection-card-avatar rarity-bg-${rarity} ${hasSnapshot ? 'has-snapshot' : ''}">
+            ${hasSnapshot
+              ? `<img class="avatar-snapshot" src="${lifeform.snapshot}" alt="${lifeform.name}" />`
+              : `<div class="avatar-icon">${avatarIcon}</div>`
+            }
             <div class="avatar-glow"></div>
           </div>
           <div class="collection-card-header">
@@ -7318,6 +7333,11 @@
       const lifeform = GameState.currentLifeform;
       lifeform.recovered = true;
       lifeform.recoveredDate = new Date().toISOString();
+
+      // Capture 3D snapshot for collection card
+      if (window.ThreeBackground?.captureSnapshot) {
+        lifeform.snapshot = window.ThreeBackground.captureSnapshot();
+      }
 
       // Initialize care stats for the newly collected lifeform
       lifeform.care = initializeCareStats();
