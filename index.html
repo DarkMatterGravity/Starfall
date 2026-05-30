@@ -800,9 +800,18 @@
 
     /* Collection Archive Screen */
     #collection-archive {
-      background: linear-gradient(135deg, rgba(10, 10, 21, 0.98) 0%, rgba(15, 20, 30, 0.98) 100%);
-      overflow-y: auto;
+      background: #0a0a0f;
+      overflow-y: scroll;
       overflow-x: hidden;
+    }
+    #collection-stars {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
     }
 
     .collection-header {
@@ -862,6 +871,8 @@
       padding: 100px 30px 30px 30px;
       max-width: 1600px;
       margin: 0 auto;
+      position: relative;
+      z-index: 1;
     }
 
     .collection-card {
@@ -886,10 +897,10 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      object-position: center 15%;
+      object-position: center 5%;
       z-index: 0;
-      transform: scale(2.2);
-      transform-origin: center 20%;
+      transform: scale(2.5);
+      transform-origin: center 10%;
     }
     .collection-card .card-content-overlay {
       position: relative;
@@ -1044,7 +1055,10 @@
     .collection-card-condition {
       font-size: 12px;
       letter-spacing: 2px;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+      background: rgba(0, 0, 0, 0.6);
+      padding: 8px 15px;
+      margin: 0 -15px -15px -15px;
+      text-align: center;
     }
 
     .condition-pristine { color: #22c55e; }
@@ -3455,7 +3469,7 @@
        COLLECTION ARCHIVE SCREEN
        ============================================ -->
   <div id="collection-archive" class="game-screen">
-    <div class="sf-grid-overlay"></div>
+    <canvas id="collection-stars"></canvas>
     <div class="sf-vignette"></div>
     <div class="sf-scanlines"></div>
     <div class="sf-noise"></div>
@@ -7763,6 +7777,58 @@
           requestAnimationFrame(animateStars);
         }
         animateStars();
+      }
+
+      // Collection screen star field animation
+      const collectionStarsCanvas = document.getElementById('collection-stars');
+      if (collectionStarsCanvas) {
+        const ctx2 = collectionStarsCanvas.getContext('2d');
+        const collectionStars = [];
+        const numCollectionStars = 150;
+
+        function resizeCollectionStars() {
+          collectionStarsCanvas.width = window.innerWidth;
+          collectionStarsCanvas.height = window.innerHeight;
+        }
+        resizeCollectionStars();
+        window.addEventListener('resize', resizeCollectionStars);
+
+        for (let i = 0; i < numCollectionStars; i++) {
+          collectionStars.push({
+            x: Math.random() * collectionStarsCanvas.width,
+            y: Math.random() * collectionStarsCanvas.height,
+            size: Math.random() * 1.5 + 0.3,
+            speed: Math.random() * 0.2 + 0.05,
+            brightness: Math.random() * 0.4 + 0.3,
+            twinkleSpeed: Math.random() * 0.015 + 0.005
+          });
+        }
+
+        function animateCollectionStars() {
+          ctx2.fillStyle = '#0a0a0f';
+          ctx2.fillRect(0, 0, collectionStarsCanvas.width, collectionStarsCanvas.height);
+
+          const time = Date.now() * 0.001;
+
+          collectionStars.forEach(star => {
+            star.y += star.speed;
+            if (star.y > collectionStarsCanvas.height) {
+              star.y = 0;
+              star.x = Math.random() * collectionStarsCanvas.width;
+            }
+
+            const twinkle = Math.sin(time * star.twinkleSpeed * 10 + star.x) * 0.3 + 0.7;
+            const alpha = star.brightness * twinkle;
+
+            ctx2.beginPath();
+            ctx2.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+            ctx2.fillStyle = `rgba(200, 220, 255, ${alpha})`;
+            ctx2.fill();
+          });
+
+          requestAnimationFrame(animateCollectionStars);
+        }
+        animateCollectionStars();
       }
 
       // Main menu buttons
