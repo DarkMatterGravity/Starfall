@@ -801,6 +801,8 @@
     /* Collection Archive Screen */
     #collection-archive {
       background: linear-gradient(135deg, rgba(10, 10, 21, 0.98) 0%, rgba(15, 20, 30, 0.98) 100%);
+      overflow-y: auto;
+      overflow-x: hidden;
     }
 
     .collection-header {
@@ -4111,6 +4113,14 @@
     // GAME STATE & SCREEN MANAGEMENT
     // ============================================
     const COLLECTION_KEY = 'starfall_collection';
+    const COLLECTION_VERSION = 'v2_fullbleed_cards';
+
+    // One-time collection reset for new card format
+    if (localStorage.getItem('starfall_collection_version') !== COLLECTION_VERSION) {
+      localStorage.removeItem(COLLECTION_KEY);
+      localStorage.setItem('starfall_collection_version', COLLECTION_VERSION);
+      console.log('Collection cleared for new card format');
+    }
 
     // Load collection from storage (with offline care depletion)
     function loadCollection() {
