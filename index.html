@@ -3199,40 +3199,164 @@
       from { opacity: 0; }
       to { opacity: 1; }
     }
+
+    /* ============================================
+       INTRO SEQUENCE
+       ============================================ */
+    #intro-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease-out;
+    }
+    #intro-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #intro-start-btn {
+      padding: 20px 60px;
+      background: transparent;
+      border: 2px solid var(--sf-primary);
+      color: var(--sf-primary);
+      font-family: var(--sf-font-display);
+      font-size: 18px;
+      letter-spacing: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    #intro-start-btn:hover {
+      background: rgba(79, 209, 217, 0.1);
+      box-shadow: 0 0 30px rgba(79, 209, 217, 0.4);
+      transform: scale(1.05);
+    }
+
+    /* Intro animation states */
+    #menu-stars.intro-hidden {
+      opacity: 0;
+    }
+    #menu-stars.intro-fade-in {
+      animation: starsFadeIn 2s ease-out forwards;
+    }
+    @keyframes starsFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .game-title.intro-hidden {
+      opacity: 0;
+      transform: scale(3);
+    }
+    .game-title.intro-animate {
+      animation: titleZoomIn 2.5s ease-out forwards;
+    }
+    @keyframes titleZoomIn {
+      0% { opacity: 0; transform: scale(3); }
+      20% { opacity: 1; }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .game-subtitle.intro-hidden {
+      opacity: 0;
+    }
+    .game-subtitle.intro-animate {
+      animation: subtitleTypeIn 1.5s steps(20) forwards;
+      overflow: hidden;
+      white-space: nowrap;
+      width: 0;
+    }
+    @keyframes subtitleTypeIn {
+      from { width: 0; opacity: 1; }
+      to { width: 100%; opacity: 1; }
+    }
+
+    .menu-buttons.intro-hidden {
+      opacity: 0;
+    }
+    .menu-buttons.intro-animate {
+      animation: buttonsFadeIn 1s ease-out forwards;
+    }
+    @keyframes buttonsFadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .bracket-frame.intro-hidden::before,
+    .bracket-frame.intro-hidden::after {
+      opacity: 0;
+    }
+    .bracket-frame.intro-animate::before {
+      animation: bracketSlideLeft 0.8s ease-out forwards;
+    }
+    .bracket-frame.intro-animate::after {
+      animation: bracketSlideRight 0.8s ease-out forwards;
+    }
+    @keyframes bracketSlideLeft {
+      from { opacity: 0; transform: translateX(-50px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes bracketSlideRight {
+      from { opacity: 0; transform: translateX(50px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .system-time.intro-hidden,
+    .version-info.intro-hidden {
+      opacity: 0;
+    }
+    .system-time.intro-animate,
+    .version-info.intro-animate {
+      animation: cornerFadeIn 1s ease-out forwards;
+    }
+    @keyframes cornerFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
   </style>
 </head>
 <body>
   <!-- Background Music -->
-  <audio id="bg-music" loop preload="auto" autoplay>
+  <audio id="bg-music" loop preload="auto">
     <source src="Starfall_Intro.mp3" type="audio/mpeg">
   </audio>
+
+  <!-- Intro Overlay -->
+  <div id="intro-overlay">
+    <button id="intro-start-btn">START</button>
+  </div>
 
   <!-- ============================================
        MAIN MENU SCREEN
        ============================================ -->
   <div id="main-menu" class="game-screen active">
-    <canvas id="menu-stars"></canvas>
+    <canvas id="menu-stars" class="intro-hidden"></canvas>
     <div class="sf-vignette"></div>
     <div class="sf-scanlines"></div>
     <div class="sf-noise"></div>
 
-    <div class="menu-content bracket-frame">
-      <h1 class="game-title">STARFALL</h1>
-      <h2 class="game-subtitle">Extraction Protocol</h2>
+    <div class="menu-content bracket-frame intro-hidden">
+      <h1 class="game-title intro-hidden">STARFALL</h1>
+      <h2 class="game-subtitle intro-hidden">Extraction Protocol</h2>
 
-      <div class="menu-buttons">
+      <div class="menu-buttons intro-hidden">
         <button class="menu-btn" id="btn-start-mission">Begin Mission</button>
         <button class="menu-btn" id="btn-collection">Lifeform Collection</button>
       </div>
     </div>
 
-    <div class="system-time">
+    <div class="system-time intro-hidden">
       <div class="date" id="system-date">MAY 18</div>
       <div class="year" id="system-year">2847</div>
       <div class="mission-day">MISSION DAY <span id="mission-day">1</span></div>
     </div>
 
-    <div class="version-info">
+    <div class="version-info intro-hidden">
       STARFALL v0.1.0<br>
       RECOVERY CORPS INITIATIVE
     </div>
@@ -7476,33 +7600,79 @@
 
       if (bgMusic) {
         bgMusic.volume = 0.4; // Medium volume
+      }
 
-        // Try to autoplay immediately (may work if user visited before)
-        const tryAutoplay = () => {
+      // ============================================
+      // INTRO SEQUENCE
+      // ============================================
+      const introOverlay = document.getElementById('intro-overlay');
+      const introStartBtn = document.getElementById('intro-start-btn');
+      const menuStars = document.getElementById('menu-stars');
+      const gameTitle = document.querySelector('.game-title');
+      const gameSubtitle = document.querySelector('.game-subtitle');
+      const menuButtons = document.querySelector('.menu-buttons');
+      const bracketFrame = document.querySelector('.menu-content.bracket-frame');
+      const systemTime = document.querySelector('.system-time');
+      const versionInfo = document.querySelector('.version-info');
+
+      let introPlayed = false;
+
+      function playIntroSequence() {
+        if (introPlayed) return;
+        introPlayed = true;
+
+        // Start music
+        if (bgMusic) {
           setupAudioAnalyser();
           if (audioContext && audioContext.state === 'suspended') {
             audioContext.resume();
           }
           bgMusic.play().catch(() => {});
-        };
+        }
 
-        // Attempt autoplay on various events
-        tryAutoplay();
-        document.addEventListener('visibilitychange', () => {
-          if (!document.hidden) tryAutoplay();
-        });
+        // Hide intro overlay
+        introOverlay.classList.add('hidden');
 
-        // Fallback: start on first user interaction
-        const startMusic = () => {
-          tryAutoplay();
-          document.removeEventListener('click', startMusic);
-          document.removeEventListener('keydown', startMusic);
-        };
-        document.addEventListener('click', startMusic);
-        document.addEventListener('keydown', startMusic);
+        // Timeline of animations
+        // 0ms: Stars fade in
+        menuStars.classList.remove('intro-hidden');
+        menuStars.classList.add('intro-fade-in');
 
-        // Try to autoplay anyway (works if user has interacted before)
-        bgMusic.play().catch(() => {});
+        // 500ms: Title zooms in from large
+        setTimeout(() => {
+          gameTitle.classList.remove('intro-hidden');
+          gameTitle.classList.add('intro-animate');
+        }, 500);
+
+        // 2000ms: Brackets slide in
+        setTimeout(() => {
+          bracketFrame.classList.remove('intro-hidden');
+          bracketFrame.classList.add('intro-animate');
+        }, 2000);
+
+        // 2500ms: Subtitle types in
+        setTimeout(() => {
+          gameSubtitle.classList.remove('intro-hidden');
+          gameSubtitle.classList.add('intro-animate');
+        }, 2500);
+
+        // 3500ms: Buttons fade in
+        setTimeout(() => {
+          menuButtons.classList.remove('intro-hidden');
+          menuButtons.classList.add('intro-animate');
+        }, 3500);
+
+        // 4000ms: Corner elements fade in
+        setTimeout(() => {
+          systemTime.classList.remove('intro-hidden');
+          systemTime.classList.add('intro-animate');
+          versionInfo.classList.remove('intro-hidden');
+          versionInfo.classList.add('intro-animate');
+        }, 4000);
+      }
+
+      if (introStartBtn) {
+        introStartBtn.addEventListener('click', playIntroSequence);
       }
 
       // Periodic care update loop (every 60 seconds)
