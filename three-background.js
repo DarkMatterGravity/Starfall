@@ -59,7 +59,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       rotation: { x: 0, y: 0, z: 0 },
       // Shader settings (used during stasis)
       outlineColor: 0xffffff,
-      innerColor: 0x1a2525,  // Dark silhouette (was 0x9DB3B2)
+      innerColor: 0x5a6b6a,  // Mid-dark silhouette (between 0x1a2525 and 0x9DB3B2)
       outlineIntensity: 1.0,
       outlinePower: 3.0,
       scanLineIntensity: 0.0,
@@ -121,10 +121,10 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         count: 2000       // More lines = thinner
       },
       grid: {
-        enabled: true,
-        intensity: 0.15,   // Grid line opacity
-        size: 50.0,        // Grid cell size
-        lineWidth: 1.5     // Line thickness
+        enabled: false,    // Disabled for stasis chamber
+        intensity: 0.15,
+        size: 50.0,
+        lineWidth: 1.5
       }
     }
   };
