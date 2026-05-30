@@ -1511,7 +1511,7 @@
        ============================================ */
     /* Stasis chamber background */
     #stasis-chamber {
-      background: url('./Images/StasisBay_Large.webp') 45% center / 110% no-repeat;
+      background: url('./Images/StasisBay_Large.webp') 38% center / 110% no-repeat;
       background-color: #0a0a0f;
     }
 
@@ -1582,18 +1582,25 @@
     }
     .death-btn {
       padding: 15px 40px;
-      background: transparent;
-      border: 2px solid #ff4444;
-      color: #ff4444;
+      background: #ff4444;
+      border: 2px solid #ff2222;
+      color: #000000;
       font-family: var(--sf-font-display);
       font-size: 14px;
+      font-weight: 700;
       letter-spacing: 3px;
       cursor: pointer;
       transition: all 0.3s ease;
+      box-shadow: 0 0 20px rgba(255, 68, 68, 0.6), 0 0 40px rgba(255, 68, 68, 0.4);
+      animation: deathBtnGlow 1.5s ease-in-out infinite;
+    }
+    @keyframes deathBtnGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(255, 68, 68, 0.6), 0 0 40px rgba(255, 68, 68, 0.4); }
+      50% { box-shadow: 0 0 30px rgba(255, 68, 68, 0.8), 0 0 60px rgba(255, 68, 68, 0.6); }
     }
     .death-btn:hover {
-      background: rgba(255, 68, 68, 0.2);
-      box-shadow: 0 0 20px rgba(255, 68, 68, 0.4);
+      background: #ff6666;
+      box-shadow: 0 0 30px rgba(255, 68, 68, 0.8), 0 0 60px rgba(255, 68, 68, 0.6);
       transform: translateY(-2px);
     }
     @keyframes specimenLostPulse {
@@ -1627,30 +1634,31 @@
       50% { opacity: 0.9; text-shadow: 0 0 15px rgba(34, 197, 94, 0.8); }
     }
 
-    /* Saved overlay */
+    /* Saved overlay - no darkening, just the prompt */
     #saved-overlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(10, 15, 20, 0.85);
+      background: transparent;
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 2000;
-      animation: overlayFadeIn 0.5s ease-out;
-    }
-    @keyframes overlayFadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
+      pointer-events: none;
     }
     .saved-content {
       text-align: center;
       padding: 50px 80px;
-      border: 2px solid rgba(34, 197, 94, 0.5);
-      background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(10, 15, 20, 0.9) 50%);
-      animation: savedContentGlow 2s ease-in-out infinite;
+      border: 2px solid rgba(34, 197, 94, 0.6);
+      background: rgba(10, 15, 20, 0.95);
+      animation: savedContentGlow 2s ease-in-out infinite, savedContentSlideIn 0.4s ease-out;
+      pointer-events: all;
+    }
+    @keyframes savedContentSlideIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
     }
     @keyframes savedContentGlow {
       0%, 100% { box-shadow: 0 0 30px rgba(34, 197, 94, 0.2); }
