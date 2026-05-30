@@ -363,6 +363,22 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       }
     });
 
+    // Boost lighting when showing textured model
+    if (enabled) {
+      ambient.intensity = 0.7;
+      keyLight.intensity = 1.5;
+      fillLight1.intensity = 1.2;
+      fillLight2.intensity = 1.0;
+      rimLight.intensity = 0.8;
+    } else {
+      // Reset to default lighting for shader mode
+      ambient.intensity = 0.4;
+      keyLight.intensity = 1.0;
+      fillLight1.intensity = 0.8;
+      fillLight2.intensity = 0.6;
+      rimLight.intensity = 0.5;
+    }
+
     console.log('Lifeform material switched to:', currentMaterialMode);
   }
 
