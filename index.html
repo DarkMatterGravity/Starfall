@@ -3284,13 +3284,16 @@
     }
     .game-subtitle.intro-animate {
       animation: subtitleTypeIn 1.5s steps(20) forwards;
-      overflow: hidden;
-      white-space: nowrap;
-      width: 0;
     }
     @keyframes subtitleTypeIn {
-      from { width: 0; opacity: 1; }
-      to { width: 100%; opacity: 1; }
+      from {
+        opacity: 1;
+        clip-path: inset(0 100% 0 0);
+      }
+      to {
+        opacity: 1;
+        clip-path: inset(0 0 0 0);
+      }
     }
 
     .menu-buttons.intro-hidden {
