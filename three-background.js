@@ -80,7 +80,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         name: 'Shellbruiser',
         modelPath: './Mesh/ShellBruiser/Meshy_AI_Shellbruiser_0530125320_texture.fbx',
         texturePath: './Mesh/ShellBruiser/Meshy_AI_Shellbruiser_0530125320_texture',
-        scale: 0.012,
+        scale: 0.010,
         hasTextures: true
       }
     },
