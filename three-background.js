@@ -152,21 +152,10 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
   const scene = new THREE.Scene();
 
   // ============================================
-  // BACKGROUND - Gradient
+  // BACKGROUND - Transparent (CSS background shows through)
   // ============================================
-
-  const gradCanvas = document.createElement('canvas');
-  gradCanvas.width = 4;
-  gradCanvas.height = 2048;
-  const ctx = gradCanvas.getContext('2d');
-  const gradient = ctx.createLinearGradient(0, 0, 0, 2048);
-  gradient.addColorStop(0, '#' + CONFIG.background.topColor.toString(16).padStart(6, '0'));
-  gradient.addColorStop(1, '#' + CONFIG.background.bottomColor.toString(16).padStart(6, '0'));
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 4, 2048);
-  const gradTexture = new THREE.CanvasTexture(gradCanvas);
-  gradTexture.colorSpace = THREE.SRGBColorSpace;
-  scene.background = gradTexture;
+  // Background disabled - using StasisBay.jpeg via CSS
+  scene.background = null;
 
   // Fog
   if (CONFIG.fog.enabled) {

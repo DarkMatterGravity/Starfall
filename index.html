@@ -1498,7 +1498,12 @@
     /* ============================================
        JOURNEY LEGACY STYLES (All original styles)
        ============================================ */
-    /* stasis-chamber has no background - Three.js provides it */
+    /* Stasis chamber background */
+    #stasis-chamber {
+      background: url('./Images/StasisBay.jpeg') center center / cover no-repeat;
+      background-color: #0a0a0f;
+    }
+
     /* Dying state - red flashing */
     #stasis-chamber.dying {
       animation: dyingFlash 0.5s ease-in-out infinite;
