@@ -1270,6 +1270,38 @@
     .care-detail-card.legendary {
       background: linear-gradient(145deg, #3d2a0a 0%, #5a4012 30%, #6b4d18 50%, #5a4012 70%, #3d2a0a 100%);
     }
+    .care-detail-card.legendary::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -80%;
+      width: 50%;
+      height: 200%;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 220, 100, 0.25) 40%,
+        rgba(255, 240, 150, 0.5) 50%,
+        rgba(255, 220, 100, 0.25) 60%,
+        transparent 100%
+      );
+      transform: skewX(-20deg);
+      animation: legendaryShimmerPattern 6s ease-in-out infinite;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .care-detail-card.legendary::after {
+      content: '✦';
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      font-size: 14px;
+      color: rgba(255, 250, 200, 0);
+      text-shadow: 0 0 6px rgba(255, 220, 100, 0.9), 0 0 12px rgba(255, 200, 50, 0.7);
+      z-index: 2;
+      pointer-events: none;
+      animation: legendaryGlint 6s ease-in-out infinite;
+    }
     .care-detail-card .card-snapshot-bg {
       position: absolute;
       top: 50%;
