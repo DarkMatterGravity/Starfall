@@ -931,6 +931,24 @@
       0% { left: -50%; }
       100% { left: 120%; }
     }
+    .collection-card.has-snapshot.legendary::after {
+      content: '✦';
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      font-size: 14px;
+      color: rgba(255, 240, 180, 0);
+      text-shadow: 0 0 8px rgba(255, 220, 100, 0.8), 0 0 15px rgba(255, 200, 50, 0.6);
+      z-index: 1;
+      pointer-events: none;
+      animation: legendaryGlint 1.8s ease-in-out infinite;
+    }
+    @keyframes legendaryGlint {
+      0%, 60% { opacity: 0; transform: scale(0.5); }
+      70% { opacity: 1; transform: scale(1.2); color: rgba(255, 250, 200, 1); }
+      85% { opacity: 0.5; transform: scale(1); }
+      100% { opacity: 0; transform: scale(0.8); }
+    }
     .collection-card .card-snapshot-bg {
       position: absolute;
       top: 50%;
