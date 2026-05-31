@@ -365,18 +365,29 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
     // Boost lighting when showing textured model
     if (enabled) {
+      // Yellow-green tinted lighting to match stasis tank
       ambient.intensity = 0.7;
+      ambient.color.setHex(0x556644);  // Subtle yellow-green ambient
       keyLight.intensity = 1.5;
-      fillLight1.intensity = 1.2;
-      fillLight2.intensity = 1.0;
-      rimLight.intensity = 0.8;
+      keyLight.color.setHex(0xeeffdd);  // Warm yellow-green key
+      fillLight1.intensity = 1.3;
+      fillLight1.color.setHex(0x44ff88);  // Green rim from left
+      fillLight2.intensity = 1.2;
+      fillLight2.color.setHex(0xff9944);  // Orange rim from right
+      rimLight.intensity = 1.0;
+      rimLight.color.setHex(0x88ffaa);  // Green-teal rim from back
     } else {
       // Reset to default lighting for shader mode
       ambient.intensity = 0.4;
+      ambient.color.setHex(0x404060);
       keyLight.intensity = 1.0;
+      keyLight.color.setHex(0xffffff);
       fillLight1.intensity = 0.8;
+      fillLight1.color.setHex(0x4488ff);
       fillLight2.intensity = 0.6;
+      fillLight2.color.setHex(0xff8844);
       rimLight.intensity = 0.5;
+      rimLight.color.setHex(0x6688ff);
     }
 
     console.log('Lifeform material switched to:', currentMaterialMode);
