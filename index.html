@@ -910,8 +910,8 @@
     .collection-card.has-snapshot.legendary::before {
       content: '';
       position: absolute;
-      top: 0;
-      left: -50%;
+      top: -50%;
+      left: -80%;
       width: 50%;
       height: 200%;
       background: linear-gradient(
@@ -928,15 +928,16 @@
       pointer-events: none;
     }
     @keyframes legendaryShimmer {
-      0% { left: -50%; }
-      100% { left: 120%; }
+      0% { left: -80%; }
+      100% { left: 130%; }
     }
     .collection-card.has-snapshot.legendary::after {
-      content: '✦';
+      content: '✦  ✦  ✦';
       position: absolute;
-      top: 12px;
-      right: 12px;
-      font-size: 14px;
+      top: 8px;
+      right: 8px;
+      font-size: 10px;
+      letter-spacing: 2px;
       color: rgba(255, 240, 180, 0);
       text-shadow: 0 0 8px rgba(255, 220, 100, 0.8), 0 0 15px rgba(255, 200, 50, 0.6);
       z-index: 1;
@@ -944,10 +945,13 @@
       animation: legendaryGlint 1.8s ease-in-out infinite;
     }
     @keyframes legendaryGlint {
-      0%, 60% { opacity: 0; transform: scale(0.5); }
-      70% { opacity: 1; transform: scale(1.2); color: rgba(255, 250, 200, 1); }
-      85% { opacity: 0.5; transform: scale(1); }
-      100% { opacity: 0; transform: scale(0.8); }
+      0%, 55% { opacity: 0; }
+      60% { opacity: 1; text-shadow: 0 0 10px rgba(255, 240, 150, 1), 0 0 20px rgba(255, 200, 50, 0.8); }
+      70% { opacity: 0; }
+      75% { opacity: 1; text-shadow: 0 0 8px rgba(255, 220, 100, 0.9), 0 0 15px rgba(255, 200, 50, 0.6); }
+      82% { opacity: 0; }
+      87% { opacity: 0.8; text-shadow: 0 0 6px rgba(255, 220, 100, 0.7), 0 0 12px rgba(255, 200, 50, 0.5); }
+      100% { opacity: 0; }
     }
     .collection-card .card-snapshot-bg {
       position: absolute;
