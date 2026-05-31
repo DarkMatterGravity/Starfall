@@ -372,8 +372,8 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       keyLight.color.setHex(0xeeffdd);  // Warm yellow-green key
       fillLight1.intensity = 1.3;
       fillLight1.color.setHex(0x44ff88);  // Green rim from left
-      fillLight2.intensity = 1.2;
-      fillLight2.color.setHex(0xff9944);  // Orange rim from right
+      fillLight2.intensity = 0.9;
+      fillLight2.color.setHex(0xffcc99);  // Warm peach rim from right (less orange)
       rimLight.intensity = 1.0;
       rimLight.color.setHex(0x88ffaa);  // Green-teal rim from back
     } else {
