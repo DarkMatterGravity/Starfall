@@ -882,7 +882,7 @@
       position: relative;
       transition: all 0.3s ease;
       overflow: hidden;
-      height: 320px;
+      height: 400px;
       display: flex;
       flex-direction: column;
     }
@@ -1211,8 +1211,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
-      padding: 40px 20px;
+      justify-content: center;
+      padding: 20px;
       overflow-y: auto;
       animation: carePanelFadeIn 0.3s ease-out;
     }
@@ -1240,18 +1240,35 @@
 
     /* Scaled up card replica */
     .care-detail-card {
-      width: 280px;
-      height: 400px;
+      width: 320px;
+      height: 480px;
       border: 1px solid var(--sf-border);
       border-radius: 4px;
       position: relative;
       overflow: hidden;
       flex-shrink: 0;
       animation: carePanelSlideIn 0.3s ease-out;
+      background: #000;
     }
     @keyframes carePanelSlideIn {
       from { transform: scale(0.8); opacity: 0; }
       to { transform: scale(1); opacity: 1; }
+    }
+    /* Rarity backgrounds for detail card */
+    .care-detail-card.common {
+      background: linear-gradient(145deg, #1a1a2e 0%, #0f0f1a 50%, #16213e 100%);
+    }
+    .care-detail-card.uncommon {
+      background: linear-gradient(145deg, #0a1f1a 0%, #0f2922 50%, #0a1a15 100%);
+    }
+    .care-detail-card.rare {
+      background: linear-gradient(145deg, #0a1525 0%, #0f1f3a 50%, #0a1830 100%);
+    }
+    .care-detail-card.epic {
+      background: linear-gradient(145deg, #1a0a25 0%, #250f35 50%, #1f0a2a 100%);
+    }
+    .care-detail-card.legendary {
+      background: linear-gradient(145deg, #3d2a0a 0%, #5a4012 30%, #6b4d18 50%, #5a4012 70%, #3d2a0a 100%);
     }
     .care-detail-card .card-snapshot-bg {
       position: absolute;
