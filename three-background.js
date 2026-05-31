@@ -2842,12 +2842,20 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         }
       });
 
+      // Set transparent background for capture
+      const oldClearColor = renderer.getClearColor(new THREE.Color());
+      const oldClearAlpha = renderer.getClearAlpha();
+      renderer.setClearColor(0x000000, 0);  // Transparent background
+
       // Render a couple frames to ensure everything is updated
       renderer.render(scene, camera);
       renderer.render(scene, camera);
 
       // Capture as data URL
       const dataURL = renderer.domElement.toDataURL('image/png');
+
+      // Restore original clear color
+      renderer.setClearColor(oldClearColor, oldClearAlpha);
 
       // Restore injury visibility
       droppedTumors.forEach((tumor, i) => {
