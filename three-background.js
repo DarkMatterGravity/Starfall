@@ -85,10 +85,11 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       },
       cerebral_enforcer: {
         name: 'Cerebral Enforcer',
-        modelPath: './Mesh/Cerebral_Enforcer/Meshy_AI_Cerebral_Enforcer_0604031211_texture.fbx',
-        texturePath: './Mesh/Cerebral_Enforcer/Meshy_AI_Cerebral_Enforcer_0604031211_texture',
+        modelPath: './Mesh/Cerebral_Enforcer_Animated/Meshy_AI_Cerebral_Enforcer_biped_Animation_Idle_5_withSkin.fbx',
+        texturePath: './Mesh/Cerebral_Enforcer_Animated/Meshy_AI_Cerebral_Enforcer_biped_texture_0',
         scale: 0.010,
-        hasTextures: true
+        hasTextures: true,
+        hasAnimation: true
       }
     },
 
@@ -403,6 +404,10 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     console.log('Lifeform material switched to:', currentMaterialMode);
   }
 
+  // Animation mixer for animated models
+  let animationMixer = null;
+  let animationClock = new THREE.Clock();
+
   if (CONFIG.humanBody.enabled) {
     const loader = new FBXLoader();
     const textureLoader = new THREE.TextureLoader();
@@ -414,9 +419,6 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     loader.load(
       lifeformClass.modelPath,
       (model) => {
-        // Create container
-        humanBodyMesh = new THREE.Group();
-
         // Always create shader material for stasis view
         outlineMaterial = new THREE.ShaderMaterial(outlineShader);
         innerMaterial = new THREE.ShaderMaterial(innerShader);
@@ -428,11 +430,18 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
           const normalMap = textureLoader.load(basePath + '_normal.png');
           const roughnessMap = textureLoader.load(basePath + '_roughness.png');
           const metalnessMap = textureLoader.load(basePath + '_metallic.png');
-          const emissiveMap = textureLoader.load(basePath + '_emission.png');
+          // Emission map may not exist for animated models
+          let emissiveMap = null;
+          const emissiveLoader = textureLoader.load(
+            basePath + '_emission.png',
+            () => {},
+            () => {},
+            () => { console.log('No emission map found, skipping'); }
+          );
 
           // Try different UV settings - Meshy exports often need this
-          [diffuseMap, normalMap, roughnessMap, metalnessMap, emissiveMap].forEach(tex => {
-            tex.flipY = true;  // Try true for Meshy exports
+          [diffuseMap, normalMap, roughnessMap, metalnessMap].forEach(tex => {
+            tex.flipY = true;
             tex.wrapS = THREE.RepeatWrapping;
             tex.wrapT = THREE.RepeatWrapping;
           });
@@ -441,23 +450,42 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
             map: diffuseMap,
             normalMap: normalMap,
             roughnessMap: roughnessMap,
-            metalnessMap: metalnessMap,
-            emissiveMap: emissiveMap,
-            emissive: new THREE.Color(0xffffff),
-            emissiveIntensity: 0.3
+            metalnessMap: metalnessMap
           });
 
           console.log('Textured material pre-loaded for reveal');
         }
 
-        // Add meshes with shader material (stasis mode)
-        model.traverse((child) => {
-          if (child.isMesh) {
-            const mesh = child.clone();
-            mesh.material = innerMaterial;
-            humanBodyMesh.add(mesh);
-          }
-        });
+        // For animated models, use the model directly (don't clone - breaks skinning)
+        if (lifeformClass.hasAnimation && model.animations && model.animations.length > 0) {
+          console.log('Animated model detected with', model.animations.length, 'animations');
+
+          // Use model directly as humanBodyMesh
+          humanBodyMesh = model;
+
+          // Apply shader material to all meshes
+          model.traverse((child) => {
+            if (child.isMesh) {
+              child.material = innerMaterial;
+            }
+          });
+
+          // Set up animation mixer
+          animationMixer = new THREE.AnimationMixer(model);
+          const idleAction = animationMixer.clipAction(model.animations[0]);
+          idleAction.play();
+          console.log('Playing animation:', model.animations[0].name || 'Idle');
+        } else {
+          // Non-animated model - create container and clone meshes
+          humanBodyMesh = new THREE.Group();
+          model.traverse((child) => {
+            if (child.isMesh) {
+              const mesh = child.clone();
+              mesh.material = innerMaterial;
+              humanBodyMesh.add(mesh);
+            }
+          });
+        }
 
         // Store materials
         humanBodyMaterial = {
@@ -480,7 +508,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
         scene.add(humanBodyMesh);
 
-        console.log('Lifeform loaded with shader (stasis mode)');
+        console.log('Lifeform loaded with shader (stasis mode)', lifeformClass.hasAnimation ? '(animated)' : '(static)');
 
         // Organ meshes disabled for Starfall (alien lifeforms don't need human anatomy)
         // loadOrganMeshes();
@@ -2584,6 +2612,12 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     requestAnimationFrame(animate);
 
     const time = clock.getElapsedTime();
+
+    // Update animation mixer for animated models
+    if (animationMixer) {
+      const delta = animationClock.getDelta();
+      animationMixer.update(delta);
+    }
 
     // Update shaders
     if (humanBodyMaterial) {
