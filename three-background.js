@@ -472,9 +472,23 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
           // Set up animation mixer
           animationMixer = new THREE.AnimationMixer(model);
-          const idleAction = animationMixer.clipAction(model.animations[0]);
+          const clip = model.animations[0];
+          const idleAction = animationMixer.clipAction(clip);
+
+          // Configure for smooth looping
+          idleAction.setLoop(THREE.LoopRepeat, Infinity);
+          idleAction.clampWhenFinished = false;
+          idleAction.timeScale = 1.0;
+
+          // Reset animation clock to sync with model load
+          animationClock = new THREE.Clock();
+          animationClock.start();
+
+          // Reset and play
+          idleAction.reset();
           idleAction.play();
-          console.log('Playing animation:', model.animations[0].name || 'Idle');
+
+          console.log('Playing animation:', clip.name || 'Idle', 'Duration:', clip.duration.toFixed(2) + 's');
         } else {
           // Non-animated model - create container and clone meshes
           humanBodyMesh = new THREE.Group();
@@ -2615,7 +2629,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
     // Update animation mixer for animated models
     if (animationMixer) {
-      const delta = animationClock.getDelta();
+      const delta = Math.min(animationClock.getDelta(), 0.1); // Cap delta to prevent jumps
       animationMixer.update(delta);
     }
 
