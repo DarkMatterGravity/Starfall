@@ -4154,6 +4154,14 @@
       },
 
       // Generate a complete lifeform
+      // Available species for random selection
+      species: ['shellbruiser', 'cerebral_enforcer'],
+
+      // Generate random species
+      generateSpecies() {
+        return this.species[Math.floor(Math.random() * this.species.length)];
+      },
+
       generate(id, alertType = 'crash', severity = 'moderate') {
         const origin = this.generateOrigin();
         return {
@@ -4172,7 +4180,8 @@
           severity,
           time: this.generateTime(),
           recovered: false,
-          recoveredDate: null
+          recoveredDate: null,
+          species: this.generateSpecies()
         };
       },
 

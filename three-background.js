@@ -82,11 +82,21 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
         texturePath: './Mesh/ShellBruiser/Meshy_AI_Shellbruiser_0530125320_texture',
         scale: 0.010,
         hasTextures: true
+      },
+      cerebral_enforcer: {
+        name: 'Cerebral Enforcer',
+        modelPath: './Mesh/Cerebral_Enforcer/Meshy_AI_Cerebral_Enforcer_0604031211_texture.fbx',
+        texturePath: './Mesh/Cerebral_Enforcer/Meshy_AI_Cerebral_Enforcer_0604031211_texture',
+        scale: 0.010,
+        hasTextures: true
       }
     },
 
-    // Current active lifeform class
-    activeLifeformClass: 'shellbruiser',
+    // Available lifeform classes for random selection (excludes 'default')
+    availableLifeforms: ['shellbruiser', 'cerebral_enforcer'],
+
+    // Current active lifeform class (randomly selected on load)
+    activeLifeformClass: ['shellbruiser', 'cerebral_enforcer'][Math.floor(Math.random() * 2)],
 
     // Draggable tumor
     tumor: {
