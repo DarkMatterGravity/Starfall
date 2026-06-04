@@ -85,11 +85,11 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
       },
       cerebral_enforcer: {
         name: 'Cerebral Enforcer',
-        modelPath: './Mesh/Cerebral_Enforcer_Animated/Meshy_AI_Cerebral_Enforcer_biped_Animation_Idle_5_withSkin.fbx',
-        texturePath: './Mesh/Cerebral_Enforcer_Animated/Meshy_AI_Cerebral_Enforcer_biped_texture_0',
+        modelPath: './Mesh/Cerebral_Enforcer/Meshy_AI_Cerebral_Enforcer_0604031211_texture.fbx',
+        texturePath: './Mesh/Cerebral_Enforcer/Meshy_AI_Cerebral_Enforcer_0604031211_texture',
         scale: 0.010,
         hasTextures: true,
-        hasAnimation: true
+        hasAnimation: false
       }
     },
 
